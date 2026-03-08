@@ -66,6 +66,24 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(convs));
   }, []);
 
+  const updateConversation = useCallback(
+    async (id: string, messages: Message[]) => {
+      const lastMsg = messages[messages.length - 1];
+      const updated = conversations.map((c) => {
+        if (c.id !== id) return c;
+        return {
+          ...c,
+          messages,
+          lastMessage: lastMsg?.content.slice(0, 60),
+          updatedAt: Date.now(),
+        };
+      });
+      setConversations(updated);
+      await save(updated);
+    },
+    [conversations, save]
+  );
+
   const createConversation = useCallback(
     (characterId: string, characterName: string): Conversation => {
       const existing = conversations.find((c) => c.characterId === characterId);
@@ -91,7 +109,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     async (characterId: string, characterName: string, messages: Message[]): Promise<Conversation> => {
       const existing = conversations.find((c) => c.characterId === characterId);
       if (existing) {
-        await updateConversation(existing.id, messages);
+        const lastMsg = messages[messages.length - 1];
+        const updated = conversations.map((c) => {
+          if (c.id !== existing.id) return c;
+          return {
+            ...c,
+            messages,
+            lastMessage: lastMsg?.content.slice(0, 60),
+            updatedAt: Date.now(),
+          };
+        });
+        setConversations(updated);
+        await save(updated);
         return existing;
       }
 
@@ -109,7 +138,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       await save(updated);
       return newConv;
     },
-    [conversations, save, updateConversation]
+    [conversations, save]
   );
 
   const deleteConversation = useCallback(
@@ -129,24 +158,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const getConversationByCharacter = useCallback(
     (characterId: string) => conversations.find((c) => c.characterId === characterId),
     [conversations]
-  );
-
-  const updateConversation = useCallback(
-    async (id: string, messages: Message[]) => {
-      const lastMsg = messages[messages.length - 1];
-      const updated = conversations.map((c) => {
-        if (c.id !== id) return c;
-        return {
-          ...c,
-          messages,
-          lastMessage: lastMsg?.content.slice(0, 60),
-          updatedAt: Date.now(),
-        };
-      });
-      setConversations(updated);
-      await save(updated);
-    },
-    [conversations, save]
   );
 
   const value = useMemo(
