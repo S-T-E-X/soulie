@@ -17,6 +17,7 @@ export type Message = {
 
 export type Conversation = {
   id: string;
+  characterId: string;
   title: string;
   messages: Message[];
   lastMessage?: string;
@@ -24,21 +25,22 @@ export type Conversation = {
   createdAt: number;
 };
 
-const STORAGE_KEY = "lumina_conversations";
+const STORAGE_KEY = "lumina_conversations_v2";
 
-let messageCounter = 0;
+let msgCounter = 0;
 export function generateId(): string {
-  messageCounter++;
-  return `id-${Date.now()}-${messageCounter}-${Math.random().toString(36).substr(2, 9)}`;
+  msgCounter++;
+  return `id-${Date.now()}-${msgCounter}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 interface ChatContextValue {
   conversations: Conversation[];
   isLoaded: boolean;
   loadConversations: () => Promise<void>;
-  createConversation: () => Conversation;
+  createConversation: (characterId: string, characterName: string) => Conversation;
   deleteConversation: (id: string) => Promise<void>;
   getConversation: (id: string) => Conversation | undefined;
+  getConversationByCharacter: (characterId: string) => Conversation | undefined;
   updateConversation: (id: string, messages: Message[]) => Promise<void>;
 }
 
@@ -51,9 +53,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const loadConversations = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setConversations(JSON.parse(stored));
-      }
+      if (stored) setConversations(JSON.parse(stored));
     } catch (e) {
       console.error("Failed to load conversations", e);
     } finally {
@@ -61,35 +61,47 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const saveConversations = useCallback(async (convs: Conversation[]) => {
+  const save = useCallback(async (convs: Conversation[]) => {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(convs));
   }, []);
 
-  const createConversation = useCallback((): Conversation => {
-    const newConv: Conversation = {
-      id: generateId(),
-      title: "Yeni Sohbet",
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    const updated = [newConv, ...conversations];
-    setConversations(updated);
-    saveConversations(updated);
-    return newConv;
-  }, [conversations, saveConversations]);
+  const createConversation = useCallback(
+    (characterId: string, characterName: string): Conversation => {
+      const existing = conversations.find((c) => c.characterId === characterId);
+      if (existing) return existing;
+
+      const newConv: Conversation = {
+        id: generateId(),
+        characterId,
+        title: characterName,
+        messages: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      const updated = [newConv, ...conversations];
+      setConversations(updated);
+      save(updated);
+      return newConv;
+    },
+    [conversations, save]
+  );
 
   const deleteConversation = useCallback(
     async (id: string) => {
       const updated = conversations.filter((c) => c.id !== id);
       setConversations(updated);
-      await saveConversations(updated);
+      await save(updated);
     },
-    [conversations, saveConversations]
+    [conversations, save]
   );
 
   const getConversation = useCallback(
     (id: string) => conversations.find((c) => c.id === id),
+    [conversations]
+  );
+
+  const getConversationByCharacter = useCallback(
+    (characterId: string) => conversations.find((c) => c.characterId === characterId),
     [conversations]
   );
 
@@ -98,22 +110,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const lastMsg = messages[messages.length - 1];
       const updated = conversations.map((c) => {
         if (c.id !== id) return c;
-        const title =
-          c.title === "Yeni Sohbet" && messages.length > 0
-            ? messages[0].content.slice(0, 40) + (messages[0].content.length > 40 ? "..." : "")
-            : c.title;
         return {
           ...c,
-          title,
           messages,
           lastMessage: lastMsg?.content.slice(0, 60),
           updatedAt: Date.now(),
         };
       });
       setConversations(updated);
-      await saveConversations(updated);
+      await save(updated);
     },
-    [conversations, saveConversations]
+    [conversations, save]
   );
 
   const value = useMemo(
@@ -124,6 +131,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       createConversation,
       deleteConversation,
       getConversation,
+      getConversationByCharacter,
       updateConversation,
     }),
     [
@@ -133,6 +141,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       createConversation,
       deleteConversation,
       getConversation,
+      getConversationByCharacter,
       updateConversation,
     ]
   );

@@ -7,13 +7,14 @@ import {
   Pressable,
   Platform,
   StatusBar,
+  Image,
 } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  FadeInUp,
   FadeInDown,
+  FadeInUp,
 } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,22 +30,32 @@ import { MessageBubble, type Message as BubbleMessage } from "@/components/chat/
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
+import { getCharacter, type Character } from "@/constants/characters";
 import { getApiUrl } from "@/lib/query-client";
 import Colors from "@/constants/colors";
 
-function WelcomeMessage() {
+function WelcomeMessage({ character }: { character: Character }) {
   return (
     <Animated.View entering={FadeInUp.springify().damping(18)} style={styles.welcomeContainer}>
-      <LinearGradient
-        colors={["rgba(0,122,255,0.10)", "rgba(0,122,255,0.02)"]}
-        style={styles.welcomeIcon}
-      >
-        <LinearGradient colors={["#4FC3F7", "#007AFF"]} style={styles.welcomeOrb} />
-      </LinearGradient>
-      <Text style={styles.welcomeTitle}>Merhaba, ben Lumina</Text>
-      <Text style={styles.welcomeText}>
-        Seni yargılamadan, sabırla dinlemek için buradayım. Ne hissediyorsun?
-      </Text>
+      <View style={styles.welcomeAvatarWrapper}>
+        <Image source={character.image} style={styles.welcomeAvatar} />
+        <LinearGradient
+          colors={[...character.gradientColors]}
+          style={styles.welcomeAvatarBorder}
+        />
+      </View>
+      <Text style={styles.welcomeName}>{character.name}</Text>
+      <View style={styles.welcomeRoleBadge}>
+        <Text style={styles.welcomeRoleText}>{character.shortRole}</Text>
+      </View>
+      <Text style={styles.welcomeDesc}>{character.description}</Text>
+      <View style={styles.tagsRow}>
+        {character.tags.map((tag) => (
+          <View key={tag} style={styles.tag}>
+            <Text style={styles.tagText}>{tag}</Text>
+          </View>
+        ))}
+      </View>
     </Animated.View>
   );
 }
@@ -55,6 +66,7 @@ export default function ChatScreen() {
   const { getConversation, updateConversation } = useChatContext();
 
   const conversation = getConversation(id);
+  const character = conversation ? getCharacter(conversation.characterId) : undefined;
 
   const initializedRef = useRef(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -70,7 +82,7 @@ export default function ChatScreen() {
 
   const handleSend = useCallback(
     async (text: string) => {
-      if (isStreaming) return;
+      if (isStreaming || !character) return;
 
       const currentMessages = [...messages];
 
@@ -101,7 +113,10 @@ export default function ChatScreen() {
             "Content-Type": "application/json",
             Accept: "text/event-stream",
           },
-          body: JSON.stringify({ messages: chatHistory }),
+          body: JSON.stringify({
+            messages: chatHistory,
+            characterId: character.id,
+          }),
         });
 
         if (!response.ok) throw new Error("Request failed");
@@ -184,13 +199,25 @@ export default function ChatScreen() {
         setShowTyping(false);
       }
     },
-    [isStreaming, messages, id, updateConversation]
+    [isStreaming, messages, id, updateConversation, character]
   );
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   const reversedMessages = [...messages].reverse() as BubbleMessage[];
+
+  if (!character || !conversation) {
+    return (
+      <BackgroundGradient>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Text style={{ color: Colors.text.secondary, fontFamily: "Inter_400Regular" }}>
+            Sohbet bulunamadı
+          </Text>
+        </View>
+      </BackgroundGradient>
+    );
+  }
 
   return (
     <BackgroundGradient>
@@ -205,14 +232,14 @@ export default function ChatScreen() {
             <Feather name="chevron-left" size={22} color={Colors.text.primary} />
           </Pressable>
           <View style={styles.headerCenter}>
-            <LinearGradient
-              colors={["#4FC3F7", "#007AFF"]}
-              style={styles.headerAvatar}
-            />
+            <View style={styles.headerAvatarWrapper}>
+              <Image source={character.image} style={styles.headerAvatar} />
+              <View style={styles.headerOnlineDot} />
+            </View>
             <View>
-              <Text style={styles.headerName}>Lumina</Text>
+              <Text style={styles.headerName}>{character.name}</Text>
               <Text style={styles.headerStatus}>
-                {isStreaming ? "yazıyor..." : "çevrimiçi"}
+                {isStreaming ? "yazıyor..." : character.shortRole}
               </Text>
             </View>
           </View>
@@ -228,14 +255,10 @@ export default function ChatScreen() {
         <FlatList
           data={reversedMessages}
           keyExtractor={(item) => item.id}
-          renderItem={({ item, index }) => (
-            <Animated.View entering={FadeInDown.delay(index === 0 ? 0 : 0).springify().damping(20)}>
-              <MessageBubble message={item} />
-            </Animated.View>
-          )}
+          renderItem={({ item }) => <MessageBubble message={item} />}
           inverted={messages.length > 0}
           ListHeaderComponent={showTyping ? <TypingIndicator /> : null}
-          ListFooterComponent={messages.length === 0 ? <WelcomeMessage /> : null}
+          ListFooterComponent={messages.length === 0 ? <WelcomeMessage character={character} /> : null}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.listContent}
@@ -251,9 +274,7 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
+  flex: { flex: 1 },
   header: {
     paddingHorizontal: 16,
     paddingBottom: 12,
@@ -279,10 +300,25 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 8,
   },
+  headerAvatarWrapper: {
+    position: "relative",
+  },
   headerAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#E5E5EA",
+  },
+  headerOnlineDot: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: "#34C759",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
   },
   headerName: {
     fontSize: 15,
@@ -293,12 +329,10 @@ const styles = StyleSheet.create({
   headerStatus: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
-    color: Colors.accent,
+    color: Colors.text.secondary,
     letterSpacing: -0.1,
   },
-  headerRight: {
-    width: 36,
-  },
+  headerRight: { width: 36 },
   listContent: {
     paddingTop: 12,
     paddingBottom: 8,
@@ -309,38 +343,71 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(0,0,0,0.04)",
   },
   welcomeContainer: {
-    flex: 1,
     alignItems: "center",
-    paddingTop: 80,
-    paddingHorizontal: 36,
-    gap: 14,
+    paddingTop: 48,
+    paddingHorizontal: 32,
+    paddingBottom: 24,
+    gap: 10,
   },
-  welcomeIcon: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    justifyContent: "center",
-    alignItems: "center",
+  welcomeAvatarWrapper: {
+    position: "relative",
     marginBottom: 4,
   },
-  welcomeOrb: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  welcomeAvatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#E5E5EA",
   },
-  welcomeTitle: {
+  welcomeAvatarBorder: {
+    position: "absolute",
+    inset: -3,
+    borderRadius: 51,
+    zIndex: -1,
+    opacity: 0.7,
+  },
+  welcomeName: {
     fontSize: 22,
     fontFamily: "Inter_700Bold",
     color: Colors.text.primary,
-    textAlign: "center",
     letterSpacing: -0.6,
+    textAlign: "center",
   },
-  welcomeText: {
-    fontSize: 15,
+  welcomeRoleBadge: {
+    backgroundColor: "rgba(0,122,255,0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  welcomeRoleText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.accent,
+  },
+  welcomeDesc: {
+    fontSize: 14,
     fontFamily: "Inter_400Regular",
     color: Colors.text.secondary,
     textAlign: "center",
-    lineHeight: 23,
+    lineHeight: 21,
     letterSpacing: -0.1,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 4,
+  },
+  tag: {
+    backgroundColor: "rgba(0,0,0,0.05)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  tagText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: Colors.text.secondary,
   },
 });

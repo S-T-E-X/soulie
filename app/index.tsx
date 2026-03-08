@@ -1,252 +1,380 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  TextInput,
   Pressable,
+  KeyboardAvoidingView,
   Platform,
-  StatusBar,
+  ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
   FadeInDown,
+  FadeInUp,
 } from "react-native-reanimated";
 import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
-
-import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
-import { ConversationCard } from "@/components/chat/ConversationCard";
-import { useChatContext, type Conversation } from "@/contexts/ChatContext";
+import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-function NewChatButton({ onPress }: { onPress: () => void }) {
-  const scale = useSharedValue(1);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
+function InputField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  secureTextEntry,
+  keyboardType,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder: string;
+  secureTextEntry?: boolean;
+  keyboardType?: any;
+}) {
+  const [focused, setFocused] = useState(false);
   return (
-    <AnimatedPressable
-      style={[styles.newChatButton, animStyle]}
-      onPressIn={() => {
-        scale.value = withSpring(0.94, { damping: 12 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, { damping: 10 });
-      }}
-      onPress={onPress}
-    >
-      <LinearGradient
-        colors={[Colors.userBubble.from, Colors.userBubble.to]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.newChatGradient}
-      >
-        <Feather name="plus" size={22} color="#FFFFFF" />
-      </LinearGradient>
-    </AnimatedPressable>
-  );
-}
-
-function EmptyState() {
-  return (
-    <View style={styles.emptyContainer}>
-      <LinearGradient
-        colors={["rgba(0,122,255,0.12)", "rgba(0,122,255,0.04)"]}
-        style={styles.emptyIcon}
-      >
-        <Feather name="message-circle" size={28} color={Colors.accent} />
-      </LinearGradient>
-      <Text style={styles.emptyTitle}>Henüz sohbet yok</Text>
-      <Text style={styles.emptySubtitle}>
-        Lumina ile bir konuşma başlatmak için{"\n"}sağ alttaki butona dokun
-      </Text>
+    <View style={inputStyles.wrapper}>
+      <Text style={inputStyles.label}>{label}</Text>
+      <View style={[inputStyles.container, focused && inputStyles.focused]}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={Colors.text.tertiary}
+          secureTextEntry={secureTextEntry}
+          keyboardType={keyboardType}
+          autoCapitalize="none"
+          style={inputStyles.input}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          keyboardAppearance="light"
+        />
+      </View>
     </View>
   );
 }
 
-export default function HomeScreen() {
+const inputStyles = StyleSheet.create({
+  wrapper: { gap: 6 },
+  label: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.text.secondary,
+    letterSpacing: -0.1,
+  },
+  container: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(0,0,0,0.1)",
+    backgroundColor: "rgba(255,255,255,0.9)",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  focused: {
+    borderColor: Colors.accent,
+    backgroundColor: "#FFFFFF",
+  },
+  input: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.primary,
+    letterSpacing: -0.1,
+  },
+});
+
+export default function AuthScreen() {
   const insets = useSafeAreaInsets();
-  const { conversations, isLoaded, loadConversations, createConversation, deleteConversation } =
-    useChatContext();
+  const { register, login, isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    loadConversations();
-  }, []);
+  const [mode, setMode] = useState<"login" | "register">("register");
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleNewChat = useCallback(() => {
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/(tabs)/explore");
+    }
+  }, [isAuthenticated]);
+
+  const buttonScale = useSharedValue(1);
+  const buttonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+  }));
+
+  const handleSubmit = async () => {
+    setError("");
+    if (!username.trim() || !password.trim()) {
+      setError("Tüm alanları doldur.");
+      return;
+    }
+    if (mode === "register" && !name.trim()) {
+      setError("İsim alanını doldur.");
+      return;
+    }
+
+    buttonScale.value = withSpring(0.95, { damping: 12 }, () => {
+      buttonScale.value = withSpring(1);
+    });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const conv = createConversation();
-    router.push({ pathname: "/chat/[id]", params: { id: conv.id } });
-  }, [createConversation]);
 
-  const handleOpenChat = useCallback((id: string) => {
-    router.push({ pathname: "/chat/[id]", params: { id } });
-  }, []);
-
-  const handleDelete = useCallback(
-    (id: string) => {
-      deleteConversation(id);
-    },
-    [deleteConversation]
-  );
-
-  const renderItem = ({ item, index }: { item: Conversation; index: number }) => (
-    <Animated.View entering={FadeInDown.delay(index * 40).springify().damping(18)}>
-      <ConversationCard
-        conversation={item}
-        onPress={() => handleOpenChat(item.id)}
-        onDelete={() => handleDelete(item.id)}
-      />
-    </Animated.View>
-  );
+    setLoading(true);
+    try {
+      if (mode === "register") {
+        await register(name.trim(), username.trim().toLowerCase(), password);
+      } else {
+        await login(username.trim().toLowerCase(), password);
+      }
+      router.replace("/(tabs)/explore");
+    } catch (e: any) {
+      setError(e.message || "Bir hata oluştu.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   return (
-    <BackgroundGradient>
-      <StatusBar barStyle="dark-content" />
-
-      <View style={[styles.header, { paddingTop: topPad + 16 }]}>
-        {Platform.OS === "ios" ? (
-          <BlurView
-            intensity={50}
-            tint="light"
-            style={[StyleSheet.absoluteFill, styles.headerBlur]}
-          />
-        ) : null}
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerTitle}>Lumina</Text>
-            <Text style={styles.headerSubtitle}>Kişisel AI Dostunum</Text>
-          </View>
-          <View style={styles.headerIcon}>
-            <LinearGradient colors={["#4FC3F7", "#007AFF"]} style={styles.lumiGradient} />
-          </View>
-        </View>
-      </View>
-
-      <FlatList
-        data={conversations}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        ListEmptyComponent={isLoaded ? <EmptyState /> : null}
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: bottomPad + 90 },
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+    <View style={styles.root}>
+      <LinearGradient
+        colors={["#E8EFF8", "#F2F2F7", "#EEF1F8"]}
+        style={StyleSheet.absoluteFill}
       />
+      <View style={[styles.blob1]} />
+      <View style={[styles.blob2]} />
 
-      <View style={[styles.fab, { bottom: bottomPad + 28 }]}>
-        <NewChatButton onPress={handleNewChat} />
-      </View>
-    </BackgroundGradient>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: topPad + 40, paddingBottom: insets.bottom + 32 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.hero}>
+          <LinearGradient colors={["#4FC3F7", "#007AFF"]} style={styles.logoOrb} />
+          <Text style={styles.appName}>Lumina</Text>
+          <Text style={styles.appTagline}>AI Arkadaşlarınla Tanış</Text>
+        </Animated.View>
+
+        <Animated.View
+          entering={FadeInUp.delay(100).springify().damping(18)}
+          style={styles.card}
+        >
+          <View style={styles.modeToggle}>
+            <Pressable
+              onPress={() => { setMode("register"); setError(""); }}
+              style={[styles.modeBtn, mode === "register" && styles.modeBtnActive]}
+            >
+              <Text style={[styles.modeBtnText, mode === "register" && styles.modeBtnTextActive]}>
+                Kayıt Ol
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => { setMode("login"); setError(""); }}
+              style={[styles.modeBtn, mode === "login" && styles.modeBtnActive]}
+            >
+              <Text style={[styles.modeBtnText, mode === "login" && styles.modeBtnTextActive]}>
+                Giriş Yap
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.form}>
+            {mode === "register" ? (
+              <InputField
+                label="İsmin"
+                value={name}
+                onChangeText={setName}
+                placeholder="Adın ne?"
+              />
+            ) : null}
+            <InputField
+              label="Kullanıcı Adı"
+              value={username}
+              onChangeText={setUsername}
+              placeholder="kullanici_adi"
+            />
+            <InputField
+              label="Şifre"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              secureTextEntry
+            />
+          </View>
+
+          {error ? (
+            <View style={styles.errorBox}>
+              <Feather name="alert-circle" size={14} color="#FF3B30" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          <Animated.View style={buttonStyle}>
+            <Pressable onPress={handleSubmit} disabled={loading} style={styles.submitButton}>
+              <LinearGradient
+                colors={[Colors.userBubble.from, Colors.userBubble.to]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.submitGradient}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.submitText}>
+                    {mode === "register" ? "Hadi Başlayalım" : "Giriş Yap"}
+                  </Text>
+                )}
+              </LinearGradient>
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
+
+        <Animated.Text
+          entering={FadeInUp.delay(200).springify().damping(18)}
+          style={styles.disclaimer}
+        >
+          Devam ederek gizlilik politikamızı kabul etmiş olursunuz.
+        </Animated.Text>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
+  root: { flex: 1 },
+  scroll: {
     paddingHorizontal: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
-    overflow: "hidden",
-  },
-  headerBlur: {
-    borderBottomWidth: 0,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontFamily: "Inter_700Bold",
-    color: Colors.text.primary,
-    letterSpacing: -0.8,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: Colors.text.secondary,
-    marginTop: 1,
-    letterSpacing: -0.1,
-  },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  lumiGradient: {
-    flex: 1,
-  },
-  listContent: {
-    paddingTop: 12,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: "center",
+    flexGrow: 1,
     justifyContent: "center",
-    paddingTop: 100,
-    paddingHorizontal: 40,
-    gap: 12,
   },
-  emptyIcon: {
+  blob1: {
+    position: "absolute",
+    width: 340,
+    height: 340,
+    borderRadius: 170,
+    top: -80,
+    right: -80,
+    backgroundColor: "rgba(0, 122, 255, 0.07)",
+  },
+  blob2: {
+    position: "absolute",
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    bottom: 100,
+    left: -60,
+    backgroundColor: "rgba(88, 86, 214, 0.05)",
+  },
+  hero: {
+    alignItems: "center",
+    marginBottom: 32,
+    gap: 8,
+  },
+  logoOrb: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    justifyContent: "center",
-    alignItems: "center",
     marginBottom: 4,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_600SemiBold",
+  appName: {
+    fontSize: 34,
+    fontFamily: "Inter_700Bold",
     color: Colors.text.primary,
-    textAlign: "center",
-    letterSpacing: -0.4,
+    letterSpacing: -1,
   },
-  emptySubtitle: {
-    fontSize: 14,
+  appTagline: {
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
     color: Colors.text.secondary,
-    textAlign: "center",
-    lineHeight: 21,
+    letterSpacing: -0.2,
   },
-  fab: {
-    position: "absolute",
-    right: 24,
+  card: {
+    backgroundColor: "rgba(255,255,255,0.85)",
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.6)",
+    gap: 20,
   },
-  newChatButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    overflow: "hidden",
-    shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    elevation: 8,
+  modeToggle: {
+    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.05)",
+    borderRadius: 12,
+    padding: 3,
   },
-  newChatGradient: {
+  modeBtn: {
     flex: 1,
-    justifyContent: "center",
+    paddingVertical: 9,
+    borderRadius: 10,
     alignItems: "center",
+  },
+  modeBtnActive: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modeBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.text.secondary,
+  },
+  modeBtnTextActive: {
+    color: Colors.text.primary,
+    fontFamily: "Inter_600SemiBold",
+  },
+  form: { gap: 14 },
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,59,48,0.08)",
+    borderRadius: 10,
+    padding: 10,
+  },
+  errorText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#FF3B30",
+    flex: 1,
+  },
+  submitButton: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  submitGradient: {
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  submitText: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: "#FFFFFF",
+    letterSpacing: -0.3,
+  },
+  disclaimer: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.tertiary,
+    textAlign: "center",
+    marginTop: 16,
   },
 });
