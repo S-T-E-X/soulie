@@ -64,9 +64,9 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     <View style={styles.wrapper}>
       <Animated.View style={[styles.container, containerAnimStyle]}>
         {Platform.OS === "ios" ? (
-          <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
         ) : (
-          <View style={[StyleSheet.absoluteFill, styles.fallback]} />
+          <View style={[StyleSheet.absoluteFill, styles.fallback]} pointerEvents="none" />
         )}
         <TextInput
           ref={inputRef}

@@ -37,11 +37,10 @@ export default function ExploreScreen() {
     ? CHARACTERS
     : CHARACTERS.filter((c) => c.role === activeCategory || (activeCategory === "Mentor" && c.role === "Yaşam Koçu") || (activeCategory === "Mentor" && c.role === "Çalışma Arkadaşı"));
 
-  const handleCharacterPress = useCallback((characterId: string, characterName: string) => {
+  const handleCharacterPress = useCallback((characterId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const conv = createConversation(characterId, characterName);
-    router.push({ pathname: "/chat/[id]", params: { id: conv.id } });
-  }, [createConversation]);
+    router.push({ pathname: "/chat/[id]", params: { characterId } });
+  }, []);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -52,7 +51,7 @@ export default function ExploreScreen() {
     >
       <CharacterCard
         character={item}
-        onPress={() => handleCharacterPress(item.id, item.name)}
+        onPress={() => handleCharacterPress(item.id)}
         hasChat={!!getConversationByCharacter(item.id)}
       />
     </Animated.View>

@@ -61,12 +61,13 @@ function WelcomeMessage({ character }: { character: Character }) {
 }
 
 export default function ChatScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ characterId: string; id?: string }>();
+  const characterId = params.characterId || params.id;
   const insets = useSafeAreaInsets();
-  const { getConversation, updateConversation } = useChatContext();
+  const { getConversation, createConversationWithMessages } = useChatContext();
 
-  const conversation = getConversation(id);
-  const character = conversation ? getCharacter(conversation.characterId) : undefined;
+  const character = characterId ? getCharacter(characterId) : undefined;
+  const conversation = characterId ? getConversation(characterId) : undefined;
 
   const initializedRef = useRef(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -184,7 +185,8 @@ export default function ChatScreen() {
             timestamp: Date.now(),
           },
         ];
-        await updateConversation(id, finalMessages);
+
+        await createConversationWithMessages(character.id, character.name, finalMessages);
       } catch (error) {
         setShowTyping(false);
         const errMsg: Message = {
@@ -199,7 +201,7 @@ export default function ChatScreen() {
         setShowTyping(false);
       }
     },
-    [isStreaming, messages, id, updateConversation, character]
+    [isStreaming, messages, character, createConversationWithMessages]
   );
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -207,12 +209,12 @@ export default function ChatScreen() {
 
   const reversedMessages = [...messages].reverse() as BubbleMessage[];
 
-  if (!character || !conversation) {
+  if (!character) {
     return (
       <BackgroundGradient>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <Text style={{ color: Colors.text.secondary, fontFamily: "Inter_400Regular" }}>
-            Sohbet bulunamadı
+            Karakter bulunamadı
           </Text>
         </View>
       </BackgroundGradient>

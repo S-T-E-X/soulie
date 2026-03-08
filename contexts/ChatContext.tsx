@@ -38,6 +38,7 @@ interface ChatContextValue {
   isLoaded: boolean;
   loadConversations: () => Promise<void>;
   createConversation: (characterId: string, characterName: string) => Conversation;
+  createConversationWithMessages: (characterId: string, characterName: string, messages: Message[]) => Promise<Conversation>;
   deleteConversation: (id: string) => Promise<void>;
   getConversation: (id: string) => Conversation | undefined;
   getConversationByCharacter: (characterId: string) => Conversation | undefined;
@@ -86,6 +87,31 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [conversations, save]
   );
 
+  const createConversationWithMessages = useCallback(
+    async (characterId: string, characterName: string, messages: Message[]): Promise<Conversation> => {
+      const existing = conversations.find((c) => c.characterId === characterId);
+      if (existing) {
+        await updateConversation(existing.id, messages);
+        return existing;
+      }
+
+      const newConv: Conversation = {
+        id: generateId(),
+        characterId,
+        title: characterName,
+        messages,
+        lastMessage: messages[messages.length - 1]?.content.slice(0, 60),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      const updated = [newConv, ...conversations];
+      setConversations(updated);
+      await save(updated);
+      return newConv;
+    },
+    [conversations, save, updateConversation]
+  );
+
   const deleteConversation = useCallback(
     async (id: string) => {
       const updated = conversations.filter((c) => c.id !== id);
@@ -129,6 +155,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       isLoaded,
       loadConversations,
       createConversation,
+      createConversationWithMessages,
       deleteConversation,
       getConversation,
       getConversationByCharacter,
@@ -139,6 +166,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       isLoaded,
       loadConversations,
       createConversation,
+      createConversationWithMessages,
       deleteConversation,
       getConversation,
       getConversationByCharacter,
