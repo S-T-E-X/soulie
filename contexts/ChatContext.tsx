@@ -1,0 +1,147 @@
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+export type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: number;
+};
+
+export type Conversation = {
+  id: string;
+  title: string;
+  messages: Message[];
+  lastMessage?: string;
+  updatedAt: number;
+  createdAt: number;
+};
+
+const STORAGE_KEY = "lumina_conversations";
+
+let messageCounter = 0;
+export function generateId(): string {
+  messageCounter++;
+  return `id-${Date.now()}-${messageCounter}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+interface ChatContextValue {
+  conversations: Conversation[];
+  isLoaded: boolean;
+  loadConversations: () => Promise<void>;
+  createConversation: () => Conversation;
+  deleteConversation: (id: string) => Promise<void>;
+  getConversation: (id: string) => Conversation | undefined;
+  updateConversation: (id: string, messages: Message[]) => Promise<void>;
+}
+
+const ChatContext = createContext<ChatContextValue | null>(null);
+
+export function ChatProvider({ children }: { children: ReactNode }) {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  const loadConversations = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        setConversations(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error("Failed to load conversations", e);
+    } finally {
+      setIsLoaded(true);
+    }
+  }, []);
+
+  const saveConversations = useCallback(async (convs: Conversation[]) => {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(convs));
+  }, []);
+
+  const createConversation = useCallback((): Conversation => {
+    const newConv: Conversation = {
+      id: generateId(),
+      title: "Yeni Sohbet",
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    const updated = [newConv, ...conversations];
+    setConversations(updated);
+    saveConversations(updated);
+    return newConv;
+  }, [conversations, saveConversations]);
+
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      const updated = conversations.filter((c) => c.id !== id);
+      setConversations(updated);
+      await saveConversations(updated);
+    },
+    [conversations, saveConversations]
+  );
+
+  const getConversation = useCallback(
+    (id: string) => conversations.find((c) => c.id === id),
+    [conversations]
+  );
+
+  const updateConversation = useCallback(
+    async (id: string, messages: Message[]) => {
+      const lastMsg = messages[messages.length - 1];
+      const updated = conversations.map((c) => {
+        if (c.id !== id) return c;
+        const title =
+          c.title === "Yeni Sohbet" && messages.length > 0
+            ? messages[0].content.slice(0, 40) + (messages[0].content.length > 40 ? "..." : "")
+            : c.title;
+        return {
+          ...c,
+          title,
+          messages,
+          lastMessage: lastMsg?.content.slice(0, 60),
+          updatedAt: Date.now(),
+        };
+      });
+      setConversations(updated);
+      await saveConversations(updated);
+    },
+    [conversations, saveConversations]
+  );
+
+  const value = useMemo(
+    () => ({
+      conversations,
+      isLoaded,
+      loadConversations,
+      createConversation,
+      deleteConversation,
+      getConversation,
+      updateConversation,
+    }),
+    [
+      conversations,
+      isLoaded,
+      loadConversations,
+      createConversation,
+      deleteConversation,
+      getConversation,
+      updateConversation,
+    ]
+  );
+
+  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
+}
+
+export function useChatContext() {
+  const ctx = useContext(ChatContext);
+  if (!ctx) throw new Error("useChatContext must be used within ChatProvider");
+  return ctx;
+}
