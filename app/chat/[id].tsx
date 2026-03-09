@@ -458,10 +458,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     flexGrow: 1,
   },
-  inputArea: {
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.04)",
-  },
+  inputArea: {},
   giftButtonRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
