@@ -479,7 +479,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  inputWrapper: {},
+  inputWrapper: {
+    backgroundColor: "transparent",
+  },
   welcomeContainer: {
     alignItems: "center",
     paddingTop: 48,

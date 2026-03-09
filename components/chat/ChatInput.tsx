@@ -164,10 +164,11 @@ export function ChatInput({ onSend, disabled, replyTo, onCancelReply }: ChatInpu
 
 const styles = StyleSheet.create({
   wrapper: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingTop: 8,
     paddingBottom: 8,
     gap: 8,
+    backgroundColor: "transparent",
   },
   replyPreview: {
     flexDirection: "row",
@@ -238,11 +239,11 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "flex-end",
-    borderRadius: 26,
-    borderWidth: 0,
-    borderColor: "transparent",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
     overflow: "hidden",
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     paddingLeft: 16,
     paddingRight: 8,
     paddingVertical: 6,
@@ -252,7 +253,7 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   fallback: {
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
   inlinePhotoButton: {
     width: 34,
