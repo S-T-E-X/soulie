@@ -18,16 +18,22 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { fetch } from "expo/fetch";
 import * as Haptics from "expo-haptics";
+
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import { MessageBubble, type Message as BubbleMessage } from "@/components/chat/MessageBubble";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { ChatInput } from "@/components/chat/ChatInput";
+import { CharacterCustomizeSheet } from "@/components/chat/CharacterCustomizeSheet";
 import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
+import { useCharacterSettings } from "@/hooks/useCharacterSettings";
 import { getCharacter, type Character } from "@/constants/characters";
 import { getApiUrl } from "@/lib/query-client";
 import Colors from "@/constants/colors";
 
-function WelcomeMessage({ character }: { character: Character }) {
+const IS_VIP = false;
+
+function WelcomeMessage({ character, customName }: { character: Character; customName?: string }) {
+  const displayName = customName || character.name;
   return (
     <Animated.View entering={FadeInUp.springify().damping(18)} style={styles.welcomeContainer}>
       <View style={styles.welcomeAvatarWrapper}>
@@ -37,7 +43,7 @@ function WelcomeMessage({ character }: { character: Character }) {
           style={styles.welcomeAvatarBorder}
         />
       </View>
-      <Text style={styles.welcomeName}>{character.name}</Text>
+      <Text style={styles.welcomeName}>{displayName}</Text>
       <View style={styles.welcomeRoleBadge}>
         <Text style={styles.welcomeRoleText}>{character.shortRole}</Text>
       </View>
@@ -58,6 +64,7 @@ export default function ChatScreen() {
   const characterId = params.characterId || params.id;
   const insets = useSafeAreaInsets();
   const { getConversation, createConversationWithMessages } = useChatContext();
+  const { settings, isLoaded, updateSettings, addMemory, removeMemory } = useCharacterSettings(characterId ?? "");
 
   const character = characterId ? getCharacter(characterId) : undefined;
   const conversation = characterId ? getConversation(characterId) : undefined;
@@ -66,6 +73,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showTyping, setShowTyping] = useState(false);
+  const [showCustomize, setShowCustomize] = useState(false);
 
   useEffect(() => {
     if (conversation?.messages && !initializedRef.current) {
@@ -74,16 +82,35 @@ export default function ChatScreen() {
     }
   }, [conversation?.messages]);
 
+  const extractMemoryIfNeeded = useCallback(async (msgs: Message[]) => {
+    const userMsgCount = msgs.filter(m => m.role === "user").length;
+    if (userMsgCount > 0 && userMsgCount % 5 === 0 && settings.memories.length < 6) {
+      try {
+        const baseUrl = getApiUrl();
+        const res = await fetch(`${baseUrl}api/extract-memory`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: msgs.slice(-10).map(m => ({ role: m.role, content: m.content })),
+          }),
+        });
+        const data = await res.json();
+        if (data.memory && data.memory.trim().length > 3) {
+          await addMemory(data.memory.trim());
+        }
+      } catch {}
+    }
+  }, [settings.memories.length, addMemory]);
+
   const handleSend = useCallback(
     async (text: string, imageUri?: string) => {
-      if (isStreaming || !character) return;
+      if (isStreaming || !character || !isLoaded) return;
 
       const currentMessages = [...messages];
-
       const userMessage: Message = {
         id: generateId(),
         role: "user",
-        content: text || (imageUri ? "" : ""),
+        content: text || "",
         imageUri,
         timestamp: Date.now(),
       };
@@ -92,7 +119,6 @@ export default function ChatScreen() {
       setMessages(newMessages);
       setIsStreaming(true);
       setShowTyping(true);
-
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       try {
@@ -111,19 +137,20 @@ export default function ChatScreen() {
           return { role: m.role, content: m.content };
         });
 
-        const charXp = newMessages.filter(m => m.role === "user").length * 10;
-        const charLevel = Math.max(1, charXp < 50 ? 1 : charXp < 150 ? 5 : charXp < 300 ? 15 : charXp < 500 ? 25 : charXp < 750 ? 35 : charXp < 1050 ? 45 : 55);
+        const userMsgCount = newMessages.filter(m => m.role === "user").length;
+        const charXp = userMsgCount * 10;
+        const charLevel = charXp < 50 ? 1 : charXp < 150 ? 5 : charXp < 300 ? 15 : charXp < 500 ? 25 : charXp < 750 ? 35 : charXp < 1050 ? 45 : 55;
 
         const response = await fetch(`${baseUrl}api/chat`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "text/event-stream",
-          },
+          headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
           body: JSON.stringify({
             messages: chatHistory,
             characterId: character.id,
             userLevel: charLevel,
+            customName: settings.customName,
+            selectedTraits: settings.traits,
+            memories: settings.memories,
           }),
         });
 
@@ -155,26 +182,17 @@ export default function ChatScreen() {
               const parsed = JSON.parse(data);
               if (parsed.content) {
                 fullContent += parsed.content;
-
                 if (!assistantAdded) {
                   setShowTyping(false);
                   setMessages((prev) => [
                     ...prev,
-                    {
-                      id: assistantId,
-                      role: "assistant",
-                      content: fullContent,
-                      timestamp: Date.now(),
-                    },
+                    { id: assistantId, role: "assistant", content: fullContent, timestamp: Date.now() },
                   ]);
                   assistantAdded = true;
                 } else {
                   setMessages((prev) => {
                     const updated = [...prev];
-                    updated[updated.length - 1] = {
-                      ...updated[updated.length - 1],
-                      content: fullContent,
-                    };
+                    updated[updated.length - 1] = { ...updated[updated.length - 1], content: fullContent };
                     return updated;
                   });
                 }
@@ -185,44 +203,35 @@ export default function ChatScreen() {
 
         const finalMessages: Message[] = [
           ...newMessages,
-          {
-            id: assistantId,
-            role: "assistant",
-            content: fullContent,
-            timestamp: Date.now(),
-          },
+          { id: assistantId, role: "assistant", content: fullContent, timestamp: Date.now() },
         ];
 
-        await createConversationWithMessages(character.id, character.name, finalMessages);
-      } catch (error) {
+        await createConversationWithMessages(character.id, settings.customName || character.name, finalMessages);
+        extractMemoryIfNeeded(finalMessages);
+      } catch {
         setShowTyping(false);
-        const errMsg: Message = {
-          id: generateId(),
-          role: "assistant",
-          content: "Bir hata oluştu, tekrar dener misin?",
-          timestamp: Date.now(),
-        };
-        setMessages((prev) => [...prev, errMsg]);
+        setMessages((prev) => [
+          ...prev,
+          { id: generateId(), role: "assistant", content: "Bir hata oluştu, tekrar dener misin?", timestamp: Date.now() },
+        ]);
       } finally {
         setIsStreaming(false);
         setShowTyping(false);
       }
     },
-    [isStreaming, messages, character, createConversationWithMessages]
+    [isStreaming, messages, character, isLoaded, settings, createConversationWithMessages, extractMemoryIfNeeded]
   );
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
-
   const reversedMessages = [...messages].reverse() as BubbleMessage[];
+  const displayName = settings.customName || character?.name || "";
 
   if (!character) {
     return (
       <BackgroundGradient>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <Text style={{ color: Colors.text.secondary, fontFamily: "Inter_400Regular" }}>
-            Karakter bulunamadı
-          </Text>
+          <Text style={{ color: Colors.text.secondary, fontFamily: "Inter_400Regular" }}>Karakter bulunamadı</Text>
         </View>
       </BackgroundGradient>
     );
@@ -237,7 +246,7 @@ export default function ChatScreen() {
           <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
         ) : null}
         <View style={styles.headerContent}>
-          <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
+          <Pressable onPress={() => router.back()} style={styles.headerSideBtn} hitSlop={8}>
             <Feather name="chevron-left" size={22} color={Colors.text.primary} />
           </Pressable>
 
@@ -255,7 +264,7 @@ export default function ChatScreen() {
             </View>
             <View>
               <View style={styles.headerNameRow}>
-                <Text style={styles.headerName}>{character.name}</Text>
+                <Text style={styles.headerName}>{displayName}</Text>
                 <Feather name="chevron-right" size={13} color={Colors.text.tertiary} />
               </View>
               <Text style={styles.headerStatus}>
@@ -264,24 +273,29 @@ export default function ChatScreen() {
             </View>
           </Pressable>
 
-          <View style={styles.headerRight} />
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowCustomize(true);
+            }}
+            style={styles.headerSideBtn}
+            hitSlop={8}
+          >
+            <Feather name="sliders" size={19} color={Colors.text.secondary} />
+          </Pressable>
         </View>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior="padding"
-        keyboardVerticalOffset={0}
-      >
+      <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={0}>
         <FlatList
           data={reversedMessages}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <MessageBubble message={item} avatarImage={character.image} />
-          )}
+          renderItem={({ item }) => <MessageBubble message={item} avatarImage={character.image} />}
           inverted={messages.length > 0}
           ListHeaderComponent={showTyping ? <TypingIndicator /> : null}
-          ListFooterComponent={messages.length === 0 ? <WelcomeMessage character={character} /> : null}
+          ListFooterComponent={
+            messages.length === 0 ? <WelcomeMessage character={character} customName={settings.customName} /> : null
+          }
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.listContent}
@@ -292,6 +306,16 @@ export default function ChatScreen() {
           <ChatInput onSend={handleSend} disabled={isStreaming} />
         </View>
       </KeyboardAvoidingView>
+
+      <CharacterCustomizeSheet
+        visible={showCustomize}
+        onClose={() => setShowCustomize(false)}
+        characterName={character.name}
+        settings={settings}
+        isVip={IS_VIP}
+        onSave={(partial) => updateSettings(partial)}
+        onRemoveMemory={removeMemory}
+      />
     </BackgroundGradient>
   );
 }
@@ -299,8 +323,8 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.05)",
     overflow: "hidden",
@@ -309,19 +333,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  backButton: {
-    width: 36,
-    height: 36,
+  headerSideBtn: {
+    width: 38,
+    height: 38,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 18,
+    borderRadius: 19,
   },
   headerCenter: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
   },
   headerAvatarWrapper: {
     position: "relative",
@@ -360,7 +384,6 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     letterSpacing: -0.1,
   },
-  headerRight: { width: 36 },
   listContent: {
     paddingTop: 12,
     paddingBottom: 8,

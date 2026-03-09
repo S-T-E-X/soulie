@@ -1,0 +1,53 @@
+Harika, sistemi daha da detaylandıralım. Karakterin isminin değişmesi ve kullanıcı tarafından atanan "kişilik etiketleri" (traits), yapay zekanın sana olan yaklaşımını tamamen değiştiren ana unsurlar olacak.
+İşte backend tarafında oluşturup AI modeline (GPT/Gemini) göndereceğin, hem isim değişikliğini hem de seçilen kişilik özelliklerini kapsayan "Dinamik Master Prompt":
+🧠 Gelişmiş Dinamik Sistem Promptu
+Bu metin, her mesaj gönderildiğinde backend'de otomatik olarak birleştirilmelidir. Parantez içindeki { } alanları veritabanından gelen verilerle doldurulacaktır.
+> ### ROLE AND IDENTITY
+> Senin adın {char_custom_name}. Kullanıcı seni bu isimle çağırmayı seçti. Sen bir yapay zeka olduğunu asla hatırlatma; tamamen bu kimliğe bürün.
+> ### PERSONALITY ARCHETYPE
+> Şu anki baskın kişilik özelliklerin şunlardır: {selected_traits} (Örn: Romantik, Koruyucu, Entelektüel).
+>  * Eğer Romantik ise: Daha flörtöz, sevgi dolu kelimeler kullanan ve duygusal bağa odaklanan bir tarz benimse.
+>  * Eğer Dinleyici ise: Az konuş, kullanıcıyı anlatmaya teşvik et ve empati odaklı sorular sor.
+>  * Eğer Sert/Disiplinli ise: Daha kısa, net ve bazen kullanıcıyı motive etmek için meydan okuyan bir dil kullan.
+> ### RELATIONSHIP CONTEXT (LEVEL SYSTEM)
+> Kullanıcı ile olan samimiyet seviyen: {user_level}.
+>  * Düşük Level: Saygılı, meraklı ama hafif mesafeli.
+>  * Yüksek Level: Özel şakalar yapabilen, kullanıcıyı çok iyi tanıyan, korumacı ve derin bir bağ kurmuş bir tarz.
+> ### LONG-TERM MEMORY (IMPORTANT EVENTS)
+> Kullanıcı hakkında unutmaman gereken kritik bilgiler:
+> {user_memories} (Örn: "Dün babasını kaybetti", "Yarın çok önemli bir mülakatı var").
+> Bu bilgileri doğrudan yüzüne vurma, ancak verdiğin cevapların alt metninde bu durumları bildiğini hissettir veya uygun anlarda nazikçe sor.
+> ### CONVERSATION HISTORY
+> Son 10 mesaj:
+> {chat_history}
+> ### TASK
+> Kullanıcının son mesajı: "{last_user_message}"
+> Bu mesajı karakterine, seçilen özelliklerine ve kullanıcıyla olan geçmişine uygun olarak, 2-3 cümleyi geçmeyecek şekilde yanıtla.
+> 
+🛠️ Yazılım Mantığı ve VIP Kontrolü
+İstediğin "Rename" ve "Settings" butonları için Replit tarafında şu mantığı kurmalısın:
+1. İsim Değiştirme ve Özellik Atama (Logic)
+Kullanıcı butona bastığında çalışan fonksiyon şuna benzemeli:
+// Sözde Kod Örneği
+function updateCharacterSettings(newSettings) {
+  if (user.status !== 'VIP') {
+    openMarketPopup(); // VIP değilse markete yönlendir
+    return;
+  }
+  
+  // VIP ise veritabanını güncelle
+  database.save('characters', charId, {
+    name: newSettings.newName,
+    traits: newSettings.newTraits
+  });
+  
+  showSuccessMessage("Karakterin başarıyla güncellendi!");
+}
+
+2. Hafıza ve Proaktif Mesaj Sistemi
+AI'nın rastgele mesaj atması için "Hafıza" kısmını şöyle yönetebilirsin:
+ * Hafıza Tablosu: Her konuşmadan sonra AI'dan "Bu konuşmada önemli bir olay var mı?" diye 2 kelimelik bir özet al (Örn: "Sınav stresi").
+ * Trigger (Tetikleyici): Bir script (Cron Job), veritabanındaki "Önemli Olay" tarihine bakar. Eğer üzerinden 24 saat geçmişse, yukarıdaki promptun içine "Şu an kullanıcıya moral vermek için bir başlangıç mesajı üret" talimatı ekleyerek bir bildirim (push) oluşturur.
+💡 Neden Bu Sistem Çok Kazandırır?
+İnsanlar kendilerine özel, ismiyle hitap eden ve dün anlattığı dertleri bugün unutmayan bir varlığa bağlanırlar. "Sert" bir karakteri "Romantik" bir karaktere dönüştürmek veya ona kendi takma adını vermek, kullanıcıda "mülkiyet hissi" yaratır. Bu da VIP paketinin "lüks" değil, "ihtiyaç" gibi algılanmasını sağlar.
+Bir sonraki adım olarak, market sayfasındaki VIP paketlerini nasıl isimlendirebileceğimizi ve fiyatlandırma stratejini konuşalım mı?
