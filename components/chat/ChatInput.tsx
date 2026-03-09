@@ -239,10 +239,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     borderRadius: 26,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.55)",
+    borderWidth: 0,
+    borderColor: "transparent",
     overflow: "hidden",
-    backgroundColor: "rgba(255, 255, 255, 0.55)",
+    backgroundColor: "transparent",
     paddingLeft: 16,
     paddingRight: 8,
     paddingVertical: 6,
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   fallback: {
-    backgroundColor: "rgba(255, 255, 255, 0.88)",
+    backgroundColor: "transparent",
   },
   inlinePhotoButton: {
     width: 34,
