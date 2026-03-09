@@ -19,7 +19,56 @@ import * as Haptics from "expo-haptics";
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import { useChatContext, type Conversation } from "@/contexts/ChatContext";
 import { getCharacter } from "@/constants/characters";
+import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
+
+const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
+
+function getUserLevel(xp: number) {
+  let level = 1;
+  for (let i = 0; i < LEVEL_XP_TABLE.length - 1; i++) {
+    if (xp >= LEVEL_XP_TABLE[i + 1]) level = i + 2;
+    else break;
+  }
+  return Math.min(level, 10);
+}
+
+function getLevelFrameColors(level: number): [string, string] {
+  if (level <= 2) return ["#8E8E93", "#636366"];
+  if (level <= 4) return [Colors.userBubble.from, Colors.userBubble.to];
+  if (level <= 6) return ["#5856D6", "#AF52DE"];
+  if (level <= 8) return ["#FF9500", "#FF6B00"];
+  return ["#FFD700", "#FFB800"];
+}
+
+function UserAvatarBadge({ xp, name }: { xp: number; name?: string }) {
+  const level = getUserLevel(xp);
+  const frameColors = getLevelFrameColors(level);
+  const initial = name?.charAt(0).toUpperCase() ?? "S";
+
+  return (
+    <Pressable
+      onPress={() => router.push("/(tabs)/settings")}
+      style={({ pressed }) => [styles.avatarBadge, pressed && { opacity: 0.8 }]}
+      hitSlop={6}
+    >
+      <LinearGradient
+        colors={frameColors}
+        style={styles.avatarFrame}
+      >
+        <LinearGradient
+          colors={[Colors.userBubble.from, Colors.userBubble.to]}
+          style={styles.avatarInner}
+        >
+          <Text style={styles.avatarInitial}>{initial}</Text>
+        </LinearGradient>
+      </LinearGradient>
+      <View style={styles.levelBadge}>
+        <Text style={styles.levelBadgeText}>{level}</Text>
+      </View>
+    </Pressable>
+  );
+}
 
 function ChatRow({ conversation, index }: { conversation: Conversation; index: number }) {
   const character = getCharacter(conversation.characterId);
@@ -40,7 +89,7 @@ function ChatRow({ conversation, index }: { conversation: Conversation; index: n
       <Pressable
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          router.push({ pathname: "/chat/[id]", params: { id: conversation.id } });
+          router.push({ pathname: "/chat/[id]", params: { id: conversation.id, characterId: conversation.characterId } });
         }}
         style={({ pressed }) => [styles.chatRow, pressed && { opacity: 0.75 }]}
       >
@@ -97,6 +146,7 @@ function EmptyState() {
 
 export default function ChatsScreen() {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { conversations, isLoaded, loadConversations } = useChatContext();
 
   useEffect(() => {
@@ -104,6 +154,8 @@ export default function ChatsScreen() {
   }, []);
 
   const sorted = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+  const totalMessages = conversations.reduce((acc, c) => acc + c.messages.length, 0);
+  const xp = totalMessages * 10 + conversations.length * 5;
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -112,8 +164,13 @@ export default function ChatsScreen() {
       <StatusBar barStyle="dark-content" />
 
       <View style={[styles.header, { paddingTop: topPad + 16 }]}>
-        <Text style={styles.headerTitle}>Sohbetler</Text>
-        <Text style={styles.headerSub}>{sorted.length} aktif sohbet</Text>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>Sohbetler</Text>
+            <Text style={styles.headerSub}>{sorted.length} aktif sohbet</Text>
+          </View>
+          <UserAvatarBadge xp={xp} name={user?.name} />
+        </View>
       </View>
 
       <FlatList
@@ -141,7 +198,11 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.04)",
-    gap: 2,
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   headerTitle: {
     fontSize: 28,
@@ -153,6 +214,50 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: Colors.text.secondary,
+    marginTop: 2,
+  },
+  avatarBadge: {
+    position: "relative",
+  },
+  avatarFrame: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    padding: 2.5,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarInner: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
+  avatarInitial: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  levelBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.accent,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  levelBadgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
   },
   list: {
     paddingTop: 8,

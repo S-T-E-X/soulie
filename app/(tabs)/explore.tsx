@@ -39,7 +39,7 @@ export default function ExploreScreen() {
 
   const handleCharacterPress = useCallback((characterId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push({ pathname: "/chat/[id]", params: { characterId } });
+    router.push({ pathname: "/character/[characterId]", params: { characterId } });
   }, []);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;

@@ -85,52 +85,54 @@ function LevelCard({ xp }: { xp: number }) {
   };
 
   return (
-    <Pressable onPress={handlePress} style={({ pressed }) => [pressed && { opacity: 0.9 }]}>
-      <AnimatedRN.View entering={FadeInDown.delay(40).springify().damping(18)} style={styles.levelCard}>
-        <LinearGradient
-          colors={["rgba(255,255,255,0.9)", "rgba(255,255,255,0.75)"]}
-          style={styles.levelGradient}
-        >
-          <View style={styles.levelTopRow}>
-            <View style={styles.levelBadge}>
+    <AnimatedRN.View entering={FadeInDown.delay(40).springify().damping(18)} style={styles.levelCard}>
+      <LinearGradient
+        colors={["rgba(255,255,255,0.9)", "rgba(255,255,255,0.75)"]}
+        style={styles.levelGradient}
+      >
+        <View style={styles.levelTopRow}>
+          <View style={styles.levelBadge}>
+            <LinearGradient
+              colors={[Colors.userBubble.from, Colors.userBubble.to]}
+              style={styles.levelBadgeGradient}
+            >
+              <Text style={styles.levelBadgeNumber}>{level}</Text>
+            </LinearGradient>
+          </View>
+          <View style={styles.levelInfo}>
+            <View style={styles.levelTitleRow}>
+              <Text style={styles.levelTitle}>{levelName}</Text>
+              <Text style={styles.levelSub}>Seviye {level}</Text>
+            </View>
+            <Text style={styles.levelXpText}>{xp} XP</Text>
+          </View>
+          <Pressable
+            onPress={handlePress}
+            style={({ pressed }) => [styles.levelChevronWrapper, pressed && { opacity: 0.6 }]}
+            hitSlop={12}
+          >
+            <Feather name="info" size={17} color={Colors.text.tertiary} />
+          </Pressable>
+        </View>
+
+        <View style={styles.levelBarWrapper}>
+          <View style={styles.levelBarBg}>
+            <Animated.View style={[styles.levelBarFill, { width: barWidth }]}>
               <LinearGradient
                 colors={[Colors.userBubble.from, Colors.userBubble.to]}
-                style={styles.levelBadgeGradient}
-              >
-                <Text style={styles.levelBadgeNumber}>{level}</Text>
-              </LinearGradient>
-            </View>
-            <View style={styles.levelInfo}>
-              <View style={styles.levelTitleRow}>
-                <Text style={styles.levelTitle}>{levelName}</Text>
-                <Text style={styles.levelSub}>Seviye {level}</Text>
-              </View>
-              <Text style={styles.levelXpText}>{xp} XP</Text>
-            </View>
-            <View style={styles.levelChevronWrapper}>
-              <Feather name="info" size={15} color={Colors.text.tertiary} />
-            </View>
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </Animated.View>
           </View>
-
-          <View style={styles.levelBarWrapper}>
-            <View style={styles.levelBarBg}>
-              <Animated.View style={[styles.levelBarFill, { width: barWidth }]}>
-                <LinearGradient
-                  colors={[Colors.userBubble.from, Colors.userBubble.to]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={StyleSheet.absoluteFill}
-                />
-              </Animated.View>
-            </View>
-            <View style={styles.levelBarLabels}>
-              <Text style={styles.levelBarLabel}>Seviye {level}</Text>
-              <Text style={styles.levelBarLabel}>{xpLeft > 0 ? `${xpLeft} XP kaldı` : "Max!"}</Text>
-            </View>
+          <View style={styles.levelBarLabels}>
+            <Text style={styles.levelBarLabel}>Seviye {level}</Text>
+            <Text style={styles.levelBarLabel}>{xpLeft > 0 ? `${xpLeft} XP kaldı` : "Max!"}</Text>
           </View>
-        </LinearGradient>
-      </AnimatedRN.View>
-    </Pressable>
+        </View>
+      </LinearGradient>
+    </AnimatedRN.View>
   );
 }
 

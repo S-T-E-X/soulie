@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -17,20 +17,19 @@ import Animated, {
   interpolate,
   Extrapolation,
   FadeInDown,
-  withSpring,
 } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { getCharacter } from "@/constants/characters";
 import Colors from "@/constants/colors";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
-const PHOTO_HEIGHT = SCREEN_H * 0.65;
+const PHOTO_HEIGHT = SCREEN_H * 0.62;
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
@@ -45,27 +44,40 @@ export default function CharacterProfileScreen() {
   });
 
   const photoAnimStyle = useAnimatedStyle(() => {
-    const scale = interpolate(scrollY.value, [-80, 0], [1.15, 1], Extrapolation.CLAMP);
-    const translateY = interpolate(scrollY.value, [0, 200], [0, -60], Extrapolation.CLAMP);
+    const scale = interpolate(scrollY.value, [-80, 0], [1.12, 1], Extrapolation.CLAMP);
+    const translateY = interpolate(scrollY.value, [0, 200], [0, -50], Extrapolation.CLAMP);
     return { transform: [{ scale }, { translateY }] };
   });
 
   const headerOpacityStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(scrollY.value, [PHOTO_HEIGHT - 160, PHOTO_HEIGHT - 80], [0, 1], Extrapolation.CLAMP);
+    const opacity = interpolate(
+      scrollY.value,
+      [PHOTO_HEIGHT - 120, PHOTO_HEIGHT - 50],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
     return { opacity };
   });
+
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   if (!character) {
     return (
       <View style={styles.container}>
-        <Pressable onPress={() => router.back()} style={[styles.closeBtn, { top: insets.top + 12 }]}>
+        <Pressable onPress={() => router.back()} style={[styles.closeBtn, { top: topPad + 12 }]}>
           <Feather name="x" size={18} color="#fff" />
         </Pressable>
       </View>
     );
   }
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const handleStartChat = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.back();
+    setTimeout(() => {
+      router.push({ pathname: "/chat/[id]", params: { characterId: character.id, id: character.id } });
+    }, 50);
+  };
 
   return (
     <View style={styles.container}>
@@ -110,7 +122,8 @@ export default function CharacterProfileScreen() {
               resizeMode="cover"
             />
             <LinearGradient
-              colors={["transparent", "transparent", "rgba(0,0,0,0.75)", "rgba(0,0,0,0.95)"]}
+              colors={["transparent", "rgba(0,0,0,0.2)", "rgba(0,0,0,0.7)", "rgba(0,0,0,0.92)"]}
+              locations={[0.3, 0.55, 0.78, 1]}
               style={StyleSheet.absoluteFill}
             />
           </Animated.View>
@@ -145,6 +158,8 @@ export default function CharacterProfileScreen() {
         </View>
 
         <View style={styles.infoSheet}>
+          <View style={styles.sheetHandle} />
+
           <Animated.View entering={FadeInDown.delay(80).springify().damping(18)} style={styles.infoSection}>
             <View style={styles.infoHeader}>
               <Feather name="user" size={16} color={Colors.accent} />
@@ -196,11 +211,7 @@ export default function CharacterProfileScreen() {
 
           <Animated.View entering={FadeInDown.delay(200).springify().damping(18)} style={styles.ctaSection}>
             <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                router.back();
-                router.push({ pathname: "/chat/[id]", params: { characterId: character.id } });
-              }}
+              onPress={handleStartChat}
               style={({ pressed }) => [styles.ctaButton, pressed && { opacity: 0.88 }]}
             >
               <LinearGradient
@@ -271,7 +282,7 @@ const styles = StyleSheet.create({
   },
   photoOverlayContent: {
     position: "absolute",
-    bottom: 24,
+    bottom: 28,
     left: 20,
     right: 20,
     gap: 8,
@@ -299,13 +310,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   nameText: {
-    fontSize: 38,
+    fontSize: 36,
     fontFamily: "Inter_700Bold",
     color: "#fff",
     letterSpacing: -1,
   },
   ageText: {
-    fontSize: 26,
+    fontSize: 24,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.85)",
     letterSpacing: -0.5,
@@ -342,10 +353,19 @@ const styles = StyleSheet.create({
   },
   infoSheet: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: -24,
-    paddingTop: 12,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    marginTop: -32,
+    paddingTop: 6,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(0,0,0,0.15)",
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 8,
   },
   infoSection: {
     padding: 20,

@@ -12,6 +12,8 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  FadeIn,
+  FadeOut,
 } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
@@ -24,21 +26,19 @@ interface ChatInputProps {
   disabled?: boolean;
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [text, setText] = useState("");
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
   const sendScale = useSharedValue(1);
-  const containerScale = useSharedValue(1);
 
-  const canSend = (text.trim().length > 0 || pendingImage !== null) && !disabled;
+  const hasContent = text.trim().length > 0 || pendingImage !== null;
+  const canSend = hasContent && !disabled;
 
   const sendAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: sendScale.value }],
-  }));
-
-  const containerAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: containerScale.value }],
   }));
 
   const handleSend = () => {
@@ -69,14 +69,6 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
   };
 
-  const handleFocus = () => {
-    containerScale.value = withTiming(1.01, { duration: 180 });
-  };
-
-  const handleBlur = () => {
-    containerScale.value = withTiming(1, { duration: 180 });
-  };
-
   return (
     <View style={styles.wrapper}>
       {pendingImage ? (
@@ -91,56 +83,69 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           </Pressable>
         </View>
       ) : null}
-      <Animated.View style={[styles.container, containerAnimStyle]}>
-        {Platform.OS === "ios" ? (
-          <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.fallback]} pointerEvents="none" />
-        )}
 
-        <Pressable
-          onPress={handlePickImage}
-          disabled={disabled}
-          style={({ pressed }) => [styles.photoButton, pressed && { opacity: 0.7 }]}
-          hitSlop={6}
-        >
-          <Feather name="image" size={19} color={disabled ? Colors.text.tertiary : Colors.text.secondary} />
-        </Pressable>
+      <View style={styles.row}>
+        {hasContent ? (
+          <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)}>
+            <Pressable
+              onPress={handlePickImage}
+              disabled={disabled}
+              style={({ pressed }) => [styles.sidePhotoButton, pressed && { opacity: 0.7 }]}
+              hitSlop={6}
+            >
+              <Feather name="image" size={19} color={disabled ? Colors.text.tertiary : Colors.text.secondary} />
+            </Pressable>
+          </Animated.View>
+        ) : null}
 
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          value={text}
-          onChangeText={setText}
-          placeholder="Bir şeyler söyle..."
-          placeholderTextColor={Colors.text.tertiary}
-          multiline
-          maxLength={2000}
-          blurOnSubmit={false}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          returnKeyType="default"
-          keyboardAppearance="light"
-        />
-        <Animated.View style={sendAnimStyle}>
-          <Pressable
-            onPress={handleSend}
-            disabled={!canSend}
-            style={({ pressed }) => [
-              styles.sendButton,
-              canSend && styles.sendButtonActive,
-              pressed && { opacity: 0.8 },
-            ]}
-            hitSlop={8}
-          >
-            <Feather
-              name="send"
-              size={16}
-              color={canSend ? "#FFFFFF" : Colors.text.tertiary}
-            />
-          </Pressable>
-        </Animated.View>
-      </Animated.View>
+        <View style={[styles.container, hasContent && styles.containerActive]}>
+          {Platform.OS === "ios" ? (
+            <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, styles.fallback]} pointerEvents="none" />
+          )}
+
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            value={text}
+            onChangeText={setText}
+            placeholder="Bir şeyler söyle..."
+            placeholderTextColor={Colors.text.tertiary}
+            multiline
+            maxLength={2000}
+            blurOnSubmit={false}
+            returnKeyType="default"
+            keyboardAppearance="light"
+          />
+
+          {!hasContent ? (
+            <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(120)}>
+              <Pressable
+                onPress={handlePickImage}
+                disabled={disabled}
+                style={({ pressed }) => [styles.inlinePhotoButton, pressed && { opacity: 0.7 }]}
+                hitSlop={6}
+              >
+                <Feather name="image" size={20} color={disabled ? Colors.text.tertiary : Colors.text.secondary} />
+              </Pressable>
+            </Animated.View>
+          ) : null}
+        </View>
+
+        {hasContent ? (
+          <Animated.View style={sendAnimStyle} entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)}>
+            <Pressable
+              onPress={handleSend}
+              disabled={!canSend}
+              style={({ pressed }) => [styles.sendButton, pressed && { opacity: 0.8 }]}
+              hitSlop={8}
+            >
+              <Feather name="send" size={17} color="#FFFFFF" />
+            </Pressable>
+          </Animated.View>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -173,28 +178,48 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  container: {
+  row: {
     flexDirection: "row",
     alignItems: "flex-end",
-    borderRadius: 32,
+    gap: 8,
+  },
+  sidePhotoButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.75)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.55)",
+    marginBottom: 3,
+  },
+  container: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    borderRadius: 26,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.55)",
     overflow: "hidden",
     backgroundColor: "rgba(255, 255, 255, 0.55)",
-    paddingLeft: 8,
-    paddingRight: 6,
+    paddingLeft: 16,
+    paddingRight: 8,
     paddingVertical: 6,
-    minHeight: 52,
+    minHeight: 48,
+  },
+  containerActive: {
+    paddingRight: 12,
   },
   fallback: {
     backgroundColor: "rgba(255, 255, 255, 0.88)",
   },
-  photoButton: {
-    width: 36,
-    height: 36,
+  inlinePhotoButton: {
+    width: 34,
+    height: 34,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 2,
+    marginLeft: 4,
     marginBottom: 1,
   },
   input: {
@@ -208,16 +233,12 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
   },
   sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.08)",
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: Colors.accent,
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 4,
-    marginBottom: 1,
-  },
-  sendButtonActive: {
-    backgroundColor: Colors.accent,
+    marginBottom: 3,
   },
 });

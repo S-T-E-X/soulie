@@ -111,6 +111,9 @@ export default function ChatScreen() {
           return { role: m.role, content: m.content };
         });
 
+        const charXp = newMessages.filter(m => m.role === "user").length * 10;
+        const charLevel = Math.max(1, charXp < 50 ? 1 : charXp < 150 ? 5 : charXp < 300 ? 15 : charXp < 500 ? 25 : charXp < 750 ? 35 : charXp < 1050 ? 45 : 55);
+
         const response = await fetch(`${baseUrl}api/chat`, {
           method: "POST",
           headers: {
@@ -120,6 +123,7 @@ export default function ChatScreen() {
           body: JSON.stringify({
             messages: chatHistory,
             characterId: character.id,
+            userLevel: charLevel,
           }),
         });
 
