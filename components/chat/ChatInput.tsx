@@ -27,15 +27,12 @@ interface ReplyPreview {
 
 interface ChatInputProps {
   onSend: (text: string, imageUri?: string) => void;
-  onGiftPress?: () => void;
   disabled?: boolean;
   replyTo?: ReplyPreview | null;
   onCancelReply?: () => void;
 }
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-export function ChatInput({ onSend, onGiftPress, disabled, replyTo, onCancelReply }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, replyTo, onCancelReply }: ChatInputProps) {
   const [text, setText] = useState("");
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -79,45 +76,25 @@ export function ChatInput({ onSend, onGiftPress, disabled, replyTo, onCancelRepl
 
   return (
     <View style={styles.wrapper}>
-      {replyTo && (
+      {replyTo ? (
         <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={styles.replyPreview}>
           <View style={styles.replyBar} />
           <Text style={styles.replyLabel}>Yanıtla</Text>
           <Text style={styles.replyContent} numberOfLines={1}>{replyTo.content}</Text>
-          <Pressable onPress={onCancelReply} hitSlop={8} style={styles.replyCancelBtn}>
+          <Pressable onPress={onCancelReply} hitSlop={8}>
             <Feather name="x" size={15} color={Colors.text.tertiary} />
           </Pressable>
         </Animated.View>
-      )}
+      ) : null}
 
       {pendingImage ? (
         <View style={styles.previewWrapper}>
           <Image source={{ uri: pendingImage }} style={styles.preview} resizeMode="cover" />
-          <Pressable
-            onPress={() => setPendingImage(null)}
-            style={styles.previewRemove}
-            hitSlop={8}
-          >
+          <Pressable onPress={() => setPendingImage(null)} style={styles.previewRemove} hitSlop={8}>
             <Feather name="x" size={12} color="#fff" />
           </Pressable>
         </View>
       ) : null}
-
-      {onGiftPress && (
-        <View style={styles.topRow}>
-          <View style={styles.topSpacer} />
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onGiftPress();
-            }}
-            style={({ pressed }) => [styles.giftTopBtn, pressed && { opacity: 0.75 }]}
-            hitSlop={6}
-          >
-            <Feather name="gift" size={16} color="#fff" />
-          </Pressable>
-        </View>
-      )}
 
       <View style={styles.row}>
         {hasContent ? (
@@ -188,9 +165,9 @@ export function ChatInput({ onSend, onGiftPress, disabled, replyTo, onCancelRepl
 const styles = StyleSheet.create({
   wrapper: {
     paddingHorizontal: 16,
-    paddingTop: 4,
+    paddingTop: 8,
     paddingBottom: 8,
-    gap: 6,
+    gap: 8,
   },
   replyPreview: {
     flexDirection: "row",
@@ -200,7 +177,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 8,
-    borderLeftWidth: 0,
   },
   replyBar: {
     width: 3,
@@ -220,29 +196,6 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.text.secondary,
     letterSpacing: -0.1,
-  },
-  replyCancelBtn: {
-    padding: 2,
-  },
-  topRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    marginBottom: 2,
-  },
-  topSpacer: { flex: 1 },
-  giftTopBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#FF3B30",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#FF3B30",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
   },
   previewWrapper: {
     alignSelf: "flex-start",

@@ -115,7 +115,7 @@ export function GiftSheet({ visible, onClose, onSendGift }: Props) {
             text: "Coin Al",
             onPress: () => {
               onClose();
-              router.push("/(tabs)/market");
+              router.push({ pathname: "/(tabs)/market", params: { tab: "coins" } });
             },
           },
         ]
@@ -176,7 +176,7 @@ export function GiftSheet({ visible, onClose, onSendGift }: Props) {
             <Pressable
               onPress={() => {
                 onClose();
-                router.push("/(tabs)/market");
+                router.push({ pathname: "/(tabs)/market", params: { tab: "coins" } });
               }}
               style={styles.coinBalance}
             >

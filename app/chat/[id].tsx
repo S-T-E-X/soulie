@@ -23,6 +23,7 @@ import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import { MessageBubble, type Message as BubbleMessage } from "@/components/chat/MessageBubble";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { ChatInput } from "@/components/chat/ChatInput";
+
 import { CharacterCustomizeSheet } from "@/components/chat/CharacterCustomizeSheet";
 import { GiftSheet } from "@/components/chat/GiftSheet";
 import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
@@ -340,20 +341,32 @@ export default function ChatScreen() {
               ? <WelcomeMessage character={character} customName={settings.customName} />
               : null
           }
-          keyboardDismissMode="interactive"
+          keyboardDismissMode="none"
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
 
-        <View style={[styles.inputWrapper, { paddingBottom: bottomPad + 4 }]}>
-          <ChatInput
-            onSend={handleSend}
-            onGiftPress={() => setShowGifts(true)}
-            disabled={isStreaming}
-            replyTo={replyTo}
-            onCancelReply={() => setReplyTo(null)}
-          />
+        <View style={styles.inputArea}>
+          <View style={styles.giftButtonRow}>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowGifts(true);
+              }}
+              style={({ pressed }) => [styles.giftFloatBtn, pressed && { opacity: 0.8 }]}
+            >
+              <Feather name="gift" size={15} color="#fff" />
+            </Pressable>
+          </View>
+          <View style={[styles.inputWrapper, { paddingBottom: bottomPad + 4 }]}>
+            <ChatInput
+              onSend={handleSend}
+              disabled={isStreaming}
+              replyTo={replyTo}
+              onCancelReply={() => setReplyTo(null)}
+            />
+          </View>
         </View>
       </KeyboardAvoidingView>
 
@@ -445,10 +458,31 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     flexGrow: 1,
   },
-  inputWrapper: {
+  inputArea: {
     borderTopWidth: 1,
     borderTopColor: "rgba(0,0,0,0.04)",
   },
+  giftButtonRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 0,
+  },
+  giftFloatBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#FF3B30",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#FF3B30",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  inputWrapper: {},
   welcomeContainer: {
     alignItems: "center",
     paddingTop: 48,

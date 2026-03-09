@@ -80,7 +80,7 @@ export function CharacterCustomizeSheet({
   const toggleTrait = (id: string) => {
     if (!isVip) {
       onClose();
-      router.push("/(tabs)/market");
+      router.push({ pathname: "/(tabs)/market", params: { tab: "coins" } });
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -104,7 +104,7 @@ export function CharacterCustomizeSheet({
 
   const handleVipPress = () => {
     onClose();
-    router.push("/(tabs)/market");
+    router.push({ pathname: "/(tabs)/market", params: { tab: "coins" } });
   };
 
   return (

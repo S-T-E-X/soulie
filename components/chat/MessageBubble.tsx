@@ -31,12 +31,11 @@ interface Props {
   onReply?: (message: Message) => void;
 }
 
-const SWIPE_THRESHOLD = 58;
+const SWIPE_THRESHOLD = 60;
 
 function GiftBubble({ giftId, isUser }: { giftId: string; isUser: boolean }) {
   const gift = GIFTS.find((g) => g.id === giftId);
   if (!gift) return null;
-
   return (
     <LinearGradient
       colors={[gift.colorFrom, gift.colorTo]}
@@ -55,14 +54,18 @@ function SwipeableAIBubble({ message, avatarImage, onReply }: Props) {
 
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > Math.abs(gs.dy) && gs.dx > 6,
+        Math.abs(gs.dx) > Math.abs(gs.dy) && gs.dx > 8,
+      onMoveShouldSetPanResponderCapture: (_, gs) =>
+        Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5 && gs.dx > 12,
       onPanResponderGrant: () => {
         triggered.current = false;
       },
       onPanResponderMove: (_, gs) => {
         if (gs.dx < 0) return;
-        const clamped = Math.min(gs.dx, SWIPE_THRESHOLD + 20);
+        const clamped = Math.min(gs.dx, SWIPE_THRESHOLD + 16);
         translateX.setValue(clamped);
         if (gs.dx >= SWIPE_THRESHOLD && !triggered.current) {
           triggered.current = true;
@@ -91,29 +94,8 @@ function SwipeableAIBubble({ message, avatarImage, onReply }: Props) {
     })
   ).current;
 
-  const replyIconOpacity = translateX.interpolate({
-    inputRange: [0, SWIPE_THRESHOLD],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
-
-  const replyIconScale = translateX.interpolate({
-    inputRange: [0, SWIPE_THRESHOLD],
-    outputRange: [0.5, 1],
-    extrapolate: "clamp",
-  });
-
   return (
     <View style={[styles.row, styles.rowAI]} {...panResponder.panHandlers}>
-      <Animated.View
-        style={[
-          styles.replyHint,
-          { opacity: replyIconOpacity, transform: [{ scale: replyIconScale }] },
-        ]}
-      >
-        <Feather name="corner-up-right" size={16} color={Colors.accent} />
-      </Animated.View>
-
       <Animated.View style={[styles.aiRowInner, { transform: [{ translateX }] }]}>
         <View style={styles.avatarContainer}>
           {avatarImage ? (
@@ -122,7 +104,6 @@ function SwipeableAIBubble({ message, avatarImage, onReply }: Props) {
             <LinearGradient colors={["#4FC3F7", "#007AFF"]} style={styles.avatarImage} />
           )}
         </View>
-
         {message.giftId ? (
           <GiftBubble giftId={message.giftId} isUser={false} />
         ) : (
@@ -151,11 +132,7 @@ export function MessageBubble({ message, avatarImage, onReply }: Props) {
     <View style={[styles.row, styles.rowUser]}>
       <View style={styles.bubbleUserWrapper}>
         {message.imageUri ? (
-          <Image
-            source={{ uri: message.imageUri }}
-            style={styles.messageImage}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: message.imageUri }} style={styles.messageImage} resizeMode="cover" />
         ) : null}
         {message.giftId ? (
           <GiftBubble giftId={message.giftId} isUser={true} />
@@ -180,33 +157,22 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 4,
     alignItems: "flex-end",
-    maxWidth: "100%",
   },
   rowUser: {
     justifyContent: "flex-end",
   },
   rowAI: {
     justifyContent: "flex-start",
-    alignItems: "center",
   },
   aiRowInner: {
     flexDirection: "row",
     alignItems: "flex-end",
-    flex: 1,
-  },
-  replyHint: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(0,122,255,0.08)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 4,
-    marginBottom: 4,
+    maxWidth: "80%",
   },
   avatarContainer: {
     marginRight: 8,
     marginBottom: 2,
+    flexShrink: 0,
   },
   avatarImage: {
     width: 30,
@@ -225,7 +191,6 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   bubble: {
-    maxWidth: "75%",
     borderRadius: 20,
     overflow: "hidden",
   },
@@ -242,7 +207,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.5)",
     backgroundColor: "rgba(255, 255, 255, 0.6)",
-    maxWidth: "75%",
+    flexShrink: 1,
   },
   aiBlurFallback: {
     backgroundColor: "rgba(255, 255, 255, 0.82)",

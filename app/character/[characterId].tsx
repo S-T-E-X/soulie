@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   },
   photoOverlayContent: {
     position: "absolute",
-    bottom: 28,
+    bottom: 52,
     left: 20,
     right: 20,
     gap: 8,

@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useLocalSearchParams } from "expo-router";
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import Colors from "@/constants/colors";
 import { useGifts, GIFTS, COIN_PACKAGES } from "@/contexts/GiftContext";
@@ -55,8 +56,18 @@ const PLANS = [
 export default function MarketScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const { tab: initialTab } = useLocalSearchParams<{ tab?: string }>();
   const { coins, purchaseGift, getInventoryCount, addCoins } = useGifts();
-  const [activeTab, setActiveTab] = useState<"premium" | "gifts" | "coins">("premium");
+  const validTabs = ["premium", "gifts", "coins"] as const;
+  const [activeTab, setActiveTab] = useState<"premium" | "gifts" | "coins">(
+    validTabs.includes(initialTab as any) ? (initialTab as any) : "premium"
+  );
+
+  React.useEffect(() => {
+    if (validTabs.includes(initialTab as any)) {
+      setActiveTab(initialTab as any);
+    }
+  }, [initialTab]);
 
   const handleCoinPurchase = (pkg: typeof COIN_PACKAGES[0]) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

@@ -82,6 +82,7 @@ ${memoriesSection}
 
 ### KISITLAMALAR
 • Yanıtların kısa ve öz olsun — maksimum 2-3 cümle.
+• Kullanıcı "selam", "merhaba", "naber", "nasılsın" gibi kısa selamlama yazarsa sen de çok kısa karşılık ver (örn: "Selam! İyiyim, sen?"). Uzun cümle kurma, konu açmaya çalışma.
 • Uzun paragraflardan kaçın, insan gibi doğal duraklamalar yap.
 • Emoji kullanımı çok nadir ve yerinde olsun.`;
 }
