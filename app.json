@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Lumina AI",
-    "slug": "lumina-ai",
+    "name": "Soulie",
+    "slug": "soulie",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "luminaai",
+    "scheme": "soulie",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {

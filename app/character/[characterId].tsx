@@ -1,0 +1,443 @@
+import React, { useRef, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Image,
+  ScrollView,
+  Dimensions,
+  Platform,
+  StatusBar,
+} from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedScrollHandler,
+  interpolate,
+  Extrapolation,
+  FadeInDown,
+  withSpring,
+} from "react-native-reanimated";
+import { router, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+
+import { getCharacter } from "@/constants/characters";
+import Colors from "@/constants/colors";
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+const PHOTO_HEIGHT = SCREEN_H * 0.65;
+
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+
+export default function CharacterProfileScreen() {
+  const { characterId } = useLocalSearchParams<{ characterId: string }>();
+  const character = getCharacter(characterId);
+  const insets = useSafeAreaInsets();
+  const scrollY = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+
+  const photoAnimStyle = useAnimatedStyle(() => {
+    const scale = interpolate(scrollY.value, [-80, 0], [1.15, 1], Extrapolation.CLAMP);
+    const translateY = interpolate(scrollY.value, [0, 200], [0, -60], Extrapolation.CLAMP);
+    return { transform: [{ scale }, { translateY }] };
+  });
+
+  const headerOpacityStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(scrollY.value, [PHOTO_HEIGHT - 160, PHOTO_HEIGHT - 80], [0, 1], Extrapolation.CLAMP);
+    return { opacity };
+  });
+
+  if (!character) {
+    return (
+      <View style={styles.container}>
+        <Pressable onPress={() => router.back()} style={[styles.closeBtn, { top: insets.top + 12 }]}>
+          <Feather name="x" size={18} color="#fff" />
+        </Pressable>
+      </View>
+    );
+  }
+
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
+      <Animated.View style={[styles.stickyHeader, { paddingTop: topPad }, headerOpacityStyle]}>
+        {Platform.OS === "ios" ? (
+          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.7)" }]} />
+        )}
+        <View style={styles.stickyHeaderContent}>
+          <Pressable onPress={() => router.back()} style={styles.stickyBack} hitSlop={8}>
+            <Feather name="chevron-left" size={22} color="#fff" />
+          </Pressable>
+          <Text style={styles.stickyTitle}>{character.name}</Text>
+          <View style={{ width: 36 }} />
+        </View>
+      </Animated.View>
+
+      <Pressable
+        onPress={() => router.back()}
+        style={[styles.closeBtn, { top: topPad + 12 }]}
+        hitSlop={8}
+      >
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+        <Feather name="chevron-down" size={20} color="#fff" />
+      </Pressable>
+
+      <AnimatedScrollView
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        bounces
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+      >
+        <View style={{ height: PHOTO_HEIGHT }}>
+          <Animated.View style={[{ height: PHOTO_HEIGHT, overflow: "hidden" }, photoAnimStyle]}>
+            <Image
+              source={character.image}
+              style={styles.photo}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={["transparent", "transparent", "rgba(0,0,0,0.75)", "rgba(0,0,0,0.95)"]}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
+
+          <View style={styles.photoOverlayContent}>
+            {character.isPremium ? (
+              <Animated.View entering={FadeInDown.delay(100)} style={styles.premiumChip}>
+                <Feather name="star" size={11} color="#FFD700" />
+                <Text style={styles.premiumChipText}>Premium</Text>
+              </Animated.View>
+            ) : null}
+
+            <Animated.View entering={FadeInDown.delay(150)} style={styles.nameRow}>
+              <Text style={styles.nameText}>{character.name}</Text>
+              <Text style={styles.ageText}>{character.age}</Text>
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(200)} style={styles.roleRow}>
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>{character.shortRole}</Text>
+              </View>
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(250)} style={styles.tagsRow}>
+              {character.tags.map((tag) => (
+                <View key={tag} style={styles.tag}>
+                  <Text style={styles.tagText}>{tag}</Text>
+                </View>
+              ))}
+            </Animated.View>
+          </View>
+        </View>
+
+        <View style={styles.infoSheet}>
+          <Animated.View entering={FadeInDown.delay(80).springify().damping(18)} style={styles.infoSection}>
+            <View style={styles.infoHeader}>
+              <Feather name="user" size={16} color={Colors.accent} />
+              <Text style={styles.infoTitle}>Hakkında</Text>
+            </View>
+            <Text style={styles.descText}>{character.description}</Text>
+          </Animated.View>
+
+          <View style={styles.divider} />
+
+          <Animated.View entering={FadeInDown.delay(120).springify().damping(18)} style={styles.infoSection}>
+            <View style={styles.infoHeader}>
+              <Feather name="heart" size={16} color={Colors.accent} />
+              <Text style={styles.infoTitle}>İlgi Alanları</Text>
+            </View>
+            <View style={styles.interestGrid}>
+              {character.tags.map((tag) => (
+                <View key={tag} style={styles.interestChip}>
+                  <Text style={styles.interestChipText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          </Animated.View>
+
+          <View style={styles.divider} />
+
+          <Animated.View entering={FadeInDown.delay(160).springify().damping(18)} style={styles.infoSection}>
+            <View style={styles.infoHeader}>
+              <Feather name="info" size={16} color={Colors.accent} />
+              <Text style={styles.infoTitle}>Profil</Text>
+            </View>
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{character.age}</Text>
+                <Text style={styles.statLabel}>Yaş</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{character.gender === "female" ? "♀" : "♂"}</Text>
+                <Text style={styles.statLabel}>Cinsiyet</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>AI</Text>
+                <Text style={styles.statLabel}>Tür</Text>
+              </View>
+            </View>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(200).springify().damping(18)} style={styles.ctaSection}>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.back();
+                router.push({ pathname: "/chat/[id]", params: { characterId: character.id } });
+              }}
+              style={({ pressed }) => [styles.ctaButton, pressed && { opacity: 0.88 }]}
+            >
+              <LinearGradient
+                colors={[Colors.userBubble.from, Colors.userBubble.to]}
+                style={styles.ctaGradient}
+              >
+                <Feather name="message-circle" size={18} color="#fff" />
+                <Text style={styles.ctaText}>Sohbet Başlat</Text>
+              </LinearGradient>
+            </Pressable>
+          </Animated.View>
+        </View>
+      </AnimatedScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  stickyHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    overflow: "hidden",
+    paddingBottom: 12,
+  },
+  stickyHeaderContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  stickyBack: {
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  stickyTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+    letterSpacing: -0.3,
+  },
+  closeBtn: {
+    position: "absolute",
+    left: 16,
+    zIndex: 200,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  photo: {
+    width: SCREEN_W,
+    height: PHOTO_HEIGHT,
+  },
+  photoOverlayContent: {
+    position: "absolute",
+    bottom: 24,
+    left: 20,
+    right: 20,
+    gap: 8,
+  },
+  premiumChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,214,0,0.4)",
+  },
+  premiumChipText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: "#FFD700",
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 10,
+  },
+  nameText: {
+    fontSize: 38,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    letterSpacing: -1,
+  },
+  ageText: {
+    fontSize: 26,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.85)",
+    letterSpacing: -0.5,
+  },
+  roleRow: { flexDirection: "row" },
+  roleBadge: {
+    backgroundColor: "rgba(255,255,255,0.18)",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  roleText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: "#fff",
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  tag: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  tagText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.85)",
+  },
+  infoSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: -24,
+    paddingTop: 12,
+  },
+  infoSection: {
+    padding: 20,
+    gap: 10,
+  },
+  infoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  infoTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.text.primary,
+    letterSpacing: -0.2,
+  },
+  descText: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.secondary,
+    lineHeight: 23,
+    letterSpacing: -0.1,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    marginHorizontal: 20,
+  },
+  interestGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  interestChip: {
+    backgroundColor: "rgba(0,122,255,0.08)",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(0,122,255,0.15)",
+  },
+  interestChipText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.accent,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    backgroundColor: "#F8F9FA",
+    borderRadius: 16,
+    padding: 16,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+  },
+  statValue: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: Colors.text.primary,
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.tertiary,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: "rgba(0,0,0,0.08)",
+    marginVertical: 4,
+  },
+  ctaSection: {
+    padding: 20,
+    paddingTop: 8,
+  },
+  ctaButton: {
+    borderRadius: 18,
+    overflow: "hidden",
+  },
+  ctaGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+  },
+  ctaText: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+    letterSpacing: -0.3,
+  },
+});

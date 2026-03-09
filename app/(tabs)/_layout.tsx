@@ -11,7 +11,7 @@ function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="explore">
-        <Icon sf={{ default: "compass", selected: "compass.fill" }} />
+        <Icon sf={{ default: "safari", selected: "safari.fill" }} />
         <Label>Keşfet</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="chats">
@@ -47,7 +47,7 @@ function ClassicTabLayout() {
         },
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : isWeb ? "#FFFFFF" : "#FFFFFF",
+          backgroundColor: isIOS ? "transparent" : "transparent",
           borderTopWidth: isWeb ? 1 : 0,
           borderTopColor: "rgba(0,0,0,0.08)",
           elevation: 0,
@@ -57,7 +57,7 @@ function ClassicTabLayout() {
           isIOS ? (
             <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
           ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.95)" }]} />
           ),
       }}
     >
@@ -102,7 +102,7 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
+  if (Platform.OS !== "web" && isLiquidGlassAvailable()) {
     return <NativeTabLayout />;
   }
   return <ClassicTabLayout />;

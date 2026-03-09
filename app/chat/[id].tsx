@@ -9,13 +9,7 @@ import {
   StatusBar,
   Image,
 } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  FadeInDown,
-  FadeInUp,
-} from "react-native-reanimated";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -24,7 +18,6 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { fetch } from "expo/fetch";
 import * as Haptics from "expo-haptics";
-
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import { MessageBubble, type Message as BubbleMessage } from "@/components/chat/MessageBubble";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
@@ -82,7 +75,7 @@ export default function ChatScreen() {
   }, [conversation?.messages]);
 
   const handleSend = useCallback(
-    async (text: string) => {
+    async (text: string, imageUri?: string) => {
       if (isStreaming || !character) return;
 
       const currentMessages = [...messages];
@@ -90,7 +83,8 @@ export default function ChatScreen() {
       const userMessage: Message = {
         id: generateId(),
         role: "user",
-        content: text,
+        content: text || (imageUri ? "" : ""),
+        imageUri,
         timestamp: Date.now(),
       };
 
@@ -101,13 +95,22 @@ export default function ChatScreen() {
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-      const chatHistory = newMessages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-
       try {
         const baseUrl = getApiUrl();
+
+        const chatHistory = newMessages.map((m) => {
+          if (m.imageUri) {
+            return {
+              role: m.role,
+              content: [
+                ...(m.content ? [{ type: "text", text: m.content }] : []),
+                { type: "image_url", image_url: { url: m.imageUri } },
+              ],
+            };
+          }
+          return { role: m.role, content: m.content };
+        });
+
         const response = await fetch(`${baseUrl}api/chat`, {
           method: "POST",
           headers: {
@@ -233,18 +236,30 @@ export default function ChatScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
             <Feather name="chevron-left" size={22} color={Colors.text.primary} />
           </Pressable>
-          <View style={styles.headerCenter}>
+
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({ pathname: "/character/[characterId]", params: { characterId: character.id } });
+            }}
+            style={styles.headerCenter}
+            hitSlop={4}
+          >
             <View style={styles.headerAvatarWrapper}>
               <Image source={character.image} style={styles.headerAvatar} />
               <View style={styles.headerOnlineDot} />
             </View>
             <View>
-              <Text style={styles.headerName}>{character.name}</Text>
+              <View style={styles.headerNameRow}>
+                <Text style={styles.headerName}>{character.name}</Text>
+                <Feather name="chevron-right" size={13} color={Colors.text.tertiary} />
+              </View>
               <Text style={styles.headerStatus}>
                 {isStreaming ? "yazıyor..." : character.shortRole}
               </Text>
             </View>
-          </View>
+          </Pressable>
+
           <View style={styles.headerRight} />
         </View>
       </View>
@@ -257,7 +272,9 @@ export default function ChatScreen() {
         <FlatList
           data={reversedMessages}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <MessageBubble message={item} />}
+          renderItem={({ item }) => (
+            <MessageBubble message={item} avatarImage={character.image} />
+          )}
           inverted={messages.length > 0}
           ListHeaderComponent={showTyping ? <TypingIndicator /> : null}
           ListFooterComponent={messages.length === 0 ? <WelcomeMessage character={character} /> : null}
@@ -306,9 +323,9 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   headerAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "#E5E5EA",
   },
   headerOnlineDot: {
@@ -321,6 +338,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#34C759",
     borderWidth: 2,
     borderColor: "#FFFFFF",
+  },
+  headerNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
   },
   headerName: {
     fontSize: 15,

@@ -77,7 +77,7 @@ export default function MarketScreen() {
           <LinearGradient colors={["#4FC3F7", "#007AFF"]} style={styles.crownIcon}>
             <Feather name="star" size={22} color="#FFFFFF" />
           </LinearGradient>
-          <Text style={styles.heroTitle}>Lumina Premium</Text>
+          <Text style={styles.heroTitle}>Soulie Premium</Text>
           <Text style={styles.heroSubtitle}>
             En iyi AI arkadaşlık deneyimi için{"\n"}premium'a geç
           </Text>

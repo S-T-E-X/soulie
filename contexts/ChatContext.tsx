@@ -12,6 +12,7 @@ export type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  imageUri?: string;
   timestamp: number;
 };
 
@@ -25,7 +26,7 @@ export type Conversation = {
   createdAt: number;
 };
 
-const STORAGE_KEY = "lumina_conversations_v2";
+const STORAGE_KEY = "soulie_conversations_v2";
 
 let msgCounter = 0;
 export function generateId(): string {

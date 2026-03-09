@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,10 @@ import {
   Platform,
   StatusBar,
   Alert,
+  Animated,
   Image,
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import AnimatedRN, { FadeInDown } from "react-native-reanimated";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,6 +21,118 @@ import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatContext } from "@/contexts/ChatContext";
 import Colors from "@/constants/colors";
+
+const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
+
+function getLevelInfo(xp: number) {
+  let level = 1;
+  for (let i = 0; i < LEVEL_XP_TABLE.length - 1; i++) {
+    if (xp >= LEVEL_XP_TABLE[i + 1]) {
+      level = i + 2;
+    } else {
+      break;
+    }
+  }
+  const currentLevelXp = LEVEL_XP_TABLE[level - 1];
+  const nextLevelXp = LEVEL_XP_TABLE[level] ?? LEVEL_XP_TABLE[LEVEL_XP_TABLE.length - 1];
+  const progress = Math.min((xp - currentLevelXp) / (nextLevelXp - currentLevelXp), 1);
+  return { level, currentLevelXp, nextLevelXp, progress, xp };
+}
+
+const LEVEL_NAMES: Record<number, string> = {
+  1: "Yeni Ruh",
+  2: "Meraklı",
+  3: "Samimi",
+  4: "Bağlı",
+  5: "Güvenilir",
+  6: "Yakın Dost",
+  7: "Sırdaş",
+  8: "Sadık",
+  9: "Ruh Eşi",
+  10: "Efsane",
+};
+
+function LevelCard({ xp }: { xp: number }) {
+  const { level, progress, nextLevelXp, currentLevelXp } = getLevelInfo(xp);
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const levelName = LEVEL_NAMES[level] ?? "Efsane";
+
+  useEffect(() => {
+    Animated.spring(progressAnim, {
+      toValue: progress,
+      useNativeDriver: false,
+      damping: 16,
+      stiffness: 100,
+      delay: 300,
+    }).start();
+  }, [progress]);
+
+  const barWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+    extrapolate: "clamp",
+  });
+
+  const xpLeft = Math.max(0, nextLevelXp - xp);
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert(
+      `Seviye ${level} — ${levelName}`,
+      `Toplam XP: ${xp}\nSonraki seviye için: ${xpLeft} XP daha kazan\nHer sohbet +10 XP kazandırır!`,
+      [{ text: "Tamam" }]
+    );
+  };
+
+  return (
+    <Pressable onPress={handlePress} style={({ pressed }) => [pressed && { opacity: 0.9 }]}>
+      <AnimatedRN.View entering={FadeInDown.delay(40).springify().damping(18)} style={styles.levelCard}>
+        <LinearGradient
+          colors={["rgba(255,255,255,0.9)", "rgba(255,255,255,0.75)"]}
+          style={styles.levelGradient}
+        >
+          <View style={styles.levelTopRow}>
+            <View style={styles.levelBadge}>
+              <LinearGradient
+                colors={[Colors.userBubble.from, Colors.userBubble.to]}
+                style={styles.levelBadgeGradient}
+              >
+                <Text style={styles.levelBadgeNumber}>{level}</Text>
+              </LinearGradient>
+            </View>
+            <View style={styles.levelInfo}>
+              <View style={styles.levelTitleRow}>
+                <Text style={styles.levelTitle}>{levelName}</Text>
+                <Text style={styles.levelSub}>Seviye {level}</Text>
+              </View>
+              <Text style={styles.levelXpText}>{xp} XP</Text>
+            </View>
+            <View style={styles.levelChevronWrapper}>
+              <Feather name="info" size={15} color={Colors.text.tertiary} />
+            </View>
+          </View>
+
+          <View style={styles.levelBarWrapper}>
+            <View style={styles.levelBarBg}>
+              <Animated.View style={[styles.levelBarFill, { width: barWidth }]}>
+                <LinearGradient
+                  colors={[Colors.userBubble.from, Colors.userBubble.to]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </Animated.View>
+            </View>
+            <View style={styles.levelBarLabels}>
+              <Text style={styles.levelBarLabel}>Seviye {level}</Text>
+              <Text style={styles.levelBarLabel}>{xpLeft > 0 ? `${xpLeft} XP kaldı` : "Max!"}</Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </AnimatedRN.View>
+    </Pressable>
+  );
+}
 
 function SettingRow({
   icon,
@@ -65,6 +178,9 @@ export default function SettingsScreen() {
   const { conversations } = useChatContext();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
+  const totalMessages = conversations.reduce((acc, c) => acc + c.messages.length, 0);
+  const xp = totalMessages * 10 + conversations.length * 5;
+
   const handleLogout = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
@@ -96,11 +212,11 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
       >
-        <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.profileCard}>
+        <AnimatedRN.View entering={FadeInDown.springify().damping(18)} style={styles.profileCard}>
           <LinearGradient colors={["rgba(255,255,255,0.85)", "rgba(255,255,255,0.7)"]} style={styles.profileGradient}>
             <LinearGradient colors={[Colors.userBubble.from, Colors.userBubble.to]} style={styles.profileAvatar}>
               <Text style={styles.profileInitial}>
-                {user?.name?.charAt(0).toUpperCase() ?? "L"}
+                {user?.name?.charAt(0).toUpperCase() ?? "S"}
               </Text>
             </LinearGradient>
             <View style={styles.profileInfo}>
@@ -114,9 +230,11 @@ export default function SettingsScreen() {
               </View>
             </View>
           </LinearGradient>
-        </Animated.View>
+        </AnimatedRN.View>
 
-        <Animated.View entering={FadeInDown.delay(60).springify().damping(18)} style={styles.section}>
+        <LevelCard xp={xp} />
+
+        <AnimatedRN.View entering={FadeInDown.delay(60).springify().damping(18)} style={styles.section}>
           <SectionHeader title="Hesap" />
           <View style={styles.sectionCard}>
             <SettingRow
@@ -138,9 +256,9 @@ export default function SettingsScreen() {
               onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
             />
           </View>
-        </Animated.View>
+        </AnimatedRN.View>
 
-        <Animated.View entering={FadeInDown.delay(100).springify().damping(18)} style={styles.section}>
+        <AnimatedRN.View entering={FadeInDown.delay(100).springify().damping(18)} style={styles.section}>
           <SectionHeader title="Premium" />
           <View style={styles.sectionCard}>
             <SettingRow
@@ -159,9 +277,9 @@ export default function SettingsScreen() {
               onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
             />
           </View>
-        </Animated.View>
+        </AnimatedRN.View>
 
-        <Animated.View entering={FadeInDown.delay(140).springify().damping(18)} style={styles.section}>
+        <AnimatedRN.View entering={FadeInDown.delay(140).springify().damping(18)} style={styles.section}>
           <SectionHeader title="Destek" />
           <View style={styles.sectionCard}>
             <SettingRow
@@ -182,9 +300,9 @@ export default function SettingsScreen() {
               onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
             />
           </View>
-        </Animated.View>
+        </AnimatedRN.View>
 
-        <Animated.View entering={FadeInDown.delay(180).springify().damping(18)} style={styles.section}>
+        <AnimatedRN.View entering={FadeInDown.delay(180).springify().damping(18)} style={styles.section}>
           <View style={styles.sectionCard}>
             <SettingRow
               icon="log-out"
@@ -194,9 +312,9 @@ export default function SettingsScreen() {
               chevron={false}
             />
           </View>
-        </Animated.View>
+        </AnimatedRN.View>
 
-        <Text style={styles.version}>Lumina AI v1.0.0</Text>
+        <Text style={styles.version}>Soulie v1.0.0</Text>
       </ScrollView>
     </BackgroundGradient>
   );
@@ -255,6 +373,88 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   statLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.tertiary,
+  },
+  levelCard: {
+    borderRadius: 22,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.5)",
+    marginBottom: 8,
+  },
+  levelGradient: {
+    padding: 18,
+    gap: 14,
+  },
+  levelTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  levelBadge: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    overflow: "hidden",
+  },
+  levelBadgeGradient: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  levelBadgeNumber: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    letterSpacing: -0.5,
+  },
+  levelInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  levelTitleRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 8,
+  },
+  levelTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: Colors.text.primary,
+    letterSpacing: -0.4,
+  },
+  levelSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.tertiary,
+  },
+  levelXpText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.accent,
+  },
+  levelChevronWrapper: {},
+  levelBarWrapper: {
+    gap: 6,
+  },
+  levelBarBg: {
+    height: 8,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  levelBarFill: {
+    height: "100%",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  levelBarLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  levelBarLabel: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
     color: Colors.text.tertiary,

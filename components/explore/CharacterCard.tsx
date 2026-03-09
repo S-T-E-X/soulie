@@ -1,16 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
-  ImageBackground,
+  Image,
+  ActivityIndicator,
   Platform,
 } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  FadeIn,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
@@ -22,6 +24,27 @@ interface Props {
   character: Character;
   onPress: () => void;
   hasChat?: boolean;
+}
+
+function CharacterImage({ source }: { source: any }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      {!loaded ? (
+        <View style={styles.imagePlaceholder}>
+          <ActivityIndicator size="small" color="rgba(255,255,255,0.4)" />
+        </View>
+      ) : null}
+      <Animated.Image
+        source={source}
+        style={[styles.characterImage, !loaded && { opacity: 0 }]}
+        resizeMode="cover"
+        onLoad={() => setLoaded(true)}
+        fadeDuration={Platform.OS === "android" ? 200 : 0}
+      />
+    </View>
+  );
 }
 
 export function CharacterCard({ character, onPress, hasChat }: Props) {
@@ -52,24 +75,19 @@ export function CharacterCard({ character, onPress, hasChat }: Props) {
         style={styles.pressable}
       >
         <View style={styles.card}>
-          <ImageBackground
-            source={character.image}
-            style={styles.image}
-            imageStyle={styles.imageStyle}
-            resizeMode="cover"
-          >
-            {character.isPremium ? (
-              <View style={styles.premiumBadge}>
-                <Feather name="star" size={9} color="#FFD700" />
-                <Text style={styles.premiumText}>Premium</Text>
-              </View>
-            ) : null}
+          <CharacterImage source={character.image} />
 
-            <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.55)"]}
-              style={styles.overlay}
-            />
-          </ImageBackground>
+          {character.isPremium ? (
+            <View style={styles.premiumBadge}>
+              <Feather name="star" size={9} color="#FFD700" />
+              <Text style={styles.premiumText}>Premium</Text>
+            </View>
+          ) : null}
+
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.55)"]}
+            style={styles.overlay}
+          />
 
           <View style={styles.info}>
             <View style={styles.nameRow}>
@@ -107,12 +125,15 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.3)",
     aspectRatio: 0.72,
   },
-  image: {
-    flex: 1,
-    justifyContent: "flex-end",
+  characterImage: {
+    width: "100%",
+    height: "100%",
   },
-  imageStyle: {
-    borderRadius: 20,
+  imagePlaceholder: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#D1D1D6",
+    justifyContent: "center",
+    alignItems: "center",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -129,7 +150,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
     gap: 3,
-    backdropFilter: "blur(10px)",
+    zIndex: 2,
   },
   premiumText: {
     fontSize: 9,

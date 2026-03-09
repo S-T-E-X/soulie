@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
   Platform,
+  Image,
+  ImageSourcePropType,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -13,22 +15,39 @@ export type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  imageUri?: string;
 };
 
-export function MessageBubble({ message }: { message: Message }) {
+interface Props {
+  message: Message;
+  avatarImage?: ImageSourcePropType;
+}
+
+export function MessageBubble({ message, avatarImage }: Props) {
   const isUser = message.role === "user";
 
   if (isUser) {
     return (
       <View style={[styles.row, styles.rowUser]}>
-        <LinearGradient
-          colors={[Colors.userBubble.from, Colors.userBubble.to]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.bubble, styles.bubbleUser]}
-        >
-          <Text style={styles.textUser}>{message.content}</Text>
-        </LinearGradient>
+        <View style={styles.bubbleUserWrapper}>
+          {message.imageUri ? (
+            <Image
+              source={{ uri: message.imageUri }}
+              style={styles.messageImage}
+              resizeMode="cover"
+            />
+          ) : null}
+          {message.content ? (
+            <LinearGradient
+              colors={[Colors.userBubble.from, Colors.userBubble.to]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.bubble, styles.bubbleUser]}
+            >
+              <Text style={styles.textUser}>{message.content}</Text>
+            </LinearGradient>
+          ) : null}
+        </View>
       </View>
     );
   }
@@ -36,16 +55,20 @@ export function MessageBubble({ message }: { message: Message }) {
   return (
     <View style={[styles.row, styles.rowAI]}>
       <View style={styles.avatarContainer}>
-        <LinearGradient
-          colors={["#4FC3F7", "#007AFF"]}
-          style={styles.avatar}
-        />
+        {avatarImage ? (
+          <Image source={avatarImage} style={styles.avatarImage} />
+        ) : (
+          <LinearGradient
+            colors={["#4FC3F7", "#007AFF"]}
+            style={styles.avatarImage}
+          />
+        )}
       </View>
       <View style={[styles.bubble, styles.bubbleAI]}>
         {Platform.OS === "ios" ? (
-          <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
         ) : (
-          <View style={[StyleSheet.absoluteFill, styles.aiBlurFallback]} />
+          <View style={[StyleSheet.absoluteFill, styles.aiBlurFallback]} pointerEvents="none" />
         )}
         <Text style={styles.textAI}>{message.content}</Text>
       </View>
@@ -57,7 +80,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     marginHorizontal: 16,
-    marginVertical: 6,
+    marginVertical: 4,
     alignItems: "flex-end",
     maxWidth: "100%",
   },
@@ -71,10 +94,21 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 2,
   },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  avatarImage: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  bubbleUserWrapper: {
+    gap: 4,
+    alignItems: "flex-end",
+    maxWidth: "75%",
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 16,
+    borderBottomRightRadius: 4,
   },
   bubble: {
     maxWidth: "75%",
@@ -85,6 +119,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 11,
     borderBottomRightRadius: 6,
+    maxWidth: "100%",
   },
   bubbleAI: {
     paddingHorizontal: 16,
@@ -93,6 +128,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.5)",
     backgroundColor: "rgba(255, 255, 255, 0.6)",
+    maxWidth: "75%",
   },
   aiBlurFallback: {
     backgroundColor: "rgba(255, 255, 255, 0.82)",
