@@ -6,12 +6,12 @@ import {
   Pressable,
   Platform,
   Image,
+  Text,
 } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
   FadeIn,
   FadeOut,
 } from "react-native-reanimated";
@@ -21,14 +21,21 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import Colors from "@/constants/colors";
 
+interface ReplyPreview {
+  content: string;
+}
+
 interface ChatInputProps {
   onSend: (text: string, imageUri?: string) => void;
+  onGiftPress?: () => void;
   disabled?: boolean;
+  replyTo?: ReplyPreview | null;
+  onCancelReply?: () => void;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({ onSend, onGiftPress, disabled, replyTo, onCancelReply }: ChatInputProps) {
   const [text, setText] = useState("");
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -54,6 +61,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onSend(trimmed, img ?? undefined);
+    if (onCancelReply) onCancelReply();
     inputRef.current?.focus();
   };
 
@@ -71,6 +79,17 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 
   return (
     <View style={styles.wrapper}>
+      {replyTo && (
+        <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={styles.replyPreview}>
+          <View style={styles.replyBar} />
+          <Text style={styles.replyLabel}>Yanıtla</Text>
+          <Text style={styles.replyContent} numberOfLines={1}>{replyTo.content}</Text>
+          <Pressable onPress={onCancelReply} hitSlop={8} style={styles.replyCancelBtn}>
+            <Feather name="x" size={15} color={Colors.text.tertiary} />
+          </Pressable>
+        </Animated.View>
+      )}
+
       {pendingImage ? (
         <View style={styles.previewWrapper}>
           <Image source={{ uri: pendingImage }} style={styles.preview} resizeMode="cover" />
@@ -83,6 +102,22 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           </Pressable>
         </View>
       ) : null}
+
+      {onGiftPress && (
+        <View style={styles.topRow}>
+          <View style={styles.topSpacer} />
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onGiftPress();
+            }}
+            style={({ pressed }) => [styles.giftTopBtn, pressed && { opacity: 0.75 }]}
+            hitSlop={6}
+          >
+            <Feather name="gift" size={16} color="#fff" />
+          </Pressable>
+        </View>
+      )}
 
       <View style={styles.row}>
         {hasContent ? (
@@ -153,9 +188,61 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 const styles = StyleSheet.create({
   wrapper: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 4,
     paddingBottom: 8,
+    gap: 6,
+  },
+  replyPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,122,255,0.08)",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     gap: 8,
+    borderLeftWidth: 0,
+  },
+  replyBar: {
+    width: 3,
+    alignSelf: "stretch",
+    borderRadius: 2,
+    backgroundColor: Colors.accent,
+  },
+  replyLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.accent,
+    letterSpacing: -0.1,
+  },
+  replyContent: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.secondary,
+    letterSpacing: -0.1,
+  },
+  replyCancelBtn: {
+    padding: 2,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginBottom: 2,
+  },
+  topSpacer: { flex: 1 },
+  giftTopBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#FF3B30",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#FF3B30",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
   },
   previewWrapper: {
     alignSelf: "flex-start",

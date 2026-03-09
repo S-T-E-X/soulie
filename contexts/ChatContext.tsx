@@ -13,6 +13,7 @@ export type Message = {
   role: "user" | "assistant";
   content: string;
   imageUri?: string;
+  giftId?: string;
   timestamp: number;
 };
 
@@ -27,11 +28,38 @@ export type Conversation = {
 };
 
 const STORAGE_KEY = "soulie_conversations_v2";
+const ARCHIVE_KEY = "soulie_archive_msgs_v1";
+const MAX_DB_MESSAGES = 50;
 
 let msgCounter = 0;
 export function generateId(): string {
   msgCounter++;
   return `id-${Date.now()}-${msgCounter}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+async function loadArchive(): Promise<Record<string, Message[]>> {
+  try {
+    const raw = await AsyncStorage.getItem(ARCHIVE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+async function saveArchive(archive: Record<string, Message[]>): Promise<void> {
+  try {
+    await AsyncStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
+  } catch {}
+}
+
+function splitMessages(messages: Message[]): { recent: Message[]; archived: Message[] } {
+  if (messages.length <= MAX_DB_MESSAGES) {
+    return { recent: messages, archived: [] };
+  }
+  return {
+    recent: messages.slice(-MAX_DB_MESSAGES),
+    archived: messages.slice(0, -MAX_DB_MESSAGES),
+  };
 }
 
 interface ChatContextValue {
@@ -44,6 +72,7 @@ interface ChatContextValue {
   getConversation: (id: string) => Conversation | undefined;
   getConversationByCharacter: (characterId: string) => Conversation | undefined;
   updateConversation: (id: string, messages: Message[]) => Promise<void>;
+  loadArchivedMessages: (characterId: string) => Promise<Message[]>;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -67,8 +96,37 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(convs));
   }, []);
 
+  const saveWithArchive = useCallback(async (convs: Conversation[], characterId: string, allMessages: Message[]) => {
+    const { recent, archived } = splitMessages(allMessages);
+
+    const convsCapped = convs.map((c) => {
+      if (c.characterId !== characterId) return c;
+      return { ...c, messages: recent };
+    });
+
+    await save(convsCapped);
+
+    if (archived.length > 0) {
+      const archive = await loadArchive();
+      const existing = archive[characterId] ?? [];
+      const newIds = new Set(archived.map((m) => m.id));
+      const merged = [...existing.filter((m) => !newIds.has(m.id)), ...archived].sort((a, b) => a.timestamp - b.timestamp);
+      archive[characterId] = merged;
+      await saveArchive(archive);
+    }
+
+    return convsCapped;
+  }, [save]);
+
+  const loadArchivedMessages = useCallback(async (characterId: string): Promise<Message[]> => {
+    const archive = await loadArchive();
+    return archive[characterId] ?? [];
+  }, []);
+
   const updateConversation = useCallback(
     async (id: string, messages: Message[]) => {
+      const conv = conversations.find((c) => c.id === id);
+      if (!conv) return;
       const lastMsg = messages[messages.length - 1];
       const updated = conversations.map((c) => {
         if (c.id !== id) return c;
@@ -80,9 +138,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         };
       });
       setConversations(updated);
-      await save(updated);
+      await saveWithArchive(updated, conv.characterId, messages);
     },
-    [conversations, save]
+    [conversations, saveWithArchive]
   );
 
   const createConversation = useCallback(
@@ -109,44 +167,54 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const createConversationWithMessages = useCallback(
     async (characterId: string, characterName: string, messages: Message[]): Promise<Conversation> => {
       const existing = conversations.find((c) => c.characterId === characterId);
+      const lastMsg = messages[messages.length - 1];
+
       if (existing) {
-        const lastMsg = messages[messages.length - 1];
+        const { recent } = splitMessages(messages);
         const updated = conversations.map((c) => {
           if (c.id !== existing.id) return c;
           return {
             ...c,
-            messages,
+            messages: recent,
             lastMessage: lastMsg?.content.slice(0, 60),
             updatedAt: Date.now(),
           };
         });
         setConversations(updated);
-        await save(updated);
+        await saveWithArchive(updated, characterId, messages);
         return existing;
       }
 
+      const { recent } = splitMessages(messages);
       const newConv: Conversation = {
         id: generateId(),
         characterId,
         title: characterName,
-        messages,
-        lastMessage: messages[messages.length - 1]?.content.slice(0, 60),
+        messages: recent,
+        lastMessage: lastMsg?.content.slice(0, 60),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
       const updated = [newConv, ...conversations];
       setConversations(updated);
-      await save(updated);
+      await saveWithArchive(updated, characterId, messages);
       return newConv;
     },
-    [conversations, save]
+    [conversations, saveWithArchive]
   );
 
   const deleteConversation = useCallback(
     async (id: string) => {
+      const conv = conversations.find((c) => c.id === id);
       const updated = conversations.filter((c) => c.id !== id);
       setConversations(updated);
       await save(updated);
+
+      if (conv) {
+        const archive = await loadArchive();
+        delete archive[conv.characterId];
+        await saveArchive(archive);
+      }
     },
     [conversations, save]
   );
@@ -172,6 +240,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       getConversation,
       getConversationByCharacter,
       updateConversation,
+      loadArchivedMessages,
     }),
     [
       conversations,
@@ -183,6 +252,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       getConversation,
       getConversationByCharacter,
       updateConversation,
+      loadArchivedMessages,
     ]
   );
 

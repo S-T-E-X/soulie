@@ -24,6 +24,7 @@ import { MessageBubble, type Message as BubbleMessage } from "@/components/chat/
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { CharacterCustomizeSheet } from "@/components/chat/CharacterCustomizeSheet";
+import { GiftSheet } from "@/components/chat/GiftSheet";
 import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
 import { useCharacterSettings } from "@/hooks/useCharacterSettings";
 import { getCharacter, type Character } from "@/constants/characters";
@@ -63,24 +64,33 @@ export default function ChatScreen() {
   const params = useLocalSearchParams<{ characterId: string; id?: string }>();
   const characterId = params.characterId || params.id;
   const insets = useSafeAreaInsets();
-  const { getConversation, createConversationWithMessages } = useChatContext();
-  const { settings, isLoaded, updateSettings, addMemory, removeMemory } = useCharacterSettings(characterId ?? "");
+  const { getConversationByCharacter, createConversationWithMessages, loadConversations, isLoaded } = useChatContext();
+  const { settings, isLoaded: settingsLoaded, updateSettings, addMemory, removeMemory } = useCharacterSettings(characterId ?? "");
 
   const character = characterId ? getCharacter(characterId) : undefined;
-  const conversation = characterId ? getConversation(characterId) : undefined;
 
   const initializedRef = useRef(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showTyping, setShowTyping] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
+  const [showGifts, setShowGifts] = useState(false);
+  const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
 
   useEffect(() => {
-    if (conversation?.messages && !initializedRef.current) {
+    loadConversations();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded || !characterId || initializedRef.current) return;
+    const conversation = getConversationByCharacter(characterId);
+    if (conversation?.messages && conversation.messages.length > 0) {
       setMessages(conversation.messages);
       initializedRef.current = true;
+    } else if (isLoaded) {
+      initializedRef.current = true;
     }
-  }, [conversation?.messages]);
+  }, [isLoaded, characterId, getConversationByCharacter]);
 
   const extractMemoryIfNeeded = useCallback(async (msgs: Message[]) => {
     const userMsgCount = msgs.filter(m => m.role === "user").length;
@@ -104,13 +114,20 @@ export default function ChatScreen() {
 
   const handleSend = useCallback(
     async (text: string, imageUri?: string) => {
-      if (isStreaming || !character || !isLoaded) return;
+      if (isStreaming || !character || !settingsLoaded) return;
 
       const currentMessages = [...messages];
+
+      let finalText = text;
+      if (replyTo && text) {
+        finalText = `(yanıt: "${replyTo.content.slice(0, 40)}") ${text}`;
+      }
+      setReplyTo(null);
+
       const userMessage: Message = {
         id: generateId(),
         role: "user",
-        content: text || "",
+        content: finalText || "",
         imageUri,
         timestamp: Date.now(),
       };
@@ -219,8 +236,22 @@ export default function ChatScreen() {
         setShowTyping(false);
       }
     },
-    [isStreaming, messages, character, isLoaded, settings, createConversationWithMessages, extractMemoryIfNeeded]
+    [isStreaming, messages, character, settingsLoaded, settings, replyTo, createConversationWithMessages, extractMemoryIfNeeded]
   );
+
+  const handleSendGift = useCallback(async (giftId: string) => {
+    if (!character) return;
+    const giftMessage: Message = {
+      id: generateId(),
+      role: "user",
+      content: "",
+      giftId,
+      timestamp: Date.now(),
+    };
+    const newMessages = [...messages, giftMessage];
+    setMessages(newMessages);
+    await createConversationWithMessages(character.id, settings.customName || character.name, newMessages);
+  }, [messages, character, settings.customName, createConversationWithMessages]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -231,7 +262,9 @@ export default function ChatScreen() {
     return (
       <BackgroundGradient>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <Text style={{ color: Colors.text.secondary, fontFamily: "Inter_400Regular" }}>Karakter bulunamadı</Text>
+          <Text style={{ color: Colors.text.secondary, fontFamily: "Inter_400Regular" }}>
+            Karakter bulunamadı
+          </Text>
         </View>
       </BackgroundGradient>
     );
@@ -290,11 +323,22 @@ export default function ChatScreen() {
         <FlatList
           data={reversedMessages}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <MessageBubble message={item} avatarImage={character.image} />}
+          renderItem={({ item }) => (
+            <MessageBubble
+              message={item}
+              avatarImage={character.image}
+              onReply={(msg) => {
+                setReplyTo({ id: msg.id, content: msg.content });
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+            />
+          )}
           inverted={messages.length > 0}
           ListHeaderComponent={showTyping ? <TypingIndicator /> : null}
           ListFooterComponent={
-            messages.length === 0 ? <WelcomeMessage character={character} customName={settings.customName} /> : null
+            messages.length === 0
+              ? <WelcomeMessage character={character} customName={settings.customName} />
+              : null
           }
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
@@ -303,7 +347,13 @@ export default function ChatScreen() {
         />
 
         <View style={[styles.inputWrapper, { paddingBottom: bottomPad + 4 }]}>
-          <ChatInput onSend={handleSend} disabled={isStreaming} />
+          <ChatInput
+            onSend={handleSend}
+            onGiftPress={() => setShowGifts(true)}
+            disabled={isStreaming}
+            replyTo={replyTo}
+            onCancelReply={() => setReplyTo(null)}
+          />
         </View>
       </KeyboardAvoidingView>
 
@@ -315,6 +365,12 @@ export default function ChatScreen() {
         isVip={IS_VIP}
         onSave={(partial) => updateSettings(partial)}
         onRemoveMemory={removeMemory}
+      />
+
+      <GiftSheet
+        visible={showGifts}
+        onClose={() => setShowGifts(false)}
+        onSendGift={handleSendGift}
       />
     </BackgroundGradient>
   );
