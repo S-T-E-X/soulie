@@ -458,13 +458,16 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     flexGrow: 1,
   },
-  inputArea: {},
+  inputArea: {
+    backgroundColor: "transparent",
+  },
   giftButtonRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
     paddingHorizontal: 20,
     paddingTop: 6,
     paddingBottom: 0,
+    backgroundColor: "transparent",
   },
   giftFloatBtn: {
     width: 30,
