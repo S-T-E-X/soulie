@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -26,6 +26,8 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { getCharacter } from "@/constants/characters";
+import { useCharacterSettings } from "@/hooks/useCharacterSettings";
+import { CharacterCustomizeSheet } from "@/components/chat/CharacterCustomizeSheet";
 import Colors from "@/constants/colors";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -38,6 +40,10 @@ export default function CharacterProfileScreen() {
   const character = getCharacter(characterId);
   const insets = useSafeAreaInsets();
   const scrollY = useSharedValue(0);
+  const [showCustomize, setShowCustomize] = useState(false);
+  const { settings, isLoaded: settingsLoaded, updateSettings, removeMemory } = useCharacterSettings(characterId ?? "");
+
+  const IS_VIP = false;
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollY.value = event.contentOffset.y;
@@ -81,20 +87,29 @@ export default function CharacterProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
 
       <Animated.View style={[styles.stickyHeader, { paddingTop: topPad }, headerOpacityStyle]}>
         {Platform.OS === "ios" ? (
-          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
         ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.7)" }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.9)" }]} />
         )}
         <View style={styles.stickyHeaderContent}>
           <Pressable onPress={() => router.back()} style={styles.stickyBack} hitSlop={8}>
-            <Feather name="chevron-left" size={22} color="#fff" />
+            <Feather name="chevron-left" size={22} color={Colors.text.primary} />
           </Pressable>
-          <Text style={styles.stickyTitle}>{character.name}</Text>
-          <View style={{ width: 36 }} />
+          <Text style={[styles.stickyTitle, { color: Colors.text.primary }]}>{character.name}</Text>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowCustomize(true);
+            }}
+            style={styles.stickyBack}
+            hitSlop={8}
+          >
+            <Feather name="sliders" size={19} color={Colors.text.secondary} />
+          </Pressable>
         </View>
       </Animated.View>
 
@@ -225,6 +240,16 @@ export default function CharacterProfileScreen() {
           </Animated.View>
         </View>
       </AnimatedScrollView>
+
+      <CharacterCustomizeSheet
+        visible={showCustomize}
+        onClose={() => setShowCustomize(false)}
+        characterName={character.name}
+        settings={settings}
+        isVip={IS_VIP}
+        onSave={(partial) => updateSettings(partial)}
+        onRemoveMemory={removeMemory}
+      />
     </View>
   );
 }
@@ -232,7 +257,7 @@ export default function CharacterProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#FFFFFF",
   },
   stickyHeader: {
     position: "absolute",
