@@ -215,23 +215,29 @@ export default function SettingsScreen() {
         contentInsetAdjustmentBehavior="automatic"
       >
         <AnimatedRN.View entering={FadeInDown.springify().damping(18)} style={styles.profileCard}>
-          <LinearGradient colors={["rgba(255,255,255,0.85)", "rgba(255,255,255,0.7)"]} style={styles.profileGradient}>
-            <LinearGradient colors={[Colors.userBubble.from, Colors.userBubble.to]} style={styles.profileAvatar}>
-              <Text style={styles.profileInitial}>
-                {user?.name?.charAt(0).toUpperCase() ?? "S"}
-              </Text>
-            </LinearGradient>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{user?.name ?? "Kullanıcı"}</Text>
-              <Text style={styles.profileUsername}>@{user?.username ?? "kullanici"}</Text>
-            </View>
-            <View style={styles.profileStats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{conversations.length}</Text>
-                <Text style={styles.statLabel}>Sohbet</Text>
+          <Pressable onPress={() => router.push("/(tabs)/profile")} style={{ flex: 1 }}>
+            <LinearGradient colors={["rgba(255,255,255,0.85)", "rgba(255,255,255,0.7)"]} style={styles.profileGradient}>
+              {user?.profilePhoto ? (
+                <Image source={{ uri: user.profilePhoto }} style={styles.profileAvatarPhoto} />
+              ) : (
+                <LinearGradient colors={[Colors.userBubble.from, Colors.userBubble.to]} style={styles.profileAvatar}>
+                  <Text style={styles.profileInitial}>
+                    {user?.name?.charAt(0).toUpperCase() ?? "S"}
+                  </Text>
+                </LinearGradient>
+              )}
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName}>{user?.name ?? "Kullanıcı"}</Text>
+                <Text style={styles.profileUsername}>@{user?.username ?? "kullanici"}</Text>
               </View>
-            </View>
-          </LinearGradient>
+              <View style={styles.profileStats}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{conversations.length}</Text>
+                  <Text style={styles.statLabel}>Sohbet</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </Pressable>
         </AnimatedRN.View>
 
         <LevelCard xp={xp} />
@@ -243,7 +249,10 @@ export default function SettingsScreen() {
               icon="user"
               label="Profili Düzenle"
               value={user?.name}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(tabs)/profile");
+              }}
             />
             <View style={styles.rowDivider} />
             <SettingRow
@@ -299,7 +308,10 @@ export default function SettingsScreen() {
             <SettingRow
               icon="file-text"
               label="Gizlilik Politikası"
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/privacy");
+              }}
             />
           </View>
         </AnimatedRN.View>
@@ -346,6 +358,11 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     justifyContent: "center",
     alignItems: "center",
+  },
+  profileAvatarPhoto: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
   },
   profileInitial: {
     fontSize: 24,

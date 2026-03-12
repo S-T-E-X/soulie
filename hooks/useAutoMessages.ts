@@ -227,8 +227,6 @@ export function useAutoMessages(
 
     await cancelCharacterNotifications(character.id);
 
-    if (!settings.autoMessageEnabled) return;
-
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
 
@@ -237,8 +235,6 @@ export function useAutoMessages(
     const slots = Object.entries(TIME_SLOTS) as [TimeSlot, { hour: number; minute: number }][];
 
     for (const [key, time] of slots) {
-      if (!settings.autoMessageTimes[key]) continue;
-
       const message = getNotificationMessage(character.id, relLevel.name, key);
 
       await Notifications.scheduleNotificationAsync({
@@ -256,7 +252,7 @@ export function useAutoMessages(
         },
       });
     }
-  }, [character, settings.autoMessageEnabled, settings.autoMessageTimes, settings.customName, settingsLoaded, cancelCharacterNotifications, userMessageCount]);
+  }, [character, settings.customName, settingsLoaded, cancelCharacterNotifications, userMessageCount]);
 
   useEffect(() => {
     scheduleNotifications();

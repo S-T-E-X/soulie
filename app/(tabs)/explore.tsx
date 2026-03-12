@@ -7,13 +7,13 @@ import {
   Pressable,
   Platform,
   StatusBar,
+  Image,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import { CharacterCard } from "@/components/explore/CharacterCard";
 import { CHARACTERS } from "@/constants/characters";
@@ -42,24 +42,28 @@ function getLevelFrameColors(level: number): [string, string] {
   return ["#FFD700", "#FFB800"];
 }
 
-function UserAvatarBadge({ xp, name }: { xp: number; name?: string }) {
+function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string; profilePhoto?: string }) {
   const level = getUserLevel(xp);
   const frameColors = getLevelFrameColors(level);
   const initial = name?.charAt(0).toUpperCase() ?? "S";
 
   return (
     <Pressable
-      onPress={() => router.push("/(tabs)/settings")}
+      onPress={() => router.push("/(tabs)/profile")}
       style={({ pressed }) => [styles.avatarBadge, pressed && { opacity: 0.8 }]}
       hitSlop={6}
     >
       <LinearGradient colors={frameColors} style={styles.avatarFrame}>
-        <LinearGradient
-          colors={[Colors.userBubble.from, Colors.userBubble.to]}
-          style={styles.avatarInner}
-        >
-          <Text style={styles.avatarInitial}>{initial}</Text>
-        </LinearGradient>
+        {profilePhoto ? (
+          <Image source={{ uri: profilePhoto }} style={styles.avatarPhoto} />
+        ) : (
+          <LinearGradient
+            colors={[Colors.userBubble.from, Colors.userBubble.to]}
+            style={styles.avatarInner}
+          >
+            <Text style={styles.avatarInitial}>{initial}</Text>
+          </LinearGradient>
+        )}
       </LinearGradient>
       <View style={styles.levelBadge}>
         <Text style={styles.levelBadgeText}>{level}</Text>
@@ -117,7 +121,7 @@ export default function ExploreScreen() {
             </Text>
             <Text style={styles.headerTitle}>Karakterleri Keşfet</Text>
           </View>
-          <UserAvatarBadge xp={xp} name={user?.name} />
+          <UserAvatarBadge xp={xp} name={user?.name} profilePhoto={user?.profilePhoto} />
         </View>
 
         <View style={styles.categories}>
@@ -193,6 +197,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
+  avatarPhoto: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
     borderWidth: 1.5,
     borderColor: "#fff",
   },

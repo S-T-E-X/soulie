@@ -37,7 +37,8 @@ export function RelationshipBar({ xp }: Props) {
   const progressAnim = useRef(new Animated.Value(0)).current;
   const celebrationAnim = useRef(new Animated.Value(0)).current;
   const [showCelebration, setShowCelebration] = useState(false);
-  const prevLevelRef = useRef(level.levelIndex);
+  const prevLevelRef = useRef<number | null>(null);
+  const isInitializedRef = useRef(false);
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -49,7 +50,13 @@ export function RelationshipBar({ xp }: Props) {
   }, [level.progress]);
 
   useEffect(() => {
-    if (prevLevelRef.current < level.levelIndex) {
+    if (!isInitializedRef.current) {
+      prevLevelRef.current = level.levelIndex;
+      isInitializedRef.current = true;
+      return;
+    }
+
+    if (prevLevelRef.current !== null && prevLevelRef.current < level.levelIndex) {
       setShowCelebration(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       celebrationAnim.setValue(0);

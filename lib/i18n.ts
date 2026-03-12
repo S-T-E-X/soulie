@@ -57,6 +57,18 @@ const translations = {
     settings_title: "Ayarlar",
     language_tr: "Türkçe",
     language_en: "İngilizce",
+
+    char_about: "Hakkında",
+    char_interests: "İlgi Alanları",
+    char_profile: "Profil",
+    char_age: "Yaş",
+    char_gender_label: "Cinsiyet",
+    char_type: "Tür",
+    char_start_chat: "Sohbet Başlat",
+    char_premium_required: "Premium Gerekli",
+    char_female: "Kadın",
+    char_male: "Erkek",
+    char_ai_type: "Yapay Zeka",
   },
   en: {
     welcome_title: "Soulie",
@@ -116,6 +128,18 @@ const translations = {
     settings_title: "Settings",
     language_tr: "Turkish",
     language_en: "English",
+
+    char_about: "About",
+    char_interests: "Interests",
+    char_profile: "Profile",
+    char_age: "Age",
+    char_gender_label: "Gender",
+    char_type: "Type",
+    char_start_chat: "Start Chat",
+    char_premium_required: "Premium Required",
+    char_female: "Female",
+    char_male: "Male",
+    char_ai_type: "AI",
   },
 } as const;
 

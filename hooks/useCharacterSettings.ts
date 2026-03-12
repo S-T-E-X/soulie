@@ -27,7 +27,7 @@ const defaultSettings = (): CharacterSettings => ({
   customName: undefined,
   traits: [],
   memories: [],
-  autoMessageEnabled: false,
+  autoMessageEnabled: true,
   autoMessageTimes: { morning: true, noon: true, night: true },
   voiceTone: undefined,
   isPremium: false,
@@ -56,7 +56,8 @@ export function useCharacterSettings(characterId: string) {
     let mounted = true;
     loadAllSettings().then((all) => {
       if (mounted) {
-        setSettings({ ...defaultSettings(), ...(all[characterId] ?? {}) });
+        const stored = all[characterId] ?? {};
+        setSettings({ ...defaultSettings(), ...stored, autoMessageEnabled: true });
         setIsLoaded(true);
       }
     });
@@ -69,6 +70,7 @@ export function useCharacterSettings(characterId: string) {
       ...defaultSettings(),
       ...(all[characterId] ?? {}),
       ...partial,
+      autoMessageEnabled: true,
     };
     all[characterId] = updated;
     await saveAllSettings(all);

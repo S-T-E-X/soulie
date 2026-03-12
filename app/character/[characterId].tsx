@@ -29,7 +29,9 @@ import { getCharacter } from "@/constants/characters";
 import { useCharacterSettings } from "@/hooks/useCharacterSettings";
 import { useAutoMessages } from "@/hooks/useAutoMessages";
 import { useChatContext } from "@/contexts/ChatContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { CharacterCustomizeSheet } from "@/components/chat/CharacterCustomizeSheet";
+import { t } from "@/lib/i18n";
 import Colors from "@/constants/colors";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -41,6 +43,8 @@ export default function CharacterProfileScreen() {
   const { characterId } = useLocalSearchParams<{ characterId: string }>();
   const character = getCharacter(characterId);
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const lang = user?.language ?? "tr";
   const scrollY = useSharedValue(0);
   const [showCustomize, setShowCustomize] = useState(false);
   const { settings, isLoaded: settingsLoaded, updateSettings, removeMemory } = useCharacterSettings(characterId ?? "");
@@ -84,6 +88,11 @@ export default function CharacterProfileScreen() {
 
   const handleStartChat = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (character.isPremium) {
+      router.back();
+      setTimeout(() => router.push("/(tabs)/market"), 50);
+      return;
+    }
     router.back();
     setTimeout(() => {
       router.push({ pathname: "/chat/[id]", params: { characterId: character.id, id: character.id } });
@@ -125,6 +134,18 @@ export default function CharacterProfileScreen() {
       >
         <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
         <Feather name="chevron-down" size={20} color="#fff" />
+      </Pressable>
+
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setShowCustomize(true);
+        }}
+        style={[styles.settingsBtn, { top: topPad + 12 }]}
+        hitSlop={8}
+      >
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+        <Feather name="sliders" size={18} color="#fff" />
       </Pressable>
 
       <AnimatedScrollView
@@ -183,7 +204,7 @@ export default function CharacterProfileScreen() {
           <Animated.View entering={FadeInDown.delay(80).springify().damping(18)} style={styles.infoSection}>
             <View style={styles.infoHeader}>
               <Feather name="user" size={16} color={Colors.accent} />
-              <Text style={styles.infoTitle}>Hakkında</Text>
+              <Text style={styles.infoTitle}>{t("char_about", lang)}</Text>
             </View>
             <Text style={styles.descText}>{character.description}</Text>
           </Animated.View>
@@ -193,7 +214,7 @@ export default function CharacterProfileScreen() {
           <Animated.View entering={FadeInDown.delay(120).springify().damping(18)} style={styles.infoSection}>
             <View style={styles.infoHeader}>
               <Feather name="heart" size={16} color={Colors.accent} />
-              <Text style={styles.infoTitle}>İlgi Alanları</Text>
+              <Text style={styles.infoTitle}>{t("char_interests", lang)}</Text>
             </View>
             <View style={styles.interestGrid}>
               {character.tags.map((tag) => (
@@ -209,22 +230,22 @@ export default function CharacterProfileScreen() {
           <Animated.View entering={FadeInDown.delay(160).springify().damping(18)} style={styles.infoSection}>
             <View style={styles.infoHeader}>
               <Feather name="info" size={16} color={Colors.accent} />
-              <Text style={styles.infoTitle}>Profil</Text>
+              <Text style={styles.infoTitle}>{t("char_profile", lang)}</Text>
             </View>
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{character.age}</Text>
-                <Text style={styles.statLabel}>Yaş</Text>
+                <Text style={styles.statLabel}>{t("char_age", lang)}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{character.gender === "female" ? "♀" : "♂"}</Text>
-                <Text style={styles.statLabel}>Cinsiyet</Text>
+                <Text style={styles.statValue}>{character.gender === "female" ? t("char_female", lang) : t("char_male", lang)}</Text>
+                <Text style={styles.statLabel}>{t("char_gender_label", lang)}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>AI</Text>
-                <Text style={styles.statLabel}>Tür</Text>
+                <Text style={styles.statValue}>{t("char_ai_type", lang)}</Text>
+                <Text style={styles.statLabel}>{t("char_type", lang)}</Text>
               </View>
             </View>
           </Animated.View>
@@ -235,11 +256,15 @@ export default function CharacterProfileScreen() {
               style={({ pressed }) => [styles.ctaButton, pressed && { opacity: 0.88 }]}
             >
               <LinearGradient
-                colors={[Colors.userBubble.from, Colors.userBubble.to]}
+                colors={character.isPremium
+                  ? ["#FFD700", "#FF9500"]
+                  : [Colors.userBubble.from, Colors.userBubble.to]}
                 style={styles.ctaGradient}
               >
-                <Feather name="message-circle" size={18} color="#fff" />
-                <Text style={styles.ctaText}>Sohbet Başlat</Text>
+                <Feather name={character.isPremium ? "star" : "message-circle"} size={18} color="#fff" />
+                <Text style={styles.ctaText}>
+                  {character.isPremium ? t("char_premium_required", lang) : t("char_start_chat", lang)}
+                </Text>
               </LinearGradient>
             </Pressable>
           </Animated.View>
@@ -296,6 +321,19 @@ const styles = StyleSheet.create({
   closeBtn: {
     position: "absolute",
     left: 16,
+    zIndex: 200,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  settingsBtn: {
+    position: "absolute",
+    right: 16,
     zIndex: 200,
     width: 36,
     height: 36,
