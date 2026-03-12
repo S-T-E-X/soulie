@@ -8,6 +8,7 @@ const IS_VIP = false;
 type QuotaData = {
   date: string;
   count: number;
+  bonusMessages?: number;
 };
 
 function getToday(): string {
@@ -24,17 +25,17 @@ function getResetTime(): number {
 async function loadQuota(): Promise<QuotaData> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return { date: "", count: 0 };
+    if (!raw) return { date: "", count: 0, bonusMessages: 0 };
     const parsed: QuotaData = JSON.parse(raw);
-    if (parsed.date !== getToday()) return { date: getToday(), count: 0 };
-    return parsed;
+    if (parsed.date !== getToday()) return { date: getToday(), count: 0, bonusMessages: 0 };
+    return { ...parsed, bonusMessages: parsed.bonusMessages ?? 0 };
   } catch {
-    return { date: getToday(), count: 0 };
+    return { date: getToday(), count: 0, bonusMessages: 0 };
   }
 }
 
 export function useDailyQuota() {
-  const [quota, setQuota] = useState<QuotaData>({ date: getToday(), count: 0 });
+  const [quota, setQuota] = useState<QuotaData>({ date: getToday(), count: 0, bonusMessages: 0 });
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -48,15 +49,32 @@ export function useDailyQuota() {
     return () => { mounted = false; };
   }, []);
 
-  const used = quota.date === getToday() ? quota.count : 0;
-  const remaining = IS_VIP ? 999 : Math.max(0, DAILY_LIMIT - used);
+  const today = getToday();
+  const used = quota.date === today ? quota.count : 0;
+  const bonus = quota.date === today ? (quota.bonusMessages ?? 0) : 0;
+  const totalLimit = IS_VIP ? 999 : DAILY_LIMIT + bonus;
+  const remaining = IS_VIP ? 999 : Math.max(0, totalLimit - used);
   const canSend = IS_VIP || remaining > 0;
   const resetTime = getResetTime();
 
   const markMessageSent = useCallback(async () => {
-    const today = getToday();
-    const newCount = quota.date === today ? quota.count + 1 : 1;
-    const newData: QuotaData = { date: today, count: newCount };
+    const today2 = getToday();
+    const newCount = quota.date === today2 ? quota.count + 1 : 1;
+    const newData: QuotaData = { date: today2, count: newCount, bonusMessages: quota.bonusMessages ?? 0 };
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+    } catch {}
+    setQuota(newData);
+  }, [quota]);
+
+  const addBonusMessages = useCallback(async (count: number) => {
+    const today2 = getToday();
+    const current = quota.date === today2 ? quota : { date: today2, count: 0, bonusMessages: 0 };
+    const newData: QuotaData = {
+      date: today2,
+      count: current.count,
+      bonusMessages: (current.bonusMessages ?? 0) + count,
+    };
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch {}
@@ -65,6 +83,7 @@ export function useDailyQuota() {
 
   const getResetCountdown = useCallback((): string => {
     const diff = resetTime - Date.now();
+    if (diff <= 0) return "0s 0dk";
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     return `${h}s ${m}dk`;
@@ -75,9 +94,12 @@ export function useDailyQuota() {
     remaining,
     used,
     DAILY_LIMIT,
+    totalLimit,
+    bonus,
     isVip: IS_VIP,
     loaded,
     markMessageSent,
+    addBonusMessages,
     getResetCountdown,
     resetTime,
   };

@@ -28,15 +28,11 @@ function RootLayoutNav() {
       <Stack.Screen name="privacy" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
       <Stack.Screen name="profile" options={{ animation: "ios_from_right" }} />
       <Stack.Screen name="tarot" options={{ animation: "ios_from_right" }} />
+      <Stack.Screen name="feedback" options={{ animation: "ios_from_right" }} />
+      <Stack.Screen name="admin" options={{ animation: "ios_from_right" }} />
       <Stack.Screen name="chat/[id]" />
-      <Stack.Screen
-        name="character/[characterId]"
-        options={{ presentation: "modal", animation: "slide_from_bottom" }}
-      />
-      <Stack.Screen
-        name="video-chat/[characterId]"
-        options={{ presentation: "modal", animation: "slide_from_bottom" }}
-      />
+      <Stack.Screen name="character/[characterId]" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
+      <Stack.Screen name="video-chat/[characterId]" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
     </Stack>
   );
 }

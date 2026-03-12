@@ -95,42 +95,61 @@ function QuotaPopup({
   visible,
   onClose,
   onGoMarket,
+  onWatchAd,
   resetCountdown,
   language,
 }: {
   visible: boolean;
   onClose: () => void;
   onGoMarket: () => void;
+  onWatchAd: () => void;
   resetCountdown: string;
   language: string;
 }) {
+  const [isWatching, setIsWatching] = React.useState(false);
+  const [adCountdown, setAdCountdown] = React.useState(5);
+
+  const handleWatchAd = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsWatching(true);
+    setAdCountdown(5);
+    let count = 5;
+    const iv = setInterval(() => {
+      count -= 1;
+      setAdCountdown(count);
+      if (count <= 0) {
+        clearInterval(iv);
+        setIsWatching(false);
+        onWatchAd();
+      }
+    }, 1000);
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.quotaBackdrop} onPress={onClose}>
-        <Pressable style={styles.quotaCard}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={styles.quotaBackdrop} pointerEvents="box-none">
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={styles.quotaCard} pointerEvents="box-none">
           {Platform.OS === "ios" ? (
-            <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
           ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F8F8FF" }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F8F8FF" }]} pointerEvents="none" />
           )}
-          <View style={styles.quotaIconWrap}>
+          <View style={styles.quotaIconWrap} pointerEvents="none">
             <LinearGradient colors={["#FF9500", "#FF6B00"]} style={styles.quotaIconGrad}>
               <Feather name="zap-off" size={26} color="#fff" />
             </LinearGradient>
           </View>
-          <Text style={styles.quotaTitle}>
+          <Text style={styles.quotaTitle} pointerEvents="none">
             {language === "en" ? "Daily limit reached" : "Günlük limit doldu"}
           </Text>
-          <Text style={styles.quotaDesc}>
+          <Text style={styles.quotaDesc} pointerEvents="none">
             {language === "en"
               ? `Free users can send 15 messages per day. Resets in ${resetCountdown}.`
               : `Ücretsiz kullanıcılar günde 15 mesaj gönderebilir. ${resetCountdown} içinde sıfırlanır.`}
           </Text>
           <Pressable
-            onPress={() => {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              onGoMarket();
-            }}
+            onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onGoMarket(); }}
             style={styles.quotaUpgradeBtn}
           >
             <LinearGradient colors={[Colors.userBubble.from, Colors.userBubble.to]} style={styles.quotaUpgradeBtnGrad}>
@@ -140,13 +159,32 @@ function QuotaPopup({
               </Text>
             </LinearGradient>
           </Pressable>
+          <Pressable
+            onPress={handleWatchAd}
+            disabled={isWatching}
+            style={styles.quotaWatchAdBtn}
+          >
+            {isWatching ? (
+              <View style={styles.quotaWatchAdInner}>
+                <Feather name="film" size={14} color={Colors.accent} />
+                <Text style={styles.quotaWatchAdText}>Reklam izleniyor... {adCountdown}s</Text>
+              </View>
+            ) : (
+              <View style={styles.quotaWatchAdInner}>
+                <Feather name="play-circle" size={14} color={Colors.accent} />
+                <Text style={styles.quotaWatchAdText}>
+                  {language === "en" ? "Watch ad (+5 messages)" : "Video izle (+5 mesaj kazan)"}
+                </Text>
+              </View>
+            )}
+          </Pressable>
           <Pressable onPress={onClose} style={styles.quotaCloseBtn} hitSlop={8}>
             <Text style={styles.quotaCloseText}>
               {language === "en" ? "Later" : "Daha Sonra"}
             </Text>
           </Pressable>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -571,25 +609,32 @@ export default function ChatScreen() {
           setShowQuotaPopup(false);
           router.push("/(tabs)/market");
         }}
+        onWatchAd={async () => {
+          await quota.addBonusMessages(5);
+          setShowQuotaPopup(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert("Harika!", "+5 mesaj hakkı kazandın! 🎉", [{ text: "Tamam" }]);
+        }}
         resetCountdown={resetCountdown}
         language={user?.language ?? "tr"}
       />
 
-      <Modal visible={showVideoVIPModal} transparent animationType="fade" onRequestClose={() => setShowVideoVIPModal(false)}>
-        <Pressable style={styles.quotaBackdrop} onPress={() => setShowVideoVIPModal(false)}>
-          <Pressable style={styles.quotaCard}>
+      <Modal visible={showVideoVIPModal} transparent animationType="fade" onRequestClose={() => setShowVideoVIPModal(false)} statusBarTranslucent>
+        <View style={styles.quotaBackdrop} pointerEvents="box-none">
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowVideoVIPModal(false)} />
+          <View style={styles.quotaCard} pointerEvents="box-none">
             {Platform.OS === "ios" ? (
-              <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
+              <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
             ) : (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F8F8FF" }]} />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F8F8FF" }]} pointerEvents="none" />
             )}
-            <View style={styles.quotaIconWrap}>
+            <View style={styles.quotaIconWrap} pointerEvents="none">
               <LinearGradient colors={["#FFD700", "#FFB800"]} style={styles.quotaIconGrad}>
                 <Feather name="video" size={26} color="#fff" />
               </LinearGradient>
             </View>
-            <Text style={styles.quotaTitle}>Video Sohbet VIP'e Özel</Text>
-            <Text style={styles.quotaDesc}>
+            <Text style={styles.quotaTitle} pointerEvents="none">Video Sohbet VIP'e Özel</Text>
+            <Text style={styles.quotaDesc} pointerEvents="none">
               {character?.name} ile görüntülü sohbet başlatmak için VIP üyeliğe geçmelisin.
             </Text>
             <Pressable
@@ -608,8 +653,8 @@ export default function ChatScreen() {
             <Pressable onPress={() => setShowVideoVIPModal(false)} style={styles.quotaCloseBtn} hitSlop={8}>
               <Text style={styles.quotaCloseText}>Daha Sonra</Text>
             </Pressable>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </BackgroundGradient>
   );
@@ -872,5 +917,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     color: Colors.text.tertiary,
+  },
+  quotaWatchAdBtn: {
+    borderRadius: 14,
+    overflow: "hidden",
+    width: "100%",
+    borderWidth: 1.5,
+    borderColor: Colors.accent + "40",
+    backgroundColor: Colors.accent + "08",
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+  },
+  quotaWatchAdInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  quotaWatchAdText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.accent,
   },
 });

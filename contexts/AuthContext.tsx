@@ -12,6 +12,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export type UserLanguage = "tr" | "en";
 export type UserGender = "male" | "female" | "other" | "prefer_not_to_say";
 
+const ADMIN_EMAILS = ["admin@soulie.app", "soulie_admin@admin.com"];
+
 export type User = {
   id: string;
   name: string;
@@ -24,6 +26,8 @@ export type User = {
   bio?: string;
   profilePhoto?: string;
   onboardingComplete: boolean;
+  isAdmin?: boolean;
+  isVip?: boolean;
 };
 
 interface AuthContextValue {
@@ -34,6 +38,7 @@ interface AuthContextValue {
   updateProfile: (partial: Partial<User>) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+  grantAdminAccess: () => Promise<void>;
 }
 
 const AUTH_STORAGE_KEY = "lumina_auth_user";
@@ -50,6 +55,7 @@ const ALL_STORAGE_KEYS = [
   "soulie_weekly_missions_v1",
   "soulie_bonus_xp_v1",
   "soulie_tarot_v1",
+  "soulie_feedback_v1",
 ];
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -74,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (partial: Partial<User> & { name: string }) => {
+    const isAdmin = ADMIN_EMAILS.includes(partial.email?.toLowerCase() ?? "");
     const newUser: User = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 6),
       name: partial.name,
@@ -86,6 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       bio: partial.bio ?? "",
       profilePhoto: partial.profilePhoto,
       onboardingComplete: partial.onboardingComplete ?? false,
+      isAdmin,
+      isVip: partial.isVip ?? false,
     };
     await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUser));
     setUser(newUser);
@@ -112,9 +121,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const grantAdminAccess = useCallback(async () => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, isAdmin: true };
+      AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated)).catch(console.error);
+      return updated;
+    });
+  }, []);
+
   const value = useMemo(
-    () => ({ user, isAuthenticated: !!user, isLoading, login, updateProfile, logout, deleteAccount }),
-    [user, isLoading, login, updateProfile, logout, deleteAccount]
+    () => ({ user, isAuthenticated: !!user, isLoading, login, updateProfile, logout, deleteAccount, grantAdminAccess }),
+    [user, isLoading, login, updateProfile, logout, deleteAccount, grantAdminAccess]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
