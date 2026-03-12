@@ -43,6 +43,14 @@ function getRelationshipContext(level: number): string {
   return "Derin bağ — Kullanıcı hayatının merkezinde. Özel lakaplarla hitap edebilir, derin bir sadakat ve sevgi göster.";
 }
 
+const VOICE_TONE_INSTRUCTIONS: Record<string, string> = {
+  warm: "Sıcak, sevecen ve rahatlatıcı bir tonla konuş. Kelimelerinde şefkat hissedilsin.",
+  playful: "Oyuncu, neşeli ve hafif flörtöz bir tonla konuş. Eğlenceli ve enerjik ol.",
+  serious: "Olgun, ciddi ve düşünceli bir tonla konuş. Derin ve anlamlı ol.",
+  mysterious: "Gizemli, merak uyandıran ve biraz ketum bir tonla konuş. Derinlikli ve büyüleyici ol.",
+  energetic: "Enerjik, heyecanlı ve motive edici bir tonla konuş. Coşkulu ve ilham verici ol.",
+};
+
 function buildAdvancedPrompt(params: {
   characterId: string;
   customName?: string;
@@ -50,8 +58,9 @@ function buildAdvancedPrompt(params: {
   userMemories?: string[];
   userLevel: number;
   userLanguage?: string;
+  voiceTone?: string;
 }): string {
-  const { characterId, customName, selectedTraits, userMemories = [], userLevel, userLanguage = "tr" } = params;
+  const { characterId, customName, selectedTraits, userMemories = [], userLevel, userLanguage = "tr", voiceTone } = params;
   const charBase = CHAR_BASE_PROMPTS[characterId];
   const charName = customName || charBase?.name || "Soulie";
   const traits = (selectedTraits && selectedTraits.length > 0)
@@ -85,6 +94,9 @@ ${traitInstructions}
 ${getRelationshipContext(userLevel)}
 ${memoriesSection}
 
+### SES TONU
+${voiceTone && VOICE_TONE_INSTRUCTIONS[voiceTone] ? VOICE_TONE_INSTRUCTIONS[voiceTone] : "Doğal ve samimi bir tonla konuş."}
+
 ### KISITLAMALAR
 • Yanıtların kısa ve öz olsun — maksimum 2-3 cümle.
 • Kullanıcı "selam", "merhaba", "naber", "nasılsın" gibi kısa selamlama yazarsa sen de çok kısa karşılık ver (örn: "Selam! İyiyim, sen?"). Uzun cümle kurma, konu açmaya çalışma.
@@ -95,7 +107,7 @@ ${memoriesSection}
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages, characterId, userLevel = 1, customName, selectedTraits, memories, userLanguage } = req.body;
+      const { messages, characterId, userLevel = 1, customName, selectedTraits, memories, userLanguage, voiceTone } = req.body;
 
       if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: "Messages array is required" });
@@ -108,6 +120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userMemories: memories,
         userLevel,
         userLanguage,
+        voiceTone,
       });
 
       res.setHeader("Content-Type", "text/event-stream");

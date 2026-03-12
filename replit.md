@@ -14,6 +14,9 @@ Soulie is a Turkish/English AI companion mobile app built with Expo (React Nativ
 - Subscription plans (Market tab)
 - Settings and account management
 - Privacy Policy page
+- Relationship progress bar (Yabancı → Tanıdık → Dost → Yakın Dost → Sevgili) with XP tracking and level-up celebration animation
+- Auto-message system with local notifications (sabah/öğle/gece time slots) via expo-notifications
+- Voice tone selection (warm/playful/serious/mysterious/energetic) — premium-only feature with upsell UI
 
 The project runs two processes: an **Expo frontend** (React Native / web) and an **Express backend** that proxies requests to OpenAI and manages chat data.
 
@@ -113,6 +116,7 @@ These modules are not all registered in the main `server/routes.ts` but are avai
 - `expo-haptics` — Haptic feedback on button presses.
 - `expo-blur` — BlurView for glassmorphism UI on iOS.
 - `expo-linear-gradient` — Gradient backgrounds and character cards.
+- `expo-notifications` — Local scheduled notifications for auto-message feature.
 - `expo-image-picker` — (dependency present, not actively used in viewed code).
 - `expo-location` — (dependency present, not actively used in viewed code).
 - `expo-splash-screen` — Splash screen management.

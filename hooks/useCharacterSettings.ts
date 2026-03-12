@@ -3,10 +3,22 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STORAGE_KEY = "soulie_char_settings_v1";
 
+export type VoiceTone = "warm" | "playful" | "serious" | "mysterious" | "energetic";
+
+export type AutoMessageTimes = {
+  morning: boolean;
+  noon: boolean;
+  night: boolean;
+};
+
 export type CharacterSettings = {
   customName?: string;
   traits: string[];
   memories: string[];
+  autoMessageEnabled: boolean;
+  autoMessageTimes: AutoMessageTimes;
+  voiceTone?: VoiceTone;
+  isPremium: boolean;
 };
 
 type AllSettings = Record<string, CharacterSettings>;
@@ -15,6 +27,10 @@ const defaultSettings = (): CharacterSettings => ({
   customName: undefined,
   traits: [],
   memories: [],
+  autoMessageEnabled: false,
+  autoMessageTimes: { morning: true, noon: true, night: true },
+  voiceTone: undefined,
+  isPremium: false,
 });
 
 async function loadAllSettings(): Promise<AllSettings> {
@@ -40,7 +56,7 @@ export function useCharacterSettings(characterId: string) {
     let mounted = true;
     loadAllSettings().then((all) => {
       if (mounted) {
-        setSettings(all[characterId] ?? defaultSettings());
+        setSettings({ ...defaultSettings(), ...(all[characterId] ?? {}) });
         setIsLoaded(true);
       }
     });

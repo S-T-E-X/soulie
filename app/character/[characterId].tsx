@@ -27,6 +27,8 @@ import * as Haptics from "expo-haptics";
 
 import { getCharacter } from "@/constants/characters";
 import { useCharacterSettings } from "@/hooks/useCharacterSettings";
+import { useAutoMessages } from "@/hooks/useAutoMessages";
+import { useChatContext } from "@/contexts/ChatContext";
 import { CharacterCustomizeSheet } from "@/components/chat/CharacterCustomizeSheet";
 import Colors from "@/constants/colors";
 
@@ -42,8 +44,11 @@ export default function CharacterProfileScreen() {
   const scrollY = useSharedValue(0);
   const [showCustomize, setShowCustomize] = useState(false);
   const { settings, isLoaded: settingsLoaded, updateSettings, removeMemory } = useCharacterSettings(characterId ?? "");
+  const { getConversationByCharacter } = useChatContext();
+  const conversation = getConversationByCharacter(characterId ?? "");
+  const userMessageCount = conversation?.messages.filter(m => m.role === "user").length ?? 0;
 
-  const IS_VIP = false;
+  useAutoMessages(character, settings, settingsLoaded, userMessageCount);
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollY.value = event.contentOffset.y;
@@ -246,7 +251,7 @@ export default function CharacterProfileScreen() {
         onClose={() => setShowCustomize(false)}
         characterName={character.name}
         settings={settings}
-        isVip={IS_VIP}
+        isVip={settings.isPremium}
         onSave={(partial) => updateSettings(partial)}
         onRemoveMemory={removeMemory}
       />

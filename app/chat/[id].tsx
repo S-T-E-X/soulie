@@ -26,14 +26,15 @@ import { ChatInput } from "@/components/chat/ChatInput";
 
 import { CharacterCustomizeSheet } from "@/components/chat/CharacterCustomizeSheet";
 import { GiftSheet } from "@/components/chat/GiftSheet";
+import { RelationshipBar } from "@/components/chat/RelationshipBar";
 import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
 import { useCharacterSettings } from "@/hooks/useCharacterSettings";
+import { useAutoMessages } from "@/hooks/useAutoMessages";
 import { getCharacter, type Character } from "@/constants/characters";
 import { getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 
-const IS_VIP = false;
 
 function WelcomeMessage({ character, customName }: { character: Character; customName?: string }) {
   const displayName = customName || character.name;
@@ -79,6 +80,10 @@ export default function ChatScreen() {
   const [showCustomize, setShowCustomize] = useState(false);
   const [showGifts, setShowGifts] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
+
+  const userMessageCount = messages.filter(m => m.role === "user").length;
+
+  useAutoMessages(character, settings, settingsLoaded, userMessageCount);
 
   useEffect(() => {
     loadConversations();
@@ -172,6 +177,7 @@ export default function ChatScreen() {
             selectedTraits: settings.traits,
             memories: settings.memories,
             userLanguage: user?.language ?? "tr",
+            voiceTone: settings.voiceTone,
           }),
         });
 
@@ -321,6 +327,7 @@ export default function ChatScreen() {
             <Feather name="sliders" size={19} color={Colors.text.secondary} />
           </Pressable>
         </View>
+        <RelationshipBar xp={userMessageCount * 10} />
       </View>
 
       <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={0}>
@@ -378,7 +385,7 @@ export default function ChatScreen() {
         onClose={() => setShowCustomize(false)}
         characterName={character.name}
         settings={settings}
-        isVip={IS_VIP}
+        isVip={settings.isPremium}
         onSave={(partial) => updateSettings(partial)}
         onRemoveMemory={removeMemory}
       />
