@@ -9,6 +9,7 @@ import {
   StatusBar,
   Image,
   Animated,
+  Alert,
 } from "react-native";
 import AnimatedRN, { FadeInDown } from "react-native-reanimated";
 import { router } from "expo-router";
@@ -75,7 +76,7 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
   );
 }
 
-function ChatRow({ conversation, index, streak = 0 }: { conversation: Conversation; index: number; streak?: number }) {
+function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: Conversation; index: number; streak?: number; onDelete: () => void }) {
   const character = getCharacter(conversation.characterId);
   if (!character) return null;
 
@@ -96,6 +97,18 @@ function ChatRow({ conversation, index, streak = 0 }: { conversation: Conversati
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           router.push({ pathname: "/chat/[id]", params: { id: conversation.id, characterId: conversation.characterId } });
         }}
+        onLongPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          Alert.alert(
+            `${character.name} ile sohbet`,
+            "Bu sohbeti silmek istediğine emin misin?",
+            [
+              { text: "İptal", style: "cancel" },
+              { text: "Sil", style: "destructive", onPress: onDelete },
+            ]
+          );
+        }}
+        delayLongPress={450}
         style={({ pressed }) => [styles.chatRow, pressed && { opacity: 0.75 }]}
       >
         <View style={styles.avatarContainer}>
@@ -243,7 +256,7 @@ function MissionsBanner({
 export default function ChatsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { conversations, isLoaded, loadConversations } = useChatContext();
+  const { conversations, isLoaded, loadConversations, deleteConversation } = useChatContext();
   const [showMissions, setShowMissions] = React.useState(false);
   const [streaks, setStreaks] = React.useState<Record<string, number>>({});
 
@@ -309,6 +322,7 @@ export default function ChatsScreen() {
             conversation={item}
             index={index}
             streak={streaks[item.characterId] ?? 0}
+            onDelete={() => deleteConversation(item.id)}
           />
         )}
         ListEmptyComponent={isLoaded ? <EmptyState /> : null}

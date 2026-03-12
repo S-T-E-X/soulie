@@ -9,6 +9,7 @@ import {
   StatusBar,
   Image,
   Modal,
+  Alert,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
@@ -170,6 +171,26 @@ export default function ChatScreen() {
   const [showGifts, setShowGifts] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
   const [showQuotaPopup, setShowQuotaPopup] = useState(false);
+  const [showVideoVIPModal, setShowVideoVIPModal] = useState(false);
+  const [resetCountdown, setResetCountdown] = useState(quota.getResetCountdown());
+
+  useEffect(() => {
+    if (!quota.loaded || quota.canSend) return;
+    const interval = setInterval(() => {
+      setResetCountdown(quota.getResetCountdown());
+    }, 60000);
+    setResetCountdown(quota.getResetCountdown());
+    return () => clearInterval(interval);
+  }, [quota.loaded, quota.canSend, quota.getResetCountdown]);
+
+  const handleDeleteMessage = useCallback(async (msgId: string) => {
+    const updated = messages.filter((m) => m.id !== msgId);
+    setMessages(updated);
+    if (character) {
+      await createConversationWithMessages(character.id, settings.customName || character.name, updated);
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [messages, character, settings.customName, createConversationWithMessages]);
 
   const userMessageCount = messages.filter(m => m.role === "user").length;
 
@@ -421,12 +442,16 @@ export default function ChatScreen() {
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push({ pathname: "/video-chat/[characterId]", params: { characterId: character.id } });
+              if (!IS_VIP) {
+                setShowVideoVIPModal(true);
+              } else {
+                router.push({ pathname: "/video-chat/[characterId]", params: { characterId: character.id } });
+              }
             }}
             style={styles.headerSideBtn}
             hitSlop={8}
           >
-            <Feather name="video" size={18} color={Colors.text.secondary} />
+            <Feather name="video" size={18} color={IS_VIP ? Colors.text.secondary : "#FFD700"} />
           </Pressable>
 
           <Pressable
@@ -455,6 +480,17 @@ export default function ChatScreen() {
                 setReplyTo({ id: msg.id, content: msg.content });
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
+              onDelete={(msg) => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                Alert.alert(
+                  "Mesajı Sil",
+                  "Bu mesajı silmek istediğine emin misin?",
+                  [
+                    { text: "İptal", style: "cancel" },
+                    { text: "Sil", style: "destructive", onPress: () => handleDeleteMessage(msg.id) },
+                  ]
+                );
+              }}
             />
           )}
           inverted={messages.length > 0}
@@ -473,13 +509,18 @@ export default function ChatScreen() {
         <View style={styles.inputArea}>
           {!IS_VIP && quota.loaded ? (
             <View style={styles.quotaBar}>
-              <Text style={styles.quotaBarText}>
+              <Feather
+                name={quota.remaining === 0 ? "zap-off" : "zap"}
+                size={11}
+                color={quota.remaining === 0 ? "#FF3B30" : quota.remaining <= 3 ? "#FF9500" : Colors.text.tertiary}
+              />
+              <Text style={[styles.quotaBarText, quota.remaining === 0 && { color: "#FF3B30" }, quota.remaining <= 3 && quota.remaining > 0 && { color: "#FF9500" }]}>
                 {quota.remaining > 0
-                  ? `${quota.remaining}/${quota.DAILY_LIMIT} mesaj kaldı`
-                  : "Günlük limit doldu"}
+                  ? `${quota.remaining}/${quota.DAILY_LIMIT} mesaj`
+                  : `Limit doldu · ${resetCountdown}`}
               </Text>
               {quota.remaining === 0 ? (
-                <Pressable onPress={() => setShowQuotaPopup(true)}>
+                <Pressable onPress={() => setShowQuotaPopup(true)} hitSlop={4}>
                   <Text style={styles.quotaBarVipLink}>VIP'e geç</Text>
                 </Pressable>
               ) : null}
@@ -530,9 +571,46 @@ export default function ChatScreen() {
           setShowQuotaPopup(false);
           router.push("/(tabs)/market");
         }}
-        resetCountdown={quota.getResetCountdown()}
+        resetCountdown={resetCountdown}
         language={user?.language ?? "tr"}
       />
+
+      <Modal visible={showVideoVIPModal} transparent animationType="fade" onRequestClose={() => setShowVideoVIPModal(false)}>
+        <Pressable style={styles.quotaBackdrop} onPress={() => setShowVideoVIPModal(false)}>
+          <Pressable style={styles.quotaCard}>
+            {Platform.OS === "ios" ? (
+              <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
+            ) : (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F8F8FF" }]} />
+            )}
+            <View style={styles.quotaIconWrap}>
+              <LinearGradient colors={["#FFD700", "#FFB800"]} style={styles.quotaIconGrad}>
+                <Feather name="video" size={26} color="#fff" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.quotaTitle}>Video Sohbet VIP'e Özel</Text>
+            <Text style={styles.quotaDesc}>
+              {character?.name} ile görüntülü sohbet başlatmak için VIP üyeliğe geçmelisin.
+            </Text>
+            <Pressable
+              onPress={() => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                setShowVideoVIPModal(false);
+                router.push("/(tabs)/market");
+              }}
+              style={styles.quotaUpgradeBtn}
+            >
+              <LinearGradient colors={["#FFD700", "#FFB800"]} style={styles.quotaUpgradeBtnGrad}>
+                <Feather name="star" size={15} color="#fff" />
+                <Text style={styles.quotaUpgradeText}>VIP'e Yükselt</Text>
+              </LinearGradient>
+            </Pressable>
+            <Pressable onPress={() => setShowVideoVIPModal(false)} style={styles.quotaCloseBtn} hitSlop={8}>
+              <Text style={styles.quotaCloseText}>Daha Sonra</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </BackgroundGradient>
   );
 }

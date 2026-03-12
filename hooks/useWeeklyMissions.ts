@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STORAGE_KEY = "soulie_weekly_missions_v1";
+const XP_KEY = "soulie_bonus_xp_v1";
 
 export type MissionType =
   | "send_messages"
@@ -9,7 +10,6 @@ export type MissionType =
   | "chat_days"
   | "send_gift"
   | "streak_days"
-  | "profile_photo"
   | "new_character";
 
 export type Mission = {
@@ -39,25 +39,25 @@ export type WeeklyMissionsData = {
 
 const MISSION_POOL: Mission[] = [
   {
-    id: "send_20",
+    id: "send_15",
     type: "send_messages",
-    title: "20 Mesaj Gönder",
-    titleEn: "Send 20 Messages",
-    description: "Bu hafta toplam 20 mesaj gönder",
-    descriptionEn: "Send 20 messages total this week",
-    target: 20,
+    title: "15 Mesaj Gönder",
+    titleEn: "Send 15 Messages",
+    description: "Bu hafta toplam 15 mesaj gönder",
+    descriptionEn: "Send 15 messages total this week",
+    target: 15,
     reward: 50,
     icon: "message-circle",
   },
   {
-    id: "send_50",
+    id: "send_30",
     type: "send_messages",
-    title: "50 Mesaj Gönder",
-    titleEn: "Send 50 Messages",
-    description: "Bu hafta toplam 50 mesaj gönder",
-    descriptionEn: "Send 50 messages total this week",
-    target: 50,
-    reward: 100,
+    title: "30 Mesaj Gönder",
+    titleEn: "Send 30 Messages",
+    description: "Bu hafta toplam 30 mesaj gönder",
+    descriptionEn: "Send 30 messages total this week",
+    target: 30,
+    reward: 80,
     icon: "message-circle",
   },
   {
@@ -79,7 +79,7 @@ const MISSION_POOL: Mission[] = [
     description: "3 farklı AI arkadaşla sohbet et",
     descriptionEn: "Chat with 3 different AI friends",
     target: 3,
-    reward: 80,
+    reward: 70,
     icon: "users",
   },
   {
@@ -101,7 +101,7 @@ const MISSION_POOL: Mission[] = [
     description: "Herhangi bir karakterle 5 günlük seri yap",
     descriptionEn: "Achieve a 5-day streak with any character",
     target: 5,
-    reward: 120,
+    reward: 100,
     icon: "zap",
   },
   {
@@ -140,11 +140,11 @@ function getWeekKey(): string {
 function generateMissionsForWeek(weekKey: string): Mission[] {
   const seed = weekKey.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
   const shuffled = [...MISSION_POOL].sort((a, b) => {
-    const ha = (seed * a.id.length) % 997;
-    const hb = (seed * b.id.length) % 997;
+    const ha = (seed * a.id.length * 17) % 997;
+    const hb = (seed * b.id.length * 17) % 997;
     return ha - hb;
   });
-  return shuffled.slice(0, 4);
+  return shuffled.slice(0, 3);
 }
 
 async function loadData(): Promise<WeeklyMissionsData | null> {
@@ -160,6 +160,23 @@ async function saveData(data: WeeklyMissionsData): Promise<void> {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {}
+}
+
+async function addBonusXP(amount: number): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(XP_KEY);
+    const current = raw ? JSON.parse(raw).xp ?? 0 : 0;
+    await AsyncStorage.setItem(XP_KEY, JSON.stringify({ xp: current + amount }));
+  } catch {}
+}
+
+export async function getBonusXP(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(XP_KEY);
+    return raw ? JSON.parse(raw).xp ?? 0 : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export function useWeeklyMissions({
@@ -215,13 +232,21 @@ export function useWeeklyMissions({
       case "streak_days": return Math.min(maxStreakThisWeek, mission.target);
       case "send_gift": return Math.min(giftsThisWeek, mission.target);
       case "new_character": return Math.min(newCharsThisWeek, mission.target);
-      case "profile_photo": return 0;
       default: return 0;
     }
   }, [totalMessagesSentThisWeek, differentCharactersThisWeek, chatDaysThisWeek, maxStreakThisWeek, giftsThisWeek, newCharsThisWeek]);
 
+  const isClaimed = useCallback((missionId: string): boolean => {
+    return !!missionsData?.progress[missionId]?.rewardClaimed;
+  }, [missionsData]);
+
   const claimReward = useCallback(async (missionId: string) => {
     if (!missionsData) return;
+    const mission = missionsData.missions.find((m) => m.id === missionId);
+    if (!mission) return;
+    const already = missionsData.progress[missionId]?.rewardClaimed;
+    if (already) return;
+
     const updated = {
       ...missionsData,
       progress: {
@@ -233,11 +258,13 @@ export function useWeeklyMissions({
       },
     };
     await saveData(updated);
+    await addBonusXP(mission.reward);
     setMissionsData(updated);
   }, [missionsData]);
 
   const missions = missionsData?.missions ?? [];
   const completedCount = missions.filter((m) => getMissionProgress(m) >= m.target).length;
+  const claimedCount = missions.filter((m) => !!missionsData?.progress[m.id]?.rewardClaimed).length;
   const totalReward = missions.reduce((acc, m) => {
     const progress = getMissionProgress(m);
     const claimed = missionsData?.progress[m.id]?.rewardClaimed;
@@ -248,7 +275,9 @@ export function useWeeklyMissions({
   return {
     missions,
     getMissionProgress,
+    isClaimed,
     completedCount,
+    claimedCount,
     totalMissions: missions.length,
     totalReward,
     loaded,

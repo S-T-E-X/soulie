@@ -176,7 +176,7 @@ function SectionHeader({ title }: { title: string }) {
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const { conversations } = useChatContext();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -195,6 +195,25 @@ export default function SettingsScreen() {
           style: "destructive",
           onPress: async () => {
             await logout();
+            router.replace("/");
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert(
+      "Hesabı Sil",
+      "Hesabını kalıcı olarak silmek istediğine emin misin? Tüm verilen silinecek ve bu işlem geri alınamaz.",
+      [
+        { text: "İptal", style: "cancel" },
+        {
+          text: "Hesabı Sil",
+          style: "destructive",
+          onPress: async () => {
+            await deleteAccount?.();
             router.replace("/");
           },
         },
@@ -322,6 +341,14 @@ export default function SettingsScreen() {
               icon="log-out"
               label="Çıkış Yap"
               onPress={handleLogout}
+              danger
+              chevron={false}
+            />
+            <View style={styles.rowDivider} />
+            <SettingRow
+              icon="trash-2"
+              label="Hesabı Sil"
+              onPress={handleDeleteAccount}
               danger
               chevron={false}
             />

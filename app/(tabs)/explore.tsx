@@ -9,12 +9,14 @@ import {
   StatusBar,
   Image,
   Animated,
+  ScrollView,
 } from "react-native";
 import AnimatedRN, { FadeInDown } from "react-native-reanimated";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import { Feather } from "@expo/vector-icons";
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import { CharacterCard } from "@/components/explore/CharacterCard";
 import { CHARACTERS } from "@/constants/characters";
@@ -23,7 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getAllStreaks } from "@/hooks/useStreak";
 import Colors from "@/constants/colors";
 
-const CATEGORIES = ["Tümü", "Sevgili", "Arkadaş", "Mentor", "Falcı"];
+const CATEGORIES = ["Tümü", "Falcı", "Sevgili", "Arkadaş", "Mentor"];
 
 const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
 
@@ -59,10 +61,7 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
         {profilePhoto ? (
           <Image source={{ uri: profilePhoto }} style={styles.avatarPhoto} />
         ) : (
-          <LinearGradient
-            colors={[Colors.userBubble.from, Colors.userBubble.to]}
-            style={styles.avatarInner}
-          >
+          <LinearGradient colors={[Colors.userBubble.from, Colors.userBubble.to]} style={styles.avatarInner}>
             <Text style={styles.avatarInitial}>{initial}</Text>
           </LinearGradient>
         )}
@@ -74,9 +73,46 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
   );
 }
 
+function TarotBtn() {
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 1200, useNativeDriver: false }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 1200, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const bgColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(107,33,168,0.12)", "rgba(107,33,168,0.28)"],
+  });
+  const borderColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(192,132,252,0.35)", "rgba(192,132,252,0.8)"],
+  });
+
+  return (
+    <Pressable
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        router.push("/tarot" as any);
+      }}
+    >
+      <Animated.View style={[styles.tarotBtn, { backgroundColor: bgColor, borderColor }]}>
+        <Feather name="eye" size={14} color="#C084FC" />
+        <Text style={styles.tarotBtnText}>Tarot Falı</Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 function FalciCategoryBtn({ active, onPress }: { active: boolean; onPress: () => void }) {
   const glowAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -101,38 +137,15 @@ function FalciCategoryBtn({ active, onPress }: { active: boolean; onPress: () =>
     outputRange: ["rgba(74,222,128,0.4)", "rgba(74,222,128,0.9)"],
   });
 
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true }).start();
-  };
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
-  };
-
   return (
     <Pressable
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
     >
-      <Animated.View
-        style={[
-          styles.falciBtn,
-          { backgroundColor: bgColor, borderColor, transform: [{ scale: scaleAnim }] },
-        ]}
-      >
-        <Animated.Text
-          style={[
-            styles.falciFlame,
-            {
-              opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }),
-            },
-          ]}
-        >
-          {"\u{1F52E}"}
-        </Animated.Text>
+      <Animated.View style={[styles.falciBtn, { backgroundColor: bgColor, borderColor }]}>
+        <Feather name="eye" size={13} color={active ? "#fff" : "#16A34A"} />
         <Text style={[styles.falciText, active && styles.falciTextActive]}>Falcı</Text>
       </Animated.View>
     </Pressable>
@@ -164,6 +177,7 @@ export default function ExploreScreen() {
     ? CHARACTERS
     : CHARACTERS.filter((c) => {
         if (activeCategory === "Mentor") return c.role === "Yaşam Koçu" || c.role === "Çalışma Arkadaşı";
+        if (activeCategory === "Falcı") return c.role === "Falcı";
         return c.role === activeCategory;
       });
 
@@ -203,32 +217,39 @@ export default function ExploreScreen() {
           <UserAvatarBadge xp={xp} name={user?.name} profilePhoto={user?.profilePhoto} />
         </View>
 
-        <View style={styles.categories}>
-          {CATEGORIES.map((cat) => {
-            if (cat === "Falcı") {
+        <View style={styles.filtersRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesScroll}
+          >
+            {CATEGORIES.map((cat) => {
+              if (cat === "Falcı") {
+                return (
+                  <FalciCategoryBtn
+                    key={cat}
+                    active={activeCategory === cat}
+                    onPress={() => setActiveCategory(cat)}
+                  />
+                );
+              }
               return (
-                <FalciCategoryBtn
+                <Pressable
                   key={cat}
-                  active={activeCategory === cat}
-                  onPress={() => setActiveCategory(cat)}
-                />
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setActiveCategory(cat);
+                  }}
+                  style={[styles.catBtn, activeCategory === cat && styles.catBtnActive]}
+                >
+                  <Text style={[styles.catText, activeCategory === cat && styles.catTextActive]}>
+                    {cat}
+                  </Text>
+                </Pressable>
               );
-            }
-            return (
-              <Pressable
-                key={cat}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setActiveCategory(cat);
-                }}
-                style={[styles.catBtn, activeCategory === cat && styles.catBtnActive]}
-              >
-                <Text style={[styles.catText, activeCategory === cat && styles.catTextActive]}>
-                  {cat}
-                </Text>
-              </Pressable>
-            );
-          })}
+            })}
+            <TarotBtn />
+          </ScrollView>
         </View>
       </View>
 
@@ -237,10 +258,7 @@ export default function ExploreScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         numColumns={2}
-        contentContainerStyle={[
-          styles.grid,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
+        contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 100 }]}
         columnWrapperStyle={styles.row}
         showsVerticalScrollIndicator={false}
       />
@@ -273,60 +291,18 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     letterSpacing: -0.7,
   },
-  avatarBadge: {
-    position: "relative",
-  },
-  avatarFrame: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    padding: 2.5,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarInner: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#fff",
-  },
-  avatarPhoto: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: "#fff",
-  },
-  avatarInitial: {
-    fontSize: 17,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
-  levelBadge: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: Colors.accent,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  levelBadgeText: {
-    fontSize: 9,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
-  categories: {
+  avatarBadge: { position: "relative" },
+  avatarFrame: { width: 46, height: 46, borderRadius: 23, padding: 2.5, justifyContent: "center", alignItems: "center" },
+  avatarInner: { width: "100%", height: "100%", borderRadius: 20, justifyContent: "center", alignItems: "center", borderWidth: 1.5, borderColor: "#fff" },
+  avatarPhoto: { width: "100%", height: "100%", borderRadius: 20, borderWidth: 1.5, borderColor: "#fff" },
+  avatarInitial: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
+  levelBadge: { position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: Colors.accent, justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#fff" },
+  levelBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
+  filtersRow: {},
+  categoriesScroll: {
     flexDirection: "row",
     gap: 8,
-    flexWrap: "wrap",
+    paddingRight: 20,
   },
   catBtn: {
     paddingHorizontal: 14,
@@ -334,18 +310,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "rgba(0,0,0,0.06)",
   },
-  catBtnActive: {
-    backgroundColor: Colors.accent,
-  },
-  catText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: Colors.text.secondary,
-  },
-  catTextActive: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_600SemiBold",
-  },
+  catBtnActive: { backgroundColor: Colors.accent },
+  catText: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.text.secondary },
+  catTextActive: { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" },
   falciBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -355,27 +322,23 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1.5,
   },
-  falciFlame: {
-    fontSize: 13,
+  falciText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#16A34A" },
+  falciTextActive: { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" },
+  tarotBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
   },
-  falciText: {
+  tarotBtnText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
-    color: "#16A34A",
+    color: "#C084FC",
   },
-  falciTextActive: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_600SemiBold",
-  },
-  grid: {
-    paddingHorizontal: 14,
-    paddingTop: 12,
-  },
-  row: {
-    justifyContent: "space-between",
-  },
-  cardWrapper: {
-    flex: 1,
-    maxWidth: "50%",
-  },
+  grid: { paddingHorizontal: 14, paddingTop: 12 },
+  row: { justifyContent: "space-between" },
+  cardWrapper: { flex: 1, maxWidth: "50%" },
 });

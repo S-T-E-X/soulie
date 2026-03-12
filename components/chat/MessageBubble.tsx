@@ -8,6 +8,7 @@ import {
   ImageSourcePropType,
   PanResponder,
   Animated,
+  Pressable,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -29,6 +30,7 @@ interface Props {
   message: Message;
   avatarImage?: ImageSourcePropType;
   onReply?: (message: Message) => void;
+  onDelete?: (message: Message) => void;
 }
 
 const SWIPE_THRESHOLD = 60;
@@ -48,7 +50,7 @@ function GiftBubble({ giftId, isUser }: { giftId: string; isUser: boolean }) {
   );
 }
 
-function SwipeableAIBubble({ message, avatarImage, onReply }: Props) {
+function SwipeableAIBubble({ message, avatarImage, onReply, onDelete }: Props) {
   const translateX = useRef(new Animated.Value(0)).current;
   const triggered = useRef(false);
 
@@ -95,7 +97,12 @@ function SwipeableAIBubble({ message, avatarImage, onReply }: Props) {
   ).current;
 
   return (
-    <View style={[styles.row, styles.rowAI]} {...panResponder.panHandlers}>
+    <Pressable
+      onLongPress={onDelete ? () => onDelete(message) : undefined}
+      delayLongPress={500}
+      style={[styles.row, styles.rowAI]}
+      {...panResponder.panHandlers}
+    >
       <Animated.View style={[styles.aiRowInner, { transform: [{ translateX }] }]}>
         <View style={styles.avatarContainer}>
           {avatarImage ? (
@@ -117,19 +124,23 @@ function SwipeableAIBubble({ message, avatarImage, onReply }: Props) {
           </View>
         )}
       </Animated.View>
-    </View>
+    </Pressable>
   );
 }
 
-export function MessageBubble({ message, avatarImage, onReply }: Props) {
+export function MessageBubble({ message, avatarImage, onReply, onDelete }: Props) {
   const isUser = message.role === "user";
 
   if (!isUser) {
-    return <SwipeableAIBubble message={message} avatarImage={avatarImage} onReply={onReply} />;
+    return <SwipeableAIBubble message={message} avatarImage={avatarImage} onReply={onReply} onDelete={onDelete} />;
   }
 
   return (
-    <View style={[styles.row, styles.rowUser]}>
+    <Pressable
+      onLongPress={onDelete ? () => onDelete(message) : undefined}
+      delayLongPress={500}
+      style={[styles.row, styles.rowUser]}
+    >
       <View style={styles.bubbleUserWrapper}>
         {message.imageUri ? (
           <Image source={{ uri: message.imageUri }} style={styles.messageImage} resizeMode="cover" />
@@ -147,7 +158,7 @@ export function MessageBubble({ message, avatarImage, onReply }: Props) {
           </LinearGradient>
         ) : null}
       </View>
-    </View>
+    </Pressable>
   );
 }
 

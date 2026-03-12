@@ -33,9 +33,24 @@ interface AuthContextValue {
   login: (partial: Partial<User> & { name: string }) => Promise<void>;
   updateProfile: (partial: Partial<User>) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AUTH_STORAGE_KEY = "lumina_auth_user";
+
+const ALL_STORAGE_KEYS = [
+  "lumina_auth_user",
+  "soulie_conversations_v2",
+  "soulie_archive_msgs_v1",
+  "soulie_char_settings_v1",
+  "soulie_coins_v1",
+  "soulie_inventory_v1",
+  "soulie_streaks_v1",
+  "soulie_daily_quota_v1",
+  "soulie_weekly_missions_v1",
+  "soulie_bonus_xp_v1",
+  "soulie_tarot_v1",
+];
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -90,9 +105,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    try {
+      await AsyncStorage.multiRemove(ALL_STORAGE_KEYS);
+    } catch {}
+    setUser(null);
+  }, []);
+
   const value = useMemo(
-    () => ({ user, isAuthenticated: !!user, isLoading, login, updateProfile, logout }),
-    [user, isLoading, login, updateProfile, logout]
+    () => ({ user, isAuthenticated: !!user, isLoading, login, updateProfile, logout, deleteAccount }),
+    [user, isLoading, login, updateProfile, logout, deleteAccount]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
