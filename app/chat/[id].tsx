@@ -8,6 +8,7 @@ import {
   Platform,
   StatusBar,
   Image,
+  Modal,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
@@ -30,18 +31,44 @@ import { RelationshipBar } from "@/components/chat/RelationshipBar";
 import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
 import { useCharacterSettings } from "@/hooks/useCharacterSettings";
 import { useAutoMessages } from "@/hooks/useAutoMessages";
+import { useStreak } from "@/hooks/useStreak";
+import { useDailyQuota } from "@/hooks/useDailyQuota";
 import { getCharacter, type Character } from "@/constants/characters";
 import { getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 
+const IS_VIP = false;
+
+function CharacterAvatar({ character, size = 38 }: { character: Character; size?: number }) {
+  if (!character.image) {
+    return (
+      <LinearGradient
+        colors={character.gradientColors}
+        style={{ width: size, height: size, borderRadius: size / 2, justifyContent: "center", alignItems: "center" }}
+      >
+        <Feather name="eye" size={size * 0.45} color="rgba(255,255,255,0.9)" />
+      </LinearGradient>
+    );
+  }
+  return <Image source={character.image} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: "#E5E5EA" }} />;
+}
 
 function WelcomeMessage({ character, customName }: { character: Character; customName?: string }) {
   const displayName = customName || character.name;
   return (
     <Animated.View entering={FadeInUp.springify().damping(18)} style={styles.welcomeContainer}>
       <View style={styles.welcomeAvatarWrapper}>
-        <Image source={character.image} style={styles.welcomeAvatar} />
+        {character.image ? (
+          <Image source={character.image} style={styles.welcomeAvatar} />
+        ) : (
+          <LinearGradient
+            colors={character.gradientColors}
+            style={[styles.welcomeAvatar, { justifyContent: "center", alignItems: "center" }]}
+          >
+            <Feather name="eye" size={36} color="rgba(255,255,255,0.9)" />
+          </LinearGradient>
+        )}
         <LinearGradient
           colors={[...character.gradientColors]}
           style={styles.welcomeAvatarBorder}
@@ -63,6 +90,66 @@ function WelcomeMessage({ character, customName }: { character: Character; custo
   );
 }
 
+function QuotaPopup({
+  visible,
+  onClose,
+  onGoMarket,
+  resetCountdown,
+  language,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onGoMarket: () => void;
+  resetCountdown: string;
+  language: string;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.quotaBackdrop} onPress={onClose}>
+        <Pressable style={styles.quotaCard}>
+          {Platform.OS === "ios" ? (
+            <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F8F8FF" }]} />
+          )}
+          <View style={styles.quotaIconWrap}>
+            <LinearGradient colors={["#FF9500", "#FF6B00"]} style={styles.quotaIconGrad}>
+              <Feather name="zap-off" size={26} color="#fff" />
+            </LinearGradient>
+          </View>
+          <Text style={styles.quotaTitle}>
+            {language === "en" ? "Daily limit reached" : "Günlük limit doldu"}
+          </Text>
+          <Text style={styles.quotaDesc}>
+            {language === "en"
+              ? `Free users can send 15 messages per day. Resets in ${resetCountdown}.`
+              : `Ücretsiz kullanıcılar günde 15 mesaj gönderebilir. ${resetCountdown} içinde sıfırlanır.`}
+          </Text>
+          <Pressable
+            onPress={() => {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              onGoMarket();
+            }}
+            style={styles.quotaUpgradeBtn}
+          >
+            <LinearGradient colors={[Colors.userBubble.from, Colors.userBubble.to]} style={styles.quotaUpgradeBtnGrad}>
+              <Feather name="star" size={15} color="#fff" />
+              <Text style={styles.quotaUpgradeText}>
+                {language === "en" ? "Upgrade to VIP" : "VIP'e Yükselt"}
+              </Text>
+            </LinearGradient>
+          </Pressable>
+          <Pressable onPress={onClose} style={styles.quotaCloseBtn} hitSlop={8}>
+            <Text style={styles.quotaCloseText}>
+              {language === "en" ? "Later" : "Daha Sonra"}
+            </Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 export default function ChatScreen() {
   const params = useLocalSearchParams<{ characterId: string; id?: string }>();
   const characterId = params.characterId || params.id;
@@ -70,6 +157,8 @@ export default function ChatScreen() {
   const { getConversationByCharacter, createConversationWithMessages, loadConversations, isLoaded } = useChatContext();
   const { settings, isLoaded: settingsLoaded, updateSettings, addMemory, removeMemory } = useCharacterSettings(characterId ?? "");
   const { user } = useAuth();
+  const streak = useStreak(characterId ?? "");
+  const quota = useDailyQuota();
 
   const character = characterId ? getCharacter(characterId) : undefined;
 
@@ -80,6 +169,7 @@ export default function ChatScreen() {
   const [showCustomize, setShowCustomize] = useState(false);
   const [showGifts, setShowGifts] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
+  const [showQuotaPopup, setShowQuotaPopup] = useState(false);
 
   const userMessageCount = messages.filter(m => m.role === "user").length;
 
@@ -124,6 +214,12 @@ export default function ChatScreen() {
     async (text: string, imageUri?: string) => {
       if (isStreaming || !character || !settingsLoaded) return;
 
+      if (!IS_VIP && !quota.canSend) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setShowQuotaPopup(true);
+        return;
+      }
+
       const currentMessages = [...messages];
 
       let finalText = text;
@@ -145,6 +241,9 @@ export default function ChatScreen() {
       setIsStreaming(true);
       setShowTyping(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      await quota.markMessageSent();
+      streak.update(character.name, user?.language ?? "tr");
 
       try {
         const baseUrl = getApiUrl();
@@ -177,26 +276,23 @@ export default function ChatScreen() {
             selectedTraits: settings.traits,
             memories: settings.memories,
             userLanguage: user?.language ?? "tr",
-            voiceTone: settings.voiceTone,
           }),
         });
 
-        if (!response.ok) throw new Error("Request failed");
+        if (!response.body) throw new Error("No response body");
 
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error("No response body");
-
+        const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let fullContent = "";
         let buffer = "";
+        let fullContent = "";
         let assistantAdded = false;
         const assistantId = generateId();
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
           buffer += decoder.decode(value, { stream: true });
+
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
 
@@ -246,7 +342,7 @@ export default function ChatScreen() {
         setShowTyping(false);
       }
     },
-    [isStreaming, messages, character, settingsLoaded, settings, replyTo, createConversationWithMessages, extractMemoryIfNeeded]
+    [isStreaming, messages, character, settingsLoaded, settings, replyTo, createConversationWithMessages, extractMemoryIfNeeded, quota, streak, user]
   );
 
   const handleSendGift = useCallback(async (giftId: string) => {
@@ -302,18 +398,35 @@ export default function ChatScreen() {
             hitSlop={4}
           >
             <View style={styles.headerAvatarWrapper}>
-              <Image source={character.image} style={styles.headerAvatar} />
+              <CharacterAvatar character={character} size={38} />
               <View style={styles.headerOnlineDot} />
             </View>
             <View>
               <View style={styles.headerNameRow}>
                 <Text style={styles.headerName}>{displayName}</Text>
+                {streak.streak >= 2 ? (
+                  <View style={styles.headerStreakBadge}>
+                    <Feather name="zap" size={9} color="#FF9500" />
+                    <Text style={styles.headerStreakText}>{streak.streak}</Text>
+                  </View>
+                ) : null}
                 <Feather name="chevron-right" size={13} color={Colors.text.tertiary} />
               </View>
               <Text style={styles.headerStatus}>
                 {isStreaming ? "yazıyor..." : character.shortRole}
               </Text>
             </View>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({ pathname: "/video-chat/[characterId]", params: { characterId: character.id } });
+            }}
+            style={styles.headerSideBtn}
+            hitSlop={8}
+          >
+            <Feather name="video" size={18} color={Colors.text.secondary} />
           </Pressable>
 
           <Pressable
@@ -358,6 +471,20 @@ export default function ChatScreen() {
         />
 
         <View style={styles.inputArea}>
+          {!IS_VIP && quota.loaded ? (
+            <View style={styles.quotaBar}>
+              <Text style={styles.quotaBarText}>
+                {quota.remaining > 0
+                  ? `${quota.remaining}/${quota.DAILY_LIMIT} mesaj kaldı`
+                  : "Günlük limit doldu"}
+              </Text>
+              {quota.remaining === 0 ? (
+                <Pressable onPress={() => setShowQuotaPopup(true)}>
+                  <Text style={styles.quotaBarVipLink}>VIP'e geç</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
           <View style={styles.giftButtonRow}>
             <Pressable
               onPress={() => {
@@ -395,6 +522,17 @@ export default function ChatScreen() {
         onClose={() => setShowGifts(false)}
         onSendGift={handleSendGift}
       />
+
+      <QuotaPopup
+        visible={showQuotaPopup}
+        onClose={() => setShowQuotaPopup(false)}
+        onGoMarket={() => {
+          setShowQuotaPopup(false);
+          router.push("/(tabs)/market");
+        }}
+        resetCountdown={quota.getResetCountdown()}
+        language={user?.language ?? "tr"}
+      />
     </BackgroundGradient>
   );
 }
@@ -429,12 +567,6 @@ const styles = StyleSheet.create({
   headerAvatarWrapper: {
     position: "relative",
   },
-  headerAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#E5E5EA",
-  },
   headerOnlineDot: {
     position: "absolute",
     bottom: 0,
@@ -449,13 +581,27 @@ const styles = StyleSheet.create({
   headerNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
+    gap: 5,
   },
   headerName: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     color: Colors.text.primary,
     letterSpacing: -0.2,
+  },
+  headerStreakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "rgba(255,149,0,0.12)",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 7,
+  },
+  headerStreakText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: "#FF9500",
   },
   headerStatus: {
     fontSize: 11,
@@ -470,6 +616,24 @@ const styles = StyleSheet.create({
   },
   inputArea: {
     backgroundColor: "transparent",
+  },
+  quotaBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    gap: 8,
+  },
+  quotaBarText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.tertiary,
+  },
+  quotaBarVipLink: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.accent,
   },
   giftButtonRow: {
     flexDirection: "row",
@@ -548,19 +712,87 @@ const styles = StyleSheet.create({
   tagsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
+    gap: 8,
     justifyContent: "center",
-    gap: 6,
     marginTop: 4,
   },
   tag: {
     backgroundColor: "rgba(0,0,0,0.05)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 20,
   },
   tagText: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
     color: Colors.text.secondary,
+  },
+  quotaBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  quotaCard: {
+    width: "100%",
+    borderRadius: 28,
+    overflow: "hidden",
+    alignItems: "center",
+    paddingHorizontal: 28,
+    paddingVertical: 32,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  quotaIconWrap: {
+    marginBottom: 4,
+  },
+  quotaIconGrad: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  quotaTitle: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    color: Colors.text.primary,
+    letterSpacing: -0.5,
+    textAlign: "center",
+  },
+  quotaDesc: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.secondary,
+    textAlign: "center",
+    lineHeight: 21,
+  },
+  quotaUpgradeBtn: {
+    borderRadius: 16,
+    overflow: "hidden",
+    marginTop: 8,
+    width: "100%",
+  },
+  quotaUpgradeBtnGrad: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 15,
+    gap: 8,
+  },
+  quotaUpgradeText: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+  },
+  quotaCloseBtn: {
+    paddingVertical: 10,
+  },
+  quotaCloseText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.tertiary,
   },
 });

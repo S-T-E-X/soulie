@@ -215,7 +215,7 @@ export default function SettingsScreen() {
         contentInsetAdjustmentBehavior="automatic"
       >
         <AnimatedRN.View entering={FadeInDown.springify().damping(18)} style={styles.profileCard}>
-          <Pressable onPress={() => router.push("/(tabs)/profile")} style={{ flex: 1 }}>
+          <Pressable onPress={() => router.push("/profile" as any)} style={{ flex: 1 }}>
             <LinearGradient colors={["rgba(255,255,255,0.85)", "rgba(255,255,255,0.7)"]} style={styles.profileGradient}>
               {user?.profilePhoto ? (
                 <Image source={{ uri: user.profilePhoto }} style={styles.profileAvatarPhoto} />
@@ -251,7 +251,7 @@ export default function SettingsScreen() {
               value={user?.name}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/(tabs)/profile");
+                router.push("/profile" as any);
               }}
             />
             <View style={styles.rowDivider} />

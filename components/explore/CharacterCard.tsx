@@ -5,14 +5,12 @@ import {
   StyleSheet,
   Pressable,
   Image,
-  ActivityIndicator,
   Platform,
 } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  FadeIn,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
@@ -24,17 +22,58 @@ interface Props {
   character: Character;
   onPress: () => void;
   hasChat?: boolean;
+  streak?: number;
 }
 
-function CharacterImage({ source }: { source: any }) {
+function CharacterImage({ source, gradientColors, noImage }: { source: any; gradientColors: [string, string]; noImage?: boolean }) {
   const [loaded, setLoaded] = useState(false);
+
+  if (noImage || source == null) {
+    return (
+      <View style={StyleSheet.absoluteFill}>
+        <LinearGradient
+          colors={[gradientColors[0], gradientColors[1], "#0D0020"]}
+          locations={[0, 0.6, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.mysticalOverlay}>
+          <View style={styles.mysticalStars}>
+            {[...Array(6)].map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.star,
+                  {
+                    top: `${10 + (i * 13) % 70}%`,
+                    left: `${5 + (i * 17) % 80}%`,
+                    opacity: 0.3 + (i % 3) * 0.2,
+                    width: 2 + (i % 3),
+                    height: 2 + (i % 3),
+                  } as any,
+                ]}
+              />
+            ))}
+          </View>
+          <View style={styles.eyeContainer}>
+            <LinearGradient
+              colors={["#9B59B6", "#6B21A8"]}
+              style={styles.eyeGrad}
+            >
+              <Feather name="eye" size={28} color="rgba(255,255,255,0.9)" />
+            </LinearGradient>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={StyleSheet.absoluteFill}>
       {!loaded ? (
-        <View style={styles.imagePlaceholder}>
-          <ActivityIndicator size="small" color="rgba(255,255,255,0.4)" />
-        </View>
+        <LinearGradient
+          colors={[gradientColors[0], gradientColors[1]]}
+          style={StyleSheet.absoluteFill}
+        />
       ) : null}
       <Animated.Image
         source={source}
@@ -47,7 +86,7 @@ function CharacterImage({ source }: { source: any }) {
   );
 }
 
-export function CharacterCard({ character, onPress, hasChat }: Props) {
+export function CharacterCard({ character, onPress, hasChat, streak = 0 }: Props) {
   const scale = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -75,7 +114,11 @@ export function CharacterCard({ character, onPress, hasChat }: Props) {
         style={styles.pressable}
       >
         <View style={styles.card}>
-          <CharacterImage source={character.image} />
+          <CharacterImage
+            source={character.image}
+            gradientColors={character.gradientColors}
+            noImage={character.noImage}
+          />
 
           {character.isPremium ? (
             <View style={styles.premiumBadge}>
@@ -84,8 +127,15 @@ export function CharacterCard({ character, onPress, hasChat }: Props) {
             </View>
           ) : null}
 
+          {streak >= 2 ? (
+            <View style={styles.streakBadge}>
+              <Feather name="zap" size={10} color="#FF9500" />
+              <Text style={styles.streakText}>{streak}</Text>
+            </View>
+          ) : null}
+
           <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.55)"]}
+            colors={["transparent", "rgba(0,0,0,0.65)"]}
             style={styles.overlay}
           />
 
@@ -120,7 +170,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 20,
     overflow: "hidden",
-    backgroundColor: "#E5E5EA",
+    backgroundColor: "#1A0A2E",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
     aspectRatio: 0.72,
@@ -129,11 +179,32 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  imagePlaceholder: {
+  mysticalOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#D1D1D6",
     justifyContent: "center",
     alignItems: "center",
+  },
+  mysticalStars: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  star: {
+    position: "absolute",
+    borderRadius: 50,
+    backgroundColor: "#E0CFFF",
+  },
+  eyeContainer: {
+    marginTop: -16,
+  },
+  eyeGrad: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#9B59B6",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -157,6 +228,24 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: "#FFD700",
     letterSpacing: 0.5,
+  },
+  streakBadge: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 12,
+    gap: 3,
+    zIndex: 2,
+  },
+  streakText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: "#FF9500",
   },
   info: {
     position: "absolute",
@@ -199,8 +288,8 @@ const styles = StyleSheet.create({
   },
   activeDot: {
     position: "absolute",
-    top: 10,
-    left: 10,
+    bottom: 10,
+    right: 10,
     width: 10,
     height: 10,
     borderRadius: 5,

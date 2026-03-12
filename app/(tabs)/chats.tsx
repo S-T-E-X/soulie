@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,9 @@ import {
   Platform,
   StatusBar,
   Image,
+  Animated,
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import AnimatedRN, { FadeInDown } from "react-native-reanimated";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -17,9 +18,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
+import { WeeklyMissionsSheet } from "@/components/WeeklyMissionsSheet";
 import { useChatContext, type Conversation } from "@/contexts/ChatContext";
 import { getCharacter } from "@/constants/characters";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAllStreaks } from "@/hooks/useStreak";
+import { useWeeklyMissions } from "@/hooks/useWeeklyMissions";
 import Colors from "@/constants/colors";
 
 const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
@@ -48,14 +52,11 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
 
   return (
     <Pressable
-      onPress={() => router.push("/(tabs)/profile")}
+      onPress={() => router.push("/profile" as any)}
       style={({ pressed }) => [styles.avatarBadge, pressed && { opacity: 0.8 }]}
       hitSlop={6}
     >
-      <LinearGradient
-        colors={frameColors}
-        style={styles.avatarFrame}
-      >
+      <LinearGradient colors={frameColors} style={styles.avatarFrame}>
         {profilePhoto ? (
           <Image source={{ uri: profilePhoto }} style={styles.avatarPhoto} />
         ) : (
@@ -74,7 +75,7 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
   );
 }
 
-function ChatRow({ conversation, index }: { conversation: Conversation; index: number }) {
+function ChatRow({ conversation, index, streak = 0 }: { conversation: Conversation; index: number; streak?: number }) {
   const character = getCharacter(conversation.characterId);
   if (!character) return null;
 
@@ -89,7 +90,7 @@ function ChatRow({ conversation, index }: { conversation: Conversation; index: n
   };
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 50).springify().damping(18)}>
+    <AnimatedRN.View entering={FadeInDown.delay(index * 50).springify().damping(18)}>
       <Pressable
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -98,12 +99,29 @@ function ChatRow({ conversation, index }: { conversation: Conversation; index: n
         style={({ pressed }) => [styles.chatRow, pressed && { opacity: 0.75 }]}
       >
         <View style={styles.avatarContainer}>
-          <Image source={character.image} style={styles.avatar} />
+          {character.image ? (
+            <Image source={character.image} style={styles.avatar} />
+          ) : (
+            <LinearGradient
+              colors={character.gradientColors}
+              style={[styles.avatar, { justifyContent: "center", alignItems: "center" }]}
+            >
+              <Feather name="eye" size={20} color="rgba(255,255,255,0.8)" />
+            </LinearGradient>
+          )}
           <View style={styles.onlineDot} />
         </View>
         <View style={styles.chatInfo}>
           <View style={styles.chatTop}>
-            <Text style={styles.charName}>{character.name}</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.charName}>{character.name}</Text>
+              {streak >= 2 ? (
+                <View style={styles.streakPill}>
+                  <Feather name="zap" size={9} color="#FF9500" />
+                  <Text style={styles.streakCount}>{streak}</Text>
+                </View>
+              ) : null}
+            </View>
             <Text style={styles.time}>{timeAgo()}</Text>
           </View>
           <View style={styles.chatBottom}>
@@ -116,7 +134,7 @@ function ChatRow({ conversation, index }: { conversation: Conversation; index: n
           </View>
         </View>
       </Pressable>
-    </Animated.View>
+    </AnimatedRN.View>
   );
 }
 
@@ -148,20 +166,126 @@ function EmptyState() {
   );
 }
 
+function MissionsBanner({
+  completedCount,
+  totalMissions,
+  onPress,
+  bottom,
+}: {
+  completedCount: number;
+  totalMissions: number;
+  onPress: () => void;
+  bottom: number;
+}) {
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1500, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const glowOpacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.15] });
+  const allDone = completedCount === totalMissions;
+
+  return (
+    <Pressable
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+      }}
+      style={[styles.missionsBanner, { bottom }]}
+    >
+      <Animated.View
+        style={[StyleSheet.absoluteFill, { backgroundColor: allDone ? "#FFD700" : Colors.accent, borderRadius: 18, opacity: glowOpacity }]}
+      />
+      <LinearGradient
+        colors={allDone ? ["rgba(255,215,0,0.15)", "rgba(255,186,0,0.08)"] : ["rgba(0,122,255,0.1)", "rgba(0,122,255,0.04)"]}
+        style={[StyleSheet.absoluteFill, { borderRadius: 18 }]}
+      />
+      <View style={styles.missionsBannerLeft}>
+        <LinearGradient
+          colors={allDone ? ["#FFD700", "#FFB800"] : [Colors.userBubble.from, Colors.userBubble.to]}
+          style={styles.missionsBannerIcon}
+        >
+          <Feather name={allDone ? "award" : "target"} size={16} color="#fff" />
+        </LinearGradient>
+        <View>
+          <Text style={styles.missionsBannerTitle}>Haftalık Görevler</Text>
+          <Text style={styles.missionsBannerSub}>
+            {allDone ? "Tümünü tamamladın!" : `${completedCount}/${totalMissions} tamamlandı`}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.missionsBannerRight}>
+        <View style={styles.dotsRow}>
+          {Array.from({ length: totalMissions }).map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                i < completedCount && (allDone ? styles.dotGold : styles.dotDone),
+              ]}
+            />
+          ))}
+        </View>
+        <Feather name="chevron-right" size={14} color={Colors.text.tertiary} />
+      </View>
+    </Pressable>
+  );
+}
+
 export default function ChatsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { conversations, isLoaded, loadConversations } = useChatContext();
+  const [showMissions, setShowMissions] = React.useState(false);
+  const [streaks, setStreaks] = React.useState<Record<string, number>>({});
 
   useEffect(() => {
     loadConversations();
+    getAllStreaks().then((all) => {
+      const map: Record<string, number> = {};
+      for (const [id, data] of Object.entries(all)) map[id] = data.streak;
+      setStreaks(map);
+    });
   }, []);
 
   const sorted = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
   const totalMessages = conversations.reduce((acc, c) => acc + c.messages.length, 0);
   const xp = totalMessages * 10 + conversations.length * 5;
 
+  const now = Date.now();
+  const weekStart = now - 7 * 24 * 60 * 60 * 1000;
+  const weekUserMessages = conversations.flatMap((c) =>
+    c.messages.filter((m) => m.timestamp >= weekStart && m.role === "user")
+  );
+  const differentCharactersThisWeek = new Set(
+    conversations
+      .filter((c) => c.messages.some((m) => m.timestamp >= weekStart && m.role === "user"))
+      .map((c) => c.characterId)
+  ).size;
+  const chatDaysThisWeek = new Set(
+    weekUserMessages.map((m) => new Date(m.timestamp).toISOString().split("T")[0])
+  ).size;
+  const maxStreakThisWeek = Math.max(0, ...Object.values(streaks));
+
+  const { missions, getMissionProgress, completedCount, totalMissions, claimReward } =
+    useWeeklyMissions({
+      totalMessagesSentThisWeek: weekUserMessages.length,
+      differentCharactersThisWeek,
+      chatDaysThisWeek,
+      maxStreakThisWeek,
+    });
+
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const tabBarH = Platform.OS === "web" ? 84 : 83 + insets.bottom;
+  const bannerBottom = Platform.OS === "web" ? 34 + 84 + 10 : insets.bottom + 83 + 10;
 
   return (
     <BackgroundGradient>
@@ -180,17 +304,40 @@ export default function ChatsScreen() {
       <FlatList
         data={sorted}
         keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => <ChatRow conversation={item} index={index} />}
+        renderItem={({ item, index }) => (
+          <ChatRow
+            conversation={item}
+            index={index}
+            streak={streaks[item.characterId] ?? 0}
+          />
+        )}
         ListEmptyComponent={isLoaded ? <EmptyState /> : null}
         contentContainerStyle={[
           styles.list,
-          { paddingBottom: insets.bottom + 100 },
+          { paddingBottom: tabBarH + 80 },
         ]}
         showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="automatic"
-        ItemSeparatorComponent={() => (
-          <View style={styles.separator} />
-        )}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+
+      {missions.length > 0 ? (
+        <MissionsBanner
+          completedCount={completedCount}
+          totalMissions={totalMissions}
+          onPress={() => setShowMissions(true)}
+          bottom={bannerBottom}
+        />
+      ) : null}
+
+      <WeeklyMissionsSheet
+        visible={showMissions}
+        onClose={() => setShowMissions(false)}
+        missions={missions}
+        getMissionProgress={getMissionProgress}
+        completedCount={completedCount}
+        totalMissions={totalMissions}
+        language={user?.language ?? "tr"}
+        claimReward={claimReward}
       />
     </BackgroundGradient>
   );
@@ -311,11 +458,30 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   charName: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
     color: Colors.text.primary,
     letterSpacing: -0.2,
+  },
+  streakPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "rgba(255,149,0,0.12)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  streakCount: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: "#FF9500",
   },
   time: {
     fontSize: 11,
@@ -393,5 +559,70 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     color: "#FFFFFF",
+  },
+  missionsBanner: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(0,122,255,0.12)",
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+    overflow: "hidden",
+  },
+  missionsBannerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  missionsBannerIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  missionsBannerTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.text.primary,
+    letterSpacing: -0.2,
+  },
+  missionsBannerSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.secondary,
+    marginTop: 1,
+  },
+  missionsBannerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  dotsRow: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.1)",
+  },
+  dotDone: {
+    backgroundColor: Colors.accent,
+  },
+  dotGold: {
+    backgroundColor: "#FFD700",
   },
 });

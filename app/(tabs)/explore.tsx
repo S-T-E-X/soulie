@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,9 @@ import {
   Platform,
   StatusBar,
   Image,
+  Animated,
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import AnimatedRN, { FadeInDown } from "react-native-reanimated";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,9 +20,10 @@ import { CharacterCard } from "@/components/explore/CharacterCard";
 import { CHARACTERS } from "@/constants/characters";
 import { useChatContext } from "@/contexts/ChatContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAllStreaks } from "@/hooks/useStreak";
 import Colors from "@/constants/colors";
 
-const CATEGORIES = ["Tümü", "Sevgili", "Arkadaş", "Mentor"];
+const CATEGORIES = ["Tümü", "Sevgili", "Arkadaş", "Mentor", "Falcı"];
 
 const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
 
@@ -49,7 +51,7 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
 
   return (
     <Pressable
-      onPress={() => router.push("/(tabs)/profile")}
+      onPress={() => router.push("/profile" as any)}
       style={({ pressed }) => [styles.avatarBadge, pressed && { opacity: 0.8 }]}
       hitSlop={6}
     >
@@ -72,14 +74,87 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
   );
 }
 
+function FalciCategoryBtn({ active, onPress }: { active: boolean; onPress: () => void }) {
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 900, useNativeDriver: false }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 900, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const bgColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: active
+      ? ["rgba(74,222,128,0.85)", "rgba(34,197,94,1)"]
+      : ["rgba(74,222,128,0.12)", "rgba(34,197,94,0.22)"],
+  });
+
+  const borderColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(74,222,128,0.4)", "rgba(74,222,128,0.9)"],
+  });
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true }).start();
+  };
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
+  };
+
+  return (
+    <Pressable
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+      }}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View
+        style={[
+          styles.falciBtn,
+          { backgroundColor: bgColor, borderColor, transform: [{ scale: scaleAnim }] },
+        ]}
+      >
+        <Animated.Text
+          style={[
+            styles.falciFlame,
+            {
+              opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }),
+            },
+          ]}
+        >
+          {"\u{1F52E}"}
+        </Animated.Text>
+        <Text style={[styles.falciText, active && styles.falciTextActive]}>Falcı</Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { loadConversations, conversations, getConversationByCharacter } = useChatContext();
   const [activeCategory, setActiveCategory] = React.useState("Tümü");
+  const [streaks, setStreaks] = React.useState<Record<string, number>>({});
 
   useEffect(() => {
     loadConversations();
+    getAllStreaks().then((all) => {
+      const map: Record<string, number> = {};
+      for (const [id, data] of Object.entries(all)) {
+        map[id] = data.streak;
+      }
+      setStreaks(map);
+    });
   }, []);
 
   const totalMessages = conversations.reduce((acc, c) => acc + c.messages.length, 0);
@@ -87,7 +162,10 @@ export default function ExploreScreen() {
 
   const filtered = activeCategory === "Tümü"
     ? CHARACTERS
-    : CHARACTERS.filter((c) => c.role === activeCategory || (activeCategory === "Mentor" && c.role === "Yaşam Koçu") || (activeCategory === "Mentor" && c.role === "Çalışma Arkadaşı"));
+    : CHARACTERS.filter((c) => {
+        if (activeCategory === "Mentor") return c.role === "Yaşam Koçu" || c.role === "Çalışma Arkadaşı";
+        return c.role === activeCategory;
+      });
 
   const handleCharacterPress = useCallback((characterId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -97,7 +175,7 @@ export default function ExploreScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const renderItem = ({ item, index }: any) => (
-    <Animated.View
+    <AnimatedRN.View
       entering={FadeInDown.delay(index * 60).springify().damping(18)}
       style={styles.cardWrapper}
     >
@@ -105,8 +183,9 @@ export default function ExploreScreen() {
         character={item}
         onPress={() => handleCharacterPress(item.id)}
         hasChat={!!getConversationByCharacter(item.id)}
+        streak={streaks[item.id] ?? 0}
       />
-    </Animated.View>
+    </AnimatedRN.View>
   );
 
   return (
@@ -117,7 +196,7 @@ export default function ExploreScreen() {
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.greeting}>
-              Merhaba{user?.name ? `, ${user.name}` : ""} 👋
+              Merhaba{user?.name ? `, ${user.name}` : ""}
             </Text>
             <Text style={styles.headerTitle}>Karakterleri Keşfet</Text>
           </View>
@@ -125,17 +204,31 @@ export default function ExploreScreen() {
         </View>
 
         <View style={styles.categories}>
-          {CATEGORIES.map((cat) => (
-            <Pressable
-              key={cat}
-              onPress={() => setActiveCategory(cat)}
-              style={[styles.catBtn, activeCategory === cat && styles.catBtnActive]}
-            >
-              <Text style={[styles.catText, activeCategory === cat && styles.catTextActive]}>
-                {cat}
-              </Text>
-            </Pressable>
-          ))}
+          {CATEGORIES.map((cat) => {
+            if (cat === "Falcı") {
+              return (
+                <FalciCategoryBtn
+                  key={cat}
+                  active={activeCategory === cat}
+                  onPress={() => setActiveCategory(cat)}
+                />
+              );
+            }
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setActiveCategory(cat);
+                }}
+                style={[styles.catBtn, activeCategory === cat && styles.catBtnActive]}
+              >
+                <Text style={[styles.catText, activeCategory === cat && styles.catTextActive]}>
+                  {cat}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
@@ -233,6 +326,7 @@ const styles = StyleSheet.create({
   categories: {
     flexDirection: "row",
     gap: 8,
+    flexWrap: "wrap",
   },
   catBtn: {
     paddingHorizontal: 14,
@@ -249,6 +343,27 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
   },
   catTextActive: {
+    color: "#FFFFFF",
+    fontFamily: "Inter_600SemiBold",
+  },
+  falciBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  falciFlame: {
+    fontSize: 13,
+  },
+  falciText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: "#16A34A",
+  },
+  falciTextActive: {
     color: "#FFFFFF",
     fontFamily: "Inter_600SemiBold",
   },

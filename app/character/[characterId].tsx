@@ -157,11 +157,21 @@ export default function CharacterProfileScreen() {
       >
         <View style={{ height: PHOTO_HEIGHT }}>
           <Animated.View style={[{ height: PHOTO_HEIGHT, overflow: "hidden" }, photoAnimStyle]}>
-            <Image
-              source={character.image}
-              style={styles.photo}
-              resizeMode="cover"
-            />
+            {character.image ? (
+              <Image
+                source={character.image}
+                style={styles.photo}
+                resizeMode="cover"
+              />
+            ) : (
+              <LinearGradient
+                colors={[character.gradientColors[0], character.gradientColors[1], "#0D0020"]}
+                locations={[0, 0.6, 1]}
+                style={[styles.photo, { justifyContent: "center", alignItems: "center" }]}
+              >
+                <Feather name="eye" size={56} color="rgba(255,255,255,0.5)" />
+              </LinearGradient>
+            )}
             <LinearGradient
               colors={["transparent", "rgba(0,0,0,0.2)", "rgba(0,0,0,0.7)", "rgba(0,0,0,0.92)"]}
               locations={[0.3, 0.55, 0.78, 1]}

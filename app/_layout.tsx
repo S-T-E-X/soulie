@@ -31,6 +31,10 @@ function RootLayoutNav() {
         name="character/[characterId]"
         options={{ presentation: "modal", animation: "slide_from_bottom" }}
       />
+      <Stack.Screen
+        name="video-chat/[characterId]"
+        options={{ presentation: "modal", animation: "slide_from_bottom" }}
+      />
     </Stack>
   );
 }
