@@ -13,6 +13,7 @@ export type UserLanguage = "tr" | "en";
 export type UserGender = "male" | "female" | "other" | "prefer_not_to_say";
 
 const ADMIN_EMAILS = ["admin@soulie.app", "soulie_admin@admin.com"];
+const ADMIN_USERNAMES = ["yusuf"];
 
 export type User = {
   id: string;
@@ -80,7 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (partial: Partial<User> & { name: string }) => {
-    const isAdmin = ADMIN_EMAILS.includes(partial.email?.toLowerCase() ?? "");
+    const username = partial.name.toLowerCase().replace(/\s+/g, "_");
+    const isAdmin = ADMIN_EMAILS.includes(partial.email?.toLowerCase() ?? "") || ADMIN_USERNAMES.includes(username);
     const newUser: User = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 6),
       name: partial.name,
