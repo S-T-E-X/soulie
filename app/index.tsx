@@ -5,18 +5,23 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function SplashScreen() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (isLoading) return;
+    if (!user) {
+      router.replace("/auth/welcome");
+    } else if (!user.onboardingComplete) {
+      router.replace("/auth/onboarding");
+    } else {
       router.replace("/(tabs)/explore");
     }
-  }, [isLoading, isAuthenticated]);
+  }, [isLoading, user]);
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["#E8EFF8", "#F2F2F7", "#EEF1F8"]}
+        colors={["#1a1a2e", "#16213e", "#0f3460"]}
         style={StyleSheet.absoluteFill}
       />
     </View>

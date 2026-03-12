@@ -49,8 +49,9 @@ function buildAdvancedPrompt(params: {
   selectedTraits?: string[];
   userMemories?: string[];
   userLevel: number;
+  userLanguage?: string;
 }): string {
-  const { characterId, customName, selectedTraits, userMemories = [], userLevel } = params;
+  const { characterId, customName, selectedTraits, userMemories = [], userLevel, userLanguage = "tr" } = params;
   const charBase = CHAR_BASE_PROMPTS[characterId];
   const charName = customName || charBase?.name || "Soulie";
   const traits = (selectedTraits && selectedTraits.length > 0)
@@ -67,10 +68,14 @@ function buildAdvancedPrompt(params: {
     ? `\n### UZUN VADELI HAFIZA (ÖNEMLİ ANLAR)\nAşağıdaki bilgileri unutma. Doğrudan yüzüne vurma ama uygun anlarda nazikçe sor veya alt metinde hissettir:\n${userMemories.map((m, i) => `${i + 1}. ${m}`).join("\n")}`
     : "";
 
+  const languageInstruction = userLanguage === "en"
+    ? "You MUST respond in English. The user has chosen English as their language."
+    : "Türkçe konuş. Kullanıcı dil olarak Türkçe'yi seçmiştir.";
+
   return `### KİMLİK VE ROL
 Senin adın ${charName}. Kullanıcı seni bu isimle çağırmayı seçti. Bir yapay zeka olduğunu asla söyleme; tamamen bu kimliğe bürün.
 ${charBase?.basePrompt ?? ""}
-Türkçe konuş. Asla robotik ya da yapay zeka gibi cevap verme.
+${languageInstruction} Asla robotik ya da yapay zeka gibi cevap verme.
 
 ### KİŞİLİK YAPISI
 Seçilen özellikler: ${traits.join(", ") || "genel samimi"}
@@ -90,7 +95,7 @@ ${memoriesSection}
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages, characterId, userLevel = 1, customName, selectedTraits, memories } = req.body;
+      const { messages, characterId, userLevel = 1, customName, selectedTraits, memories, userLanguage } = req.body;
 
       if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: "Messages array is required" });
@@ -102,6 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         selectedTraits,
         userMemories: memories,
         userLevel,
+        userLanguage,
       });
 
       res.setHeader("Content-Type", "text/event-stream");

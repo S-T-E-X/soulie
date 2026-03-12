@@ -1,16 +1,19 @@
-# Lumina AI — replit.md
+# Soulie — replit.md
 
 ## Overview
 
-Lumina AI is a Turkish-language AI companion mobile app built with Expo (React Native). Users can chat with various AI personas (companions, friends, mentors) in Turkish. Each persona has a distinct personality and system prompt. The app supports user authentication, persistent conversations, streaming AI responses, and a subscription/market screen.
+Soulie is a Turkish/English AI companion mobile app built with Expo (React Native). Users can chat with various AI personas (companions, friends, mentors). Each persona has a distinct personality and system prompt. The app supports onboarding/auth flow, persistent conversations, streaming AI responses, a market screen, and user profiles.
 
 **Core features:**
+- Welcome screen (background image + 3 login buttons) → Onboarding wizard (5 steps)
 - Browse AI characters (Explore tab)
 - Real-time streaming chat with persona-specific AI characters
 - Conversation history persistence
-- User registration/login (local, AsyncStorage-based)
+- User profile page with photo upload and hobbies
+- Multi-language support (TR/EN) — AI responds in user's selected language
 - Subscription plans (Market tab)
 - Settings and account management
+- Privacy Policy page
 
 The project runs two processes: an **Expo frontend** (React Native / web) and an **Express backend** that proxies requests to OpenAI and manages chat data.
 
@@ -28,12 +31,16 @@ Preferred communication style: Simple, everyday language.
 
 - **Framework:** Expo SDK ~54, React Native 0.81, using the Expo Router v6 file-based routing system.
 - **Navigation structure:**
-  - `/` (index) — Login/Register screen
+  - `/` (index) — Splash/router (redirects based on auth state)
+  - `/auth/welcome` — Landing screen with background image + 3 sign-in buttons
+  - `/auth/onboarding` — 5-page onboarding wizard (language, name, birthdate, gender, processing)
   - `/(tabs)/explore` — Browse AI characters
   - `/(tabs)/chats` — Conversation list
   - `/(tabs)/market` — Subscription plans
+  - `/(tabs)/profile` — User profile (photo, bio, hobbies, logout)
   - `/(tabs)/settings` — Account settings
   - `/chat/[id]` — Individual chat screen (dynamic route)
+  - `/privacy` — Privacy policy page (modal)
 - **State management:**
   - `AuthContext` — Manages user session using `AsyncStorage` (no server-side sessions for auth; entirely client-local).
   - `ChatContext` — Manages conversation list and messages using `AsyncStorage` (`lumina_conversations_v2` key). Conversations are stored locally on the device.

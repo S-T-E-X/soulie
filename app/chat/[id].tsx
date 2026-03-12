@@ -30,6 +30,7 @@ import { useChatContext, generateId, type Message } from "@/contexts/ChatContext
 import { useCharacterSettings } from "@/hooks/useCharacterSettings";
 import { getCharacter, type Character } from "@/constants/characters";
 import { getApiUrl } from "@/lib/query-client";
+import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 
 const IS_VIP = false;
@@ -67,6 +68,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { getConversationByCharacter, createConversationWithMessages, loadConversations, isLoaded } = useChatContext();
   const { settings, isLoaded: settingsLoaded, updateSettings, addMemory, removeMemory } = useCharacterSettings(characterId ?? "");
+  const { user } = useAuth();
 
   const character = characterId ? getCharacter(characterId) : undefined;
 
@@ -169,6 +171,7 @@ export default function ChatScreen() {
             customName: settings.customName,
             selectedTraits: settings.traits,
             memories: settings.memories,
+            userLanguage: user?.language ?? "tr",
           }),
         });
 

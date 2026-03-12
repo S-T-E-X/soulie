@@ -24,6 +24,8 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerShown: false, animation: "ios_from_right" }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="auth" options={{ animation: "fade" }} />
+      <Stack.Screen name="privacy" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
       <Stack.Screen name="chat/[id]" />
       <Stack.Screen
         name="character/[characterId]"

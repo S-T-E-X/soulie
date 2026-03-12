@@ -1,0 +1,580 @@
+import React, { useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  TextInput,
+  Platform,
+  Alert,
+  Image,
+  Modal,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
+import { useAuth } from "@/contexts/AuthContext";
+import Colors from "@/constants/colors";
+
+const ACCENT = "#6C5CE7";
+
+const GENDER_LABELS: Record<string, string> = {
+  male: "Erkek",
+  female: "Kadın",
+  other: "Diğer",
+  prefer_not_to_say: "Belirtilmedi",
+};
+
+const LANG_LABELS: Record<string, string> = {
+  tr: "🇹🇷 Türkçe",
+  en: "🇬🇧 English",
+};
+
+const DEFAULT_HOBBIES = [
+  "Müzik", "Spor", "Okumak", "Seyahat", "Yemek Pişirme",
+  "Film", "Doğa", "Teknoloji", "Sanat", "Dans",
+];
+
+function Avatar({
+  uri,
+  name,
+  onPress,
+}: {
+  uri?: string | null;
+  name: string;
+  onPress: () => void;
+}) {
+  const initials = name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <Pressable style={styles.avatarContainer} onPress={onPress}>
+      {uri ? (
+        <Image source={{ uri }} style={styles.avatarImage} />
+      ) : (
+        <View style={styles.avatarPlaceholder}>
+          <Text style={styles.avatarInitials}>{initials}</Text>
+        </View>
+      )}
+      <View style={styles.avatarEditBadge}>
+        <Feather name="camera" size={14} color="#fff" />
+      </View>
+    </Pressable>
+  );
+}
+
+export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
+  const { user, updateProfile, logout } = useAuth();
+
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState(user?.name ?? "");
+  const [editBio, setEditBio] = useState(user?.bio ?? "");
+  const [editHobbies, setEditHobbies] = useState<string[]>(user?.hobbies ?? []);
+  const [customHobby, setCustomHobby] = useState("");
+  const [showHobbyPicker, setShowHobbyPicker] = useState(false);
+
+  const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
+  const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+
+  const pickImage = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("İzin Gerekli", "Fotoğraf seçmek için galeri izni gerekiyor.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      await updateProfile({ profilePhoto: result.assets[0].uri });
+    }
+  }, [updateProfile]);
+
+  const saveProfile = useCallback(async () => {
+    await updateProfile({
+      name: editName.trim() || user?.name,
+      bio: editBio,
+      hobbies: editHobbies,
+    });
+    setEditMode(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [editName, editBio, editHobbies, updateProfile]);
+
+  const toggleHobby = (hobby: string) => {
+    setEditHobbies((prev) =>
+      prev.includes(hobby) ? prev.filter((h) => h !== hobby) : [...prev, hobby]
+    );
+  };
+
+  const addCustomHobby = () => {
+    const h = customHobby.trim();
+    if (h && !editHobbies.includes(h)) {
+      setEditHobbies((prev) => [...prev, h]);
+    }
+    setCustomHobby("");
+    setShowHobbyPicker(false);
+  };
+
+  const handleLogout = () => {
+    Alert.alert("Çıkış Yap", "Hesabından çıkmak istediğine emin misin?", [
+      { text: "İptal", style: "cancel" },
+      {
+        text: "Çıkış Yap",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+          router.replace("/");
+        },
+      },
+    ]);
+  };
+
+  const displayHobbies = editMode ? editHobbies : user?.hobbies ?? [];
+
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: topPad + 16, paddingBottom: botPad + 90 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.topBar}>
+          <Text style={styles.screenTitle}>Profil</Text>
+          {!editMode ? (
+            <Pressable
+              style={styles.editBtn}
+              onPress={() => {
+                setEditName(user?.name ?? "");
+                setEditBio(user?.bio ?? "");
+                setEditHobbies(user?.hobbies ?? []);
+                setEditMode(true);
+              }}
+            >
+              <Feather name="edit-2" size={18} color={ACCENT} />
+            </Pressable>
+          ) : (
+            <Pressable style={styles.editBtn} onPress={saveProfile}>
+              <Text style={styles.saveText}>Kaydet</Text>
+            </Pressable>
+          )}
+        </View>
+
+        <View style={styles.profileHeader}>
+          <Avatar uri={user?.profilePhoto} name={user?.name ?? "U"} onPress={pickImage} />
+          {editMode ? (
+            <TextInput
+              style={styles.nameInput}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Adın"
+              placeholderTextColor="rgba(0,0,0,0.3)"
+              maxLength={30}
+              textAlign="center"
+            />
+          ) : (
+            <Text style={styles.userName}>{user?.name ?? "Kullanıcı"}</Text>
+          )}
+          {user?.email && <Text style={styles.userEmail}>{user.email}</Text>}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Hakkımda</Text>
+          {editMode ? (
+            <TextInput
+              style={styles.bioInput}
+              value={editBio}
+              onChangeText={setEditBio}
+              placeholder="Kendini kısaca anlat..."
+              placeholderTextColor="rgba(0,0,0,0.3)"
+              multiline
+              numberOfLines={3}
+              maxLength={200}
+            />
+          ) : (
+            <Text style={styles.bioText}>
+              {user?.bio ? user.bio : "Henüz bir şey yazılmadı..."}
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Hobiler & İlgi Alanları</Text>
+          <View style={styles.hobbiesWrap}>
+            {displayHobbies.map((h) => (
+              <Pressable
+                key={h}
+                style={[styles.hobbyChip, editMode && styles.hobbyChipEdit]}
+                onPress={() => editMode && toggleHobby(h)}
+              >
+                <Text style={styles.hobbyChipText}>{h}</Text>
+                {editMode && (
+                  <Feather name="x" size={12} color={ACCENT} style={{ marginLeft: 4 }} />
+                )}
+              </Pressable>
+            ))}
+            {editMode && (
+              <Pressable
+                style={styles.addHobbyChip}
+                onPress={() => setShowHobbyPicker(true)}
+              >
+                <Feather name="plus" size={14} color={ACCENT} />
+                <Text style={styles.addHobbyText}>Ekle</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Bilgiler</Text>
+          <View style={styles.infoCard}>
+            {user?.birthdate && (
+              <View style={styles.infoRow}>
+                <Ionicons name="calendar-outline" size={18} color="#888" />
+                <Text style={styles.infoLabel}>Doğum Tarihi</Text>
+                <Text style={styles.infoValue}>{user.birthdate}</Text>
+              </View>
+            )}
+            {user?.gender && (
+              <View style={styles.infoRow}>
+                <Ionicons name="person-outline" size={18} color="#888" />
+                <Text style={styles.infoLabel}>Cinsiyet</Text>
+                <Text style={styles.infoValue}>{GENDER_LABELS[user.gender] ?? user.gender}</Text>
+              </View>
+            )}
+            <View style={styles.infoRow}>
+              <Ionicons name="globe-outline" size={18} color="#888" />
+              <Text style={styles.infoLabel}>Dil</Text>
+              <Text style={styles.infoValue}>{LANG_LABELS[user?.language ?? "tr"]}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Diğer</Text>
+          <View style={styles.menuCard}>
+            <Pressable
+              style={styles.menuRow}
+              onPress={() => router.push("/privacy")}
+            >
+              <Feather name="shield" size={18} color="#888" />
+              <Text style={styles.menuLabel}>Gizlilik Politikası</Text>
+              <Feather name="chevron-right" size={16} color="#CCC" />
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable style={styles.menuRow} onPress={handleLogout}>
+              <Feather name="log-out" size={18} color="#FF3B30" />
+              <Text style={[styles.menuLabel, { color: "#FF3B30" }]}>Çıkış Yap</Text>
+              <Feather name="chevron-right" size={16} color="#CCC" />
+            </Pressable>
+          </View>
+        </View>
+      </ScrollView>
+
+      <Modal visible={showHobbyPicker} transparent animationType="slide">
+        <Pressable style={styles.modalOverlay} onPress={() => setShowHobbyPicker(false)} />
+        <View style={[styles.modalSheet, { paddingBottom: botPad + 16 }]}>
+          <Text style={styles.modalTitle}>Hobi Seç veya Ekle</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {DEFAULT_HOBBIES.filter((h) => !editHobbies.includes(h)).map((h) => (
+                <Pressable
+                  key={h}
+                  style={styles.suggestChip}
+                  onPress={() => {
+                    toggleHobby(h);
+                    setShowHobbyPicker(false);
+                  }}
+                >
+                  <Text style={styles.suggestChipText}>{h}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
+          <View style={styles.customHobbyRow}>
+            <TextInput
+              style={styles.customHobbyInput}
+              value={customHobby}
+              onChangeText={setCustomHobby}
+              placeholder="Özel hobi yaz..."
+              placeholderTextColor="rgba(0,0,0,0.3)"
+              returnKeyType="done"
+              onSubmitEditing={addCustomHobby}
+            />
+            <Pressable style={styles.customHobbyBtn} onPress={addCustomHobby}>
+              <Feather name="plus" size={20} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8F8FC" },
+  scrollContent: { paddingHorizontal: 20 },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  screenTitle: {
+    fontSize: 28,
+    fontFamily: "Inter_700Bold",
+    color: "#111",
+  },
+  editBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: `${ACCENT}15`,
+  },
+  saveText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: ACCENT,
+  },
+  profileHeader: {
+    alignItems: "center",
+    marginBottom: 28,
+    gap: 10,
+  },
+  avatarContainer: {
+    position: "relative",
+    marginBottom: 4,
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: ACCENT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitials: {
+    fontSize: 36,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  avatarEditBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#333",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#F8F8FC",
+  },
+  userName: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: "#111",
+  },
+  nameInput: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: "#111",
+    borderBottomWidth: 2,
+    borderBottomColor: ACCENT,
+    paddingBottom: 4,
+    minWidth: 120,
+    textAlign: "center",
+  },
+  userEmail: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "#888",
+  },
+  section: { marginBottom: 24 },
+  sectionTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#888",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 10,
+  },
+  bioInput: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 14,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: "#333",
+    minHeight: 80,
+    textAlignVertical: "top",
+    borderWidth: 1.5,
+    borderColor: `${ACCENT}40`,
+  },
+  bioText: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: "#555",
+    lineHeight: 22,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 14,
+  },
+  hobbiesWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  hobbyChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: `${ACCENT}18`,
+    borderWidth: 1,
+    borderColor: `${ACCENT}30`,
+  },
+  hobbyChipEdit: {
+    borderStyle: "dashed",
+  },
+  hobbyChipText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: ACCENT,
+  },
+  addHobbyChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: ACCENT,
+    borderStyle: "dashed",
+    gap: 4,
+  },
+  addHobbyText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: ACCENT,
+  },
+  infoCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#F0F0F0",
+  },
+  infoLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: "#555",
+  },
+  infoValue: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: "#333",
+  },
+  menuCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  menuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  menuLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: "#333",
+  },
+  menuDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#F0F0F0",
+    marginHorizontal: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  modalSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_600SemiBold",
+    color: "#111",
+    marginBottom: 16,
+  },
+  suggestChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: `${ACCENT}15`,
+    borderWidth: 1,
+    borderColor: `${ACCENT}30`,
+  },
+  suggestChipText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: ACCENT,
+  },
+  customHobbyRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  customHobbyInput: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: "#E5E5E5",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: "#333",
+  },
+  customHobbyBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: ACCENT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
