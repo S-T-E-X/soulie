@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   Pressable,
   Platform,
   Alert,
-  FlatList,
   Switch,
   TextInput,
   ActivityIndicator,
@@ -41,7 +40,9 @@ const TEXT_PRI = "#FFFFFF";
 const TEXT_SEC = "rgba(255,255,255,0.55)";
 const TEXT_TER = "rgba(255,255,255,0.3)";
 
-type AdminTab = "dashboard" | "user" | "economy" | "ai" | "tasks";
+type TopSection = "app" | "user";
+type AppTab = "genel" | "ai" | "engagement";
+type UserTab = "profil" | "ekonomi" | "hafiza";
 
 type FeedbackEntry = {
   id: string;
@@ -90,13 +91,17 @@ function StatGrid({ items }: { items: { label: string; value: string; color: str
   );
 }
 
-function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function InfoRow({ label, value, mono, last }: { label: string; value: string; mono?: boolean; last?: boolean }) {
   return (
-    <View style={styles.infoRow}>
+    <View style={[styles.infoRow, last && { borderBottomWidth: 0 }]}>
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={[styles.infoValue, mono && { fontFamily: "Inter_400Regular", fontSize: 11 }]} numberOfLines={1} ellipsizeMode="middle">{value}</Text>
     </View>
   );
+}
+
+function Divider() {
+  return <View style={styles.divider} />;
 }
 
 export default function AdminScreen() {
@@ -104,15 +109,19 @@ export default function AdminScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const { user, updateProfile, grantAdminAccess } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { conversations } = useChatContext();
 
-  const [tab, setTab] = useState<AdminTab>("dashboard");
+  const [section, setSection] = useState<TopSection>("app");
+  const [appTab, setAppTab] = useState<AppTab>("genel");
+  const [userTab, setUserTab] = useState<UserTab>("profil");
+
   const [feedbackList, setFeedbackList] = useState<FeedbackEntry[]>([]);
   const [coins, setCoins] = useState(0);
   const [inventory, setInventory] = useState<{ giftId: string; quantity: number }[]>([]);
   const [quota, setQuota] = useState<{ count: number; bonusMessages: number } | null>(null);
   const [charSettings, setCharSettings] = useState<Record<string, any>>({});
+  const [streaks, setStreaks] = useState<Record<string, any>>({});
   const [globalPrompt, setGlobalPrompt] = useState("");
   const [promptLoading, setPromptLoading] = useState(false);
   const [promptSaved, setPromptSaved] = useState(false);
@@ -121,7 +130,6 @@ export default function AdminScreen() {
   const [notifBody, setNotifBody] = useState("");
   const [secretTaps, setSecretTaps] = useState(0);
   const [loaded, setLoaded] = useState(false);
-  const [streaks, setStreaks] = useState<Record<string, any>>({});
 
   useEffect(() => {
     if (!user?.isAdmin) return;
@@ -171,13 +179,13 @@ export default function AdminScreen() {
       setTimeout(() => setPromptSaved(false), 2000);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert("Hata", "Sistem promptu kaydedilemedi.");
+      Alert.alert("Hata", "Kaydedilemedi.");
     } finally {
       setPromptLoading(false);
     }
   };
 
-  const resetGlobalPrompt = async () => {
+  const resetGlobalPrompt = () => {
     Alert.alert("Sıfırla", "Global sistem promptunu sıfırlamak istiyor musun?", [
       { text: "İptal", style: "cancel" },
       {
@@ -198,25 +206,17 @@ export default function AdminScreen() {
     await updateProfile({ isVip: newVip });
   };
 
-  const toggleBan = () => {
-    Alert.alert("Ban/Suspend", "Bu özellik gerçek bir backend gerektirir. Şu an yerel kullanıcı için simülasyon yapılıyor.", [{ text: "Tamam" }]);
-  };
-
   const addCoinsAdmin = async () => {
     const amount = parseInt(coinInput, 10);
-    if (isNaN(amount) || amount <= 0) {
-      Alert.alert("Geçersiz miktar");
-      return;
-    }
+    if (isNaN(amount) || amount <= 0) { Alert.alert("Geçersiz miktar"); return; }
     const newCoins = coins + amount;
     await AsyncStorage.setItem(COINS_KEY, JSON.stringify({ coins: newCoins }));
     setCoins(newCoins);
     setCoinInput("");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert("Başarılı", `${amount} coin eklendi. Toplam: ${newCoins}`);
   };
 
-  const resetQuota = async () => {
+  const resetQuota = () => {
     Alert.alert("Kotayı Sıfırla", "Bugünkü mesaj kotasını sıfırlamak istediğine emin misin?", [
       { text: "İptal", style: "cancel" },
       {
@@ -230,17 +230,14 @@ export default function AdminScreen() {
     ]);
   };
 
-  const clearMemory = async (charId: string) => {
-    Alert.alert("Hafızayı Sil", `${charId} için AI hafızasını silmek istediğine emin misin?`, [
+  const clearMemory = (charId: string) => {
+    const charName = CHARACTERS.find(c => c.id === charId)?.name ?? charId;
+    Alert.alert("Hafızayı Sil", `${charName} için AI hafızasını silmek istediğine emin misin?`, [
       { text: "İptal", style: "cancel" },
       {
         text: "Sil", style: "destructive", onPress: async () => {
-          const key = `soulie_memories_${charId}`;
-          await AsyncStorage.removeItem(key);
           const updatedSettings = { ...charSettings };
-          if (updatedSettings[charId]) {
-            updatedSettings[charId] = { ...updatedSettings[charId], memories: [] };
-          }
+          if (updatedSettings[charId]) updatedSettings[charId] = { ...updatedSettings[charId], memories: [] };
           await AsyncStorage.setItem(CHAR_SETTINGS_KEY, JSON.stringify(updatedSettings));
           setCharSettings(updatedSettings);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -249,56 +246,33 @@ export default function AdminScreen() {
     ]);
   };
 
-  const sendPushNotification = async () => {
-    if (!notifTitle.trim() || !notifBody.trim()) {
-      Alert.alert("Başlık ve mesaj gerekli");
-      return;
-    }
+  const sendNotif = async () => {
+    if (!notifTitle.trim() || !notifBody.trim()) { Alert.alert("Başlık ve mesaj gerekli"); return; }
     try {
       const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("İzin Gerekli", "Bildirim göndermek için izin verilmedi.");
-        return;
-      }
+      if (status !== "granted") { Alert.alert("İzin Gerekli", "Bildirim göndermek için izin verilmedi."); return; }
       await Notifications.scheduleNotificationAsync({
         content: { title: notifTitle, body: notifBody, sound: true },
         trigger: null,
       });
-      setNotifTitle("");
-      setNotifBody("");
+      setNotifTitle(""); setNotifBody("");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Gönderildi", "Bildirim başarıyla gönderildi.");
-    } catch {
-      Alert.alert("Hata", "Bildirim gönderilemedi.");
-    }
+    } catch { Alert.alert("Hata", "Bildirim gönderilemedi."); }
   };
 
   const clearFeedback = () => {
-    Alert.alert("Geri Bildirimleri Sil", "Tümünü silmek istediğine emin misin?", [
+    Alert.alert("Sil", "Tüm geri bildirimleri silmek istiyor musun?", [
       { text: "İptal", style: "cancel" },
-      {
-        text: "Sil", style: "destructive", onPress: async () => {
-          await AsyncStorage.removeItem(FEEDBACK_KEY);
-          setFeedbackList([]);
-        }
-      }
+      { text: "Sil", style: "destructive", onPress: async () => { await AsyncStorage.removeItem(FEEDBACK_KEY); setFeedbackList([]); } }
     ]);
-  };
-
-  const handleSecretTap = () => {
-    const next = secretTaps + 1;
-    setSecretTaps(next);
-    if (next >= 5) {
-      setSecretTaps(0);
-      Alert.alert("Debug", `ID: ${user?.id}\nUsername: ${user?.username}\nAdmin: ${user?.isAdmin}\nVIP: ${user?.isVip}`);
-    }
   };
 
   if (!user?.isAdmin) {
     return (
       <View style={[styles.root, { justifyContent: "center", alignItems: "center" }]}>
         <Feather name="lock" size={40} color={TEXT_TER} />
-        <Text style={[styles.sectionTitleText, { marginTop: 12, color: TEXT_SEC }]}>Erişim Reddedildi</Text>
+        <Text style={[styles.sectionTitleText, { marginTop: 12, color: TEXT_SEC, textTransform: "none", fontSize: 16 }]}>Erişim Reddedildi</Text>
         <Pressable onPress={() => router.back()} style={styles.backCenterBtn}>
           <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: ACCENT }}>Geri Dön</Text>
         </Pressable>
@@ -307,28 +281,34 @@ export default function AdminScreen() {
   }
 
   const totalMessages = conversations.reduce((a, c) => a + c.messages.length, 0);
-  const userMessages = conversations.reduce((a, c) => a + c.messages.filter(m => m.role === "user").length, 0);
+  const userMsgCount = conversations.reduce((a, c) => a + c.messages.filter(m => m.role === "user").length, 0);
   const charUsage: Record<string, number> = {};
-  conversations.forEach(c => { charUsage[c.characterId] = (charUsage[c.characterId] ?? 0) + c.messages.length; });
+  conversations.forEach(c => { charUsage[c.characterId] = (charUsage[c.characterId] ?? 0) + c.messages.filter(m => m.role === "user").length; });
   const topChar = Object.entries(charUsage).sort((a, b) => b[1] - a[1])[0];
-  const xp = userMessages * 10 + conversations.length * 5;
-  const today = new Date().toISOString().split("T")[0];
+  const xp = userMsgCount * 10 + conversations.length * 5;
 
-  const TABS: { id: AdminTab; label: string; icon: string }[] = [
-    { id: "dashboard", label: "Genel", icon: "activity" },
-    { id: "user", label: "Kullanıcı", icon: "user" },
-    { id: "economy", label: "Ekonomi", icon: "dollar-sign" },
-    { id: "ai", label: "AI & Hafıza", icon: "cpu" },
-    { id: "tasks", label: "Görevler", icon: "list" },
+  const APP_TABS: { id: AppTab; label: string; icon: string }[] = [
+    { id: "genel", label: "Genel", icon: "bar-chart-2" },
+    { id: "ai", label: "AI & Sistem", icon: "cpu" },
+    { id: "engagement", label: "Bildirim & Görev", icon: "bell" },
   ];
+
+  const USER_TABS: { id: UserTab; label: string; icon: string }[] = [
+    { id: "profil", label: "Profil", icon: "user" },
+    { id: "ekonomi", label: "Ekonomi", icon: "dollar-sign" },
+    { id: "hafiza", label: "Hafıza", icon: "database" },
+  ];
+
+  const currentTabs = section === "app" ? APP_TABS : USER_TABS;
 
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
+      {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
           <Feather name="chevron-left" size={24} color={TEXT_PRI} />
         </Pressable>
-        <Pressable onPress={handleSecretTap}>
+        <Pressable onPress={() => { setSecretTaps(t => { const n = t + 1; if (n >= 5) { Alert.alert("Debug", `ID: ${user?.id}\nAdmin: ${user?.isAdmin}\nVIP: ${user?.isVip}`); return 0; } return n; }); }}>
           <Text style={styles.headerTitle}>Admin Paneli</Text>
         </Pressable>
         <View style={styles.adminBadge}>
@@ -337,18 +317,44 @@ export default function AdminScreen() {
         </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabScrollContent}>
-        {TABS.map(t => (
-          <Pressable
-            key={t.id}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTab(t.id); }}
-            style={[styles.tabBtn, tab === t.id && styles.tabBtnActive]}
-          >
-            <Feather name={t.icon as any} size={13} color={tab === t.id ? ACCENT : TEXT_SEC} />
-            <Text style={[styles.tabLabel, tab === t.id && styles.tabLabelActive]}>{t.label}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      {/* Top Section Toggle */}
+      <View style={styles.sectionToggle}>
+        <Pressable
+          onPress={() => { setSection("app"); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          style={[styles.sectionToggleBtn, section === "app" && styles.sectionToggleBtnActive]}
+        >
+          <Feather name="globe" size={14} color={section === "app" ? "#fff" : TEXT_SEC} />
+          <Text style={[styles.sectionToggleBtnText, section === "app" && { color: "#fff" }]}>Uygulama</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => { setSection("user"); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          style={[styles.sectionToggleBtn, section === "user" && styles.sectionToggleBtnActive]}
+        >
+          <Feather name="user" size={14} color={section === "user" ? "#fff" : TEXT_SEC} />
+          <Text style={[styles.sectionToggleBtnText, section === "user" && { color: "#fff" }]}>Kullanıcı</Text>
+        </Pressable>
+      </View>
+
+      {/* Sub Tabs */}
+      <View style={styles.subTabs}>
+        {currentTabs.map(t => {
+          const isActive = section === "app" ? appTab === t.id : userTab === t.id;
+          return (
+            <Pressable
+              key={t.id}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                if (section === "app") setAppTab(t.id as AppTab);
+                else setUserTab(t.id as UserTab);
+              }}
+              style={[styles.subTab, isActive && styles.subTabActive]}
+            >
+              <Feather name={t.icon as any} size={12} color={isActive ? ACCENT : TEXT_SEC} />
+              <Text style={[styles.subTabLabel, isActive && styles.subTabLabelActive]}>{t.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       {!loaded ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -361,23 +367,24 @@ export default function AdminScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {tab === "dashboard" && (
+          {/* ===================== APP SECTION ===================== */}
+
+          {section === "app" && appTab === "genel" && (
             <>
-              <SectionTitle title="Genel İstatistikler" icon="bar-chart-2" />
+              <SectionTitle title="Uygulama İstatistikleri" icon="activity" />
               <StatGrid items={[
                 { label: "Toplam Mesaj", value: String(totalMessages), color: "#007AFF", icon: "message-circle" },
                 { label: "Aktif Sohbet", value: String(conversations.length), color: "#34C759", icon: "users" },
-                { label: "Kullanıcı Mesajı", value: String(userMessages), color: "#FF9500", icon: "send" },
-                { label: "Toplam XP", value: String(xp), color: "#AF52DE", icon: "zap" },
-                { label: "VIP Durumu", value: user?.isVip ? "Aktif" : "Pasif", color: user?.isVip ? "#34C759" : "#FF3B30", icon: "star" },
-                { label: "Bugünkü Mesaj", value: String(quota?.count ?? 0), color: "#FF6B35", icon: "activity" },
+                { label: "Geri Bildirim", value: String(feedbackList.length), color: "#FF9500", icon: "message-square" },
+                { label: "Karakter Sayısı", value: String(CHARACTERS.length), color: "#AF52DE", icon: "user-check" },
               ]} />
 
-              <SectionTitle title="Karakter Kullanımı" icon="users" color="#34C759" />
+              <SectionTitle title="Karakter Kullanım Analizi" icon="users" color="#34C759" />
               <Card>
                 {CHARACTERS.map(char => {
                   const count = charUsage[char.id] ?? 0;
-                  const pct = totalMessages > 0 ? count / totalMessages : 0;
+                  const pct = userMsgCount > 0 ? count / userMsgCount : 0;
+                  const conv = conversations.filter(c => c.characterId === char.id).length;
                   return (
                     <View key={char.id} style={styles.charRow}>
                       <View style={[styles.charDot, { backgroundColor: char.gradientColors[0] }]} />
@@ -385,183 +392,46 @@ export default function AdminScreen() {
                       <View style={styles.charBarBg}>
                         <View style={[styles.charBarFill, { width: `${Math.round(pct * 100)}%`, backgroundColor: char.gradientColors[0] }]} />
                       </View>
-                      <Text style={styles.charCount}>{count}</Text>
+                      <Text style={styles.charCount}>{count}m</Text>
+                      <Text style={[styles.charCount, { color: TEXT_TER, width: 28 }]}>{conv}s</Text>
                     </View>
                   );
                 })}
+                <View style={[styles.infoRow, { borderBottomWidth: 0, marginTop: 4 }]}>
+                  <Text style={[styles.infoLabel, { fontSize: 11 }]}>m = mesaj · s = sohbet</Text>
+                  <Text style={styles.infoValue}>{topChar ? `En popüler: ${CHARACTERS.find(c => c.id === topChar[0])?.name}` : "—"}</Text>
+                </View>
               </Card>
 
-              <SectionTitle title="Uygulama Sağlığı" icon="heart" color="#FF3B30" />
+              <SectionTitle title="Özet" icon="info" color="#FF9500" />
               <Card>
-                <InfoRow label="En Popüler Karakter" value={topChar ? `${CHARACTERS.find(c => c.id === topChar[0])?.name ?? topChar[0]} (${topChar[1]} mesaj)` : "—"} />
+                <InfoRow label="Toplam AI Yanıtı" value={String(totalMessages - userMsgCount)} />
                 <InfoRow label="Ort. Mesaj/Sohbet" value={conversations.length > 0 ? String(Math.round(totalMessages / conversations.length)) : "0"} />
-                <InfoRow label="Geri Bildirim Sayısı" value={String(feedbackList.length)} />
-                <InfoRow label="Coin Bakiyesi" value={`${coins} coin`} />
-                <InfoRow label="Bugün Kullanılan Kota" value={`${quota?.count ?? 0}/15`} />
-                <InfoRow label="Bonus Mesaj" value={`+${quota?.bonusMessages ?? 0}`} />
+                <InfoRow label="Aktif Karakter" value={String(Object.keys(charUsage).length)} />
+                <InfoRow label="Feedback Sayısı" value={String(feedbackList.length)} />
+                <InfoRow label="Hata Raporu" value={String(feedbackList.filter(f => f.category === "bug").length)} />
+                <InfoRow label="Öneri Sayısı" value={String(feedbackList.filter(f => f.category === "suggestion").length)} last />
               </Card>
             </>
           )}
 
-          {tab === "user" && (
+          {section === "app" && appTab === "ai" && (
             <>
-              <SectionTitle title="Kullanıcı Profili" icon="user" />
+              <SectionTitle title="Karakter Detay İstatistikleri" icon="users" color="#007AFF" />
               <Card>
-                <InfoRow label="İsim" value={user?.name ?? "—"} />
-                <InfoRow label="Kullanıcı Adı" value={`@${user?.username ?? "—"}`} />
-                <InfoRow label="E-posta" value={user?.email ?? "—"} />
-                <InfoRow label="ID" value={user?.id ?? "—"} mono />
-                <InfoRow label="Kullanıcı ID" value={user?.userId ?? "—"} />
-                <InfoRow label="Dil" value={user?.language === "en" ? "English" : "Türkçe"} />
-                <InfoRow label="Cinsiyet" value={user?.gender ?? "—"} />
-                <InfoRow label="Doğum Tarihi" value={user?.birthdate ?? "—"} />
-                <InfoRow label="Admin" value={user?.isAdmin ? "Evet" : "Hayır"} />
-              </Card>
-
-              <SectionTitle title="VIP Yönetimi" icon="star" color="#FFD700" />
-              <Card>
-                <View style={styles.toggleRow}>
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={styles.toggleLabel}>VIP Durumu</Text>
-                    <Text style={styles.toggleSub}>{user?.isVip ? "Sınırsız mesaj aktif" : "Günlük 15 mesaj limiti"}</Text>
-                  </View>
-                  <Switch
-                    value={!!user?.isVip}
-                    onValueChange={toggleVIP}
-                    trackColor={{ false: "rgba(255,255,255,0.15)", true: "#FFD700" }}
-                    thumbColor="#fff"
-                  />
-                </View>
-                <View style={[styles.divider]} />
-                <Pressable onPress={toggleVIP} style={[styles.actionBtn, { backgroundColor: user?.isVip ? "#FF3B3020" : "#FFD70020" }]}>
-                  <Feather name={user?.isVip ? "x-circle" : "star"} size={15} color={user?.isVip ? "#FF3B30" : "#FFD700"} />
-                  <Text style={[styles.actionBtnText, { color: user?.isVip ? "#FF3B30" : "#FFD700" }]}>
-                    {user?.isVip ? "VIP'i Kaldır" : "VIP Ver"}
-                  </Text>
-                </Pressable>
-              </Card>
-
-              <SectionTitle title="Güvenlik & Erişim" icon="shield" color="#FF3B30" />
-              <Card>
-                <View style={styles.toggleRow}>
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={styles.toggleLabel}>Admin Erişimi</Text>
-                    <Text style={styles.toggleSub}>Yönetici hakları</Text>
-                  </View>
-                  <View style={[styles.badge, { backgroundColor: "#FF950020" }]}>
-                    <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#FF9500" }}>AKTİF</Text>
-                  </View>
-                </View>
-                <View style={styles.divider} />
-                <Pressable onPress={toggleBan} style={[styles.actionBtn, { backgroundColor: "#FF3B3015" }]}>
-                  <Feather name="slash" size={15} color="#FF3B30" />
-                  <Text style={[styles.actionBtnText, { color: "#FF3B30" }]}>Ban / Askıya Al</Text>
-                </Pressable>
-              </Card>
-
-              <SectionTitle title="Hobiler & Bio" icon="heart" color="#AF52DE" />
-              <Card>
-                <InfoRow label="Bio" value={user?.bio || "—"} />
-                <InfoRow label="Hobiler" value={user?.hobbies?.join(", ") || "—"} />
-              </Card>
-            </>
-          )}
-
-          {tab === "economy" && (
-            <>
-              <SectionTitle title="Coin Bakiyesi" icon="dollar-sign" color="#FFD700" />
-              <Card>
-                <View style={styles.coinDisplay}>
-                  <Feather name="dollar-sign" size={32} color="#FFD700" />
-                  <Text style={styles.coinAmount}>{coins}</Text>
-                  <Text style={styles.coinLabel}>Coin</Text>
-                </View>
-                <View style={styles.divider} />
-                <Text style={[styles.toggleSub, { marginBottom: 8 }]}>Manuel coin ekle:</Text>
-                <View style={styles.coinRow}>
-                  <TextInput
-                    style={styles.coinInput}
-                    value={coinInput}
-                    onChangeText={setCoinInput}
-                    placeholder="Miktar gir..."
-                    placeholderTextColor={TEXT_TER}
-                    keyboardType="numeric"
-                    maxLength={6}
-                  />
-                  <Pressable onPress={addCoinsAdmin} style={styles.coinAddBtn}>
-                    <Feather name="plus" size={16} color="#fff" />
-                    <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" }}>Ekle</Text>
-                  </Pressable>
-                </View>
-                <View style={styles.quickCoins}>
-                  {[100, 500, 1000, 5000].map(amt => (
-                    <Pressable key={amt} onPress={() => setCoinInput(String(amt))} style={styles.quickCoinBtn}>
-                      <Text style={styles.quickCoinText}>+{amt}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </Card>
-
-              <SectionTitle title="Günlük Kota" icon="activity" color="#FF9500" />
-              <Card>
-                <InfoRow label="Bugün Kullanılan" value={`${quota?.count ?? 0} mesaj`} />
-                <InfoRow label="Bonus Mesajlar" value={`+${quota?.bonusMessages ?? 0}`} />
-                <InfoRow label="Kalan" value={`${Math.max(0, 15 + (quota?.bonusMessages ?? 0) - (quota?.count ?? 0))} mesaj`} />
-                <View style={styles.divider} />
-                <Pressable onPress={resetQuota} style={[styles.actionBtn, { backgroundColor: "#FF950015" }]}>
-                  <Feather name="refresh-cw" size={15} color="#FF9500" />
-                  <Text style={[styles.actionBtnText, { color: "#FF9500" }]}>Kotayı Sıfırla</Text>
-                </Pressable>
-              </Card>
-
-              <SectionTitle title="Envanter (Hediyeler)" icon="gift" color="#34C759" />
-              <Card>
-                {inventory.length === 0 ? (
-                  <Text style={[styles.toggleSub, { textAlign: "center", paddingVertical: 12 }]}>Envanter boş</Text>
-                ) : (
-                  inventory.map(item => {
-                    const gift = GIFTS.find(g => g.id === item.giftId);
-                    return (
-                      <View key={item.giftId} style={styles.invRow}>
-                        <View style={[styles.invIcon, { backgroundColor: (gift?.colorFrom ?? "#888") + "30" }]}>
-                          <Feather name={(gift?.icon ?? "gift") as any} size={14} color={gift?.colorFrom ?? "#888"} />
-                        </View>
-                        <Text style={styles.invName}>{gift?.name ?? item.giftId}</Text>
-                        <View style={styles.badge}>
-                          <Text style={styles.badgeText}>x{item.quantity}</Text>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-              </Card>
-
-              <SectionTitle title="Abonelik Bilgisi" icon="credit-card" color="#007AFF" />
-              <Card>
-                <InfoRow label="VIP Durumu" value={user?.isVip ? "Aktif" : "Pasif"} />
-                <InfoRow label="Paket" value={user?.isVip ? "VIP Premium" : "Ücretsiz"} />
-                <InfoRow label="Mağaza" value="Apple App Store" />
-                <InfoRow label="Bitiş Tarihi" value={user?.isVip ? "Süresiz (Manuel)" : "—"} />
-              </Card>
-            </>
-          )}
-
-          {tab === "ai" && (
-            <>
-              <SectionTitle title="Karakter İstatistikleri" icon="users" color="#007AFF" />
-              <Card>
-                {CHARACTERS.map(char => {
+                {CHARACTERS.map((char, idx) => {
                   const count = charUsage[char.id] ?? 0;
                   const conv = conversations.filter(c => c.characterId === char.id);
                   const streak = streaks?.[char.id]?.currentStreak ?? 0;
+                  const memories: string[] = charSettings[char.id]?.memories ?? [];
                   return (
-                    <View key={char.id} style={styles.charStatRow}>
+                    <View key={char.id} style={[styles.charStatRow, idx === CHARACTERS.length - 1 && { borderBottomWidth: 0 }]}>
                       <View style={[styles.charDot, { backgroundColor: char.gradientColors[0], width: 10, height: 10, borderRadius: 5 }]} />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.charStatName}>{char.name}</Text>
-                        <Text style={styles.charStatSub}>{conv.length} sohbet · {count} mesaj · {streak} gün seri</Text>
+                        <Text style={styles.charStatSub}>{conv.length} sohbet · {count} mesaj · {streak} gün seri · {memories.length} hafıza</Text>
                       </View>
-                      <Pressable onPress={() => clearMemory(char.id)} style={styles.trashBtn} hitSlop={6}>
+                      <Pressable onPress={() => clearMemory(char.id)} style={styles.trashBtn} hitSlop={8}>
                         <Feather name="trash-2" size={14} color="#FF3B30" />
                       </Pressable>
                     </View>
@@ -569,40 +439,16 @@ export default function AdminScreen() {
                 })}
               </Card>
 
-              <SectionTitle title="AI Hafıza Görüntüleyici" icon="database" color="#AF52DE" />
-              {CHARACTERS.map(char => {
-                const settings = charSettings[char.id];
-                const memories: string[] = settings?.memories ?? [];
-                if (memories.length === 0) return null;
-                return (
-                  <Card key={char.id}>
-                    <View style={styles.memHeader}>
-                      <View style={[styles.charDot, { backgroundColor: char.gradientColors[0] }]} />
-                      <Text style={styles.memCharName}>{char.name}</Text>
-                      <Pressable onPress={() => clearMemory(char.id)} hitSlop={6}>
-                        <Feather name="trash-2" size={14} color="#FF3B30" />
-                      </Pressable>
-                    </View>
-                    {memories.map((mem, idx) => (
-                      <View key={idx} style={styles.memRow}>
-                        <View style={styles.memDot} />
-                        <Text style={styles.memText}>{mem}</Text>
-                      </View>
-                    ))}
-                  </Card>
-                );
-              })}
-
               <SectionTitle title="Global Sistem Promptu" icon="settings" color="#FF9500" />
               <Card>
-                <Text style={[styles.toggleSub, { marginBottom: 10 }]}>
-                  Tüm AI karakterlerinin davranışına eklenen global kural. Uygulamayı kapatmadan güncelle.
+                <Text style={[styles.subNote, { marginBottom: 10 }]}>
+                  Tüm AI karakterlerinin davranışına eklenen global kural. Uygulamayı kapatmadan anlık güncellenir.
                 </Text>
                 <TextInput
                   style={styles.promptInput}
                   value={globalPrompt}
                   onChangeText={setGlobalPrompt}
-                  placeholder="Global kural yaz... (örn: Her yanıtta bir emoji kullan)"
+                  placeholder="Global kural yaz... (boş bırakırsan devre dışı)"
                   placeholderTextColor={TEXT_TER}
                   multiline
                   numberOfLines={5}
@@ -613,10 +459,12 @@ export default function AdminScreen() {
                     <Feather name="trash-2" size={14} color="#FF3B30" />
                     <Text style={[styles.promptBtnText, { color: "#FF3B30" }]}>Sıfırla</Text>
                   </Pressable>
-                  <Pressable onPress={saveGlobalPrompt} style={[styles.promptBtn, { flex: 1, backgroundColor: promptSaved ? "#34C75920" : ACCENT + "20" }]}>
-                    {promptLoading ? <ActivityIndicator size="small" color={ACCENT} /> : <Feather name={promptSaved ? "check" : "save"} size={14} color={promptSaved ? "#34C759" : ACCENT} />}
+                  <Pressable onPress={saveGlobalPrompt} style={[styles.promptBtn, { flex: 1, backgroundColor: promptSaved ? "#34C75920" : ACCENT + "25" }]}>
+                    {promptLoading
+                      ? <ActivityIndicator size="small" color={ACCENT} />
+                      : <Feather name={promptSaved ? "check" : "save"} size={14} color={promptSaved ? "#34C759" : ACCENT} />}
                     <Text style={[styles.promptBtnText, { color: promptSaved ? "#34C759" : ACCENT }]}>
-                      {promptSaved ? "Kaydedildi!" : "Kaydet"}
+                      {promptSaved ? "Kaydedildi!" : "Kaydet & Uygula"}
                     </Text>
                   </Pressable>
                 </View>
@@ -624,16 +472,16 @@ export default function AdminScreen() {
             </>
           )}
 
-          {tab === "tasks" && (
+          {section === "app" && appTab === "engagement" && (
             <>
               <SectionTitle title="Push Bildirim Gönder" icon="bell" color="#FF9500" />
               <Card>
-                <Text style={[styles.toggleSub, { marginBottom: 10 }]}>Tüm kullanıcılara anlık bildirim gönder:</Text>
+                <Text style={[styles.subNote, { marginBottom: 10 }]}>Kullanıcıya anlık yerel bildirim gönder:</Text>
                 <TextInput
                   style={styles.notifInput}
                   value={notifTitle}
                   onChangeText={setNotifTitle}
-                  placeholder="Bildirim başlığı..."
+                  placeholder="Başlık..."
                   placeholderTextColor={TEXT_TER}
                   maxLength={50}
                 />
@@ -641,7 +489,7 @@ export default function AdminScreen() {
                   style={[styles.notifInput, { marginTop: 8, minHeight: 80, textAlignVertical: "top" }]}
                   value={notifBody}
                   onChangeText={setNotifBody}
-                  placeholder="Bildirim mesajı..."
+                  placeholder="Mesaj içeriği..."
                   placeholderTextColor={TEXT_TER}
                   multiline
                   numberOfLines={3}
@@ -654,9 +502,34 @@ export default function AdminScreen() {
                     </Pressable>
                   ))}
                 </View>
-                <Pressable onPress={sendPushNotification} style={[styles.actionBtn, { backgroundColor: "#FF950020", marginTop: 4 }]}>
+                <Pressable onPress={sendNotif} style={[styles.actionBtn, { backgroundColor: "#FF950020", marginTop: 8 }]}>
                   <Feather name="send" size={15} color="#FF9500" />
                   <Text style={[styles.actionBtnText, { color: "#FF9500" }]}>Bildirimi Gönder</Text>
+                </Pressable>
+              </Card>
+
+              <SectionTitle title="Haftalık Görev Yönetimi" icon="target" color="#AF52DE" />
+              <Card>
+                <Text style={[styles.subNote, { marginBottom: 10 }]}>
+                  Görevler haftaya göre otomatik belirlenir. Mevcut haftanın ilerlemesini sıfırlamak için:
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    Alert.alert("Görevleri Sıfırla", "Bu haftanın tüm görev ilerlemesini sıfırlamak istediğine emin misin?", [
+                      { text: "İptal", style: "cancel" },
+                      {
+                        text: "Sıfırla", style: "destructive", onPress: async () => {
+                          await AsyncStorage.removeItem(MISSIONS_KEY);
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          Alert.alert("Sıfırlandı", "Görevler bir sonraki girişte yenilenecek.");
+                        }
+                      }
+                    ]);
+                  }}
+                  style={[styles.actionBtn, { backgroundColor: "#AF52DE15" }]}
+                >
+                  <Feather name="refresh-cw" size={15} color="#AF52DE" />
+                  <Text style={[styles.actionBtnText, { color: "#AF52DE" }]}>Görev İlerlemesini Sıfırla</Text>
                 </Pressable>
               </Card>
 
@@ -672,13 +545,13 @@ export default function AdminScreen() {
                   )}
                 </View>
                 {feedbackList.length === 0 ? (
-                  <View style={{ padding: 24, alignItems: "center" }}>
+                  <View style={{ padding: 28, alignItems: "center", gap: 8 }}>
                     <Feather name="inbox" size={28} color={TEXT_TER} />
-                    <Text style={[styles.toggleSub, { marginTop: 8, textAlign: "center" }]}>Henüz geri bildirim yok</Text>
+                    <Text style={styles.subNote}>Henüz geri bildirim yok</Text>
                   </View>
                 ) : (
-                  feedbackList.map(item => (
-                    <View key={item.id} style={styles.fbCard}>
+                  feedbackList.map((item, idx) => (
+                    <View key={item.id} style={[styles.fbCard, idx === feedbackList.length - 1 && { borderBottomWidth: 0 }]}>
                       <View style={styles.fbCardTop}>
                         <View style={[styles.badge, { backgroundColor: (CAT_COLORS[item.category] ?? "#888") + "20" }]}>
                           <Text style={[styles.badgeText, { color: CAT_COLORS[item.category] ?? "#888" }]}>
@@ -686,9 +559,7 @@ export default function AdminScreen() {
                           </Text>
                         </View>
                         <View style={{ flexDirection: "row", gap: 2 }}>
-                          {[1, 2, 3, 4, 5].map(i => (
-                            <Feather key={i} name="star" size={10} color={i <= item.rating ? "#FFD700" : TEXT_TER} />
-                          ))}
+                          {[1, 2, 3, 4, 5].map(i => <Feather key={i} name="star" size={10} color={i <= item.rating ? "#FFD700" : TEXT_TER} />)}
                         </View>
                         <Text style={styles.fbDate}>{fmtDate(item.timestamp)}</Text>
                       </View>
@@ -697,31 +568,185 @@ export default function AdminScreen() {
                   ))
                 )}
               </Card>
+            </>
+          )}
 
-              <SectionTitle title="Haftalık Görevler" icon="target" color="#AF52DE" />
+          {/* ===================== USER SECTION ===================== */}
+
+          {section === "user" && userTab === "profil" && (
+            <>
+              <SectionTitle title="Kullanıcı Bilgileri" icon="user" />
               <Card>
-                <Text style={[styles.toggleSub, { marginBottom: 8 }]}>
-                  Mevcut haftalık görevler otomatik oluşturulur. Görevi sıfırlamak için tüm görev verisini temizle.
-                </Text>
+                <InfoRow label="İsim" value={user?.name ?? "—"} />
+                <InfoRow label="Kullanıcı Adı" value={`@${user?.username ?? "—"}`} />
+                <InfoRow label="E-posta" value={user?.email ?? "—"} />
+                <InfoRow label="Kullanıcı ID" value={user?.userId ?? "—"} />
+                <InfoRow label="Dil" value={user?.language === "en" ? "English" : "Türkçe"} />
+                <InfoRow label="Cinsiyet" value={user?.gender ?? "—"} />
+                <InfoRow label="Doğum Tarihi" value={user?.birthdate ?? "—"} />
+                <InfoRow label="Bio" value={user?.bio || "—"} />
+                <InfoRow label="Hobiler" value={user?.hobbies?.join(", ") || "—"} last />
+              </Card>
+
+              <SectionTitle title="VIP & Erişim" icon="star" color="#FFD700" />
+              <Card>
+                <View style={styles.toggleRow}>
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={styles.toggleLabel}>VIP Durumu</Text>
+                    <Text style={styles.subNote}>{user?.isVip ? "Sınırsız mesaj · Tüm özellikler aktif" : "Günlük 15 mesaj limiti"}</Text>
+                  </View>
+                  <Switch
+                    value={!!user?.isVip}
+                    onValueChange={toggleVIP}
+                    trackColor={{ false: "rgba(255,255,255,0.15)", true: "#FFD700" }}
+                    thumbColor="#fff"
+                  />
+                </View>
+                <Divider />
+                <View style={styles.toggleRow}>
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={styles.toggleLabel}>Admin Erişimi</Text>
+                    <Text style={styles.subNote}>Yönetici hakları aktif</Text>
+                  </View>
+                  <View style={[styles.badge, { backgroundColor: "#FF950020" }]}>
+                    <Text style={[styles.badgeText, { color: "#FF9500" }]}>AKTİF</Text>
+                  </View>
+                </View>
+                <Divider />
                 <Pressable
-                  onPress={() => {
-                    Alert.alert("Görevleri Sıfırla", "Tüm haftalık görev ilerlemesini sıfırlamak istediğine emin misin?", [
-                      { text: "İptal", style: "cancel" },
-                      {
-                        text: "Sıfırla", style: "destructive", onPress: async () => {
-                          await AsyncStorage.removeItem(MISSIONS_KEY);
-                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                          Alert.alert("Sıfırlandı", "Haftalık görevler yeni haftada otomatik oluşacak.");
-                        }
-                      }
-                    ]);
-                  }}
-                  style={[styles.actionBtn, { backgroundColor: "#AF52DE15" }]}
+                  onPress={() => Alert.alert("Ban / Askıya Al", "Gerçek bir multi-user backend bağlandığında burada kullanıcı hesabı askıya alınacak.", [{ text: "Tamam" }])}
+                  style={[styles.actionBtn, { backgroundColor: "#FF3B3015" }]}
                 >
-                  <Feather name="refresh-cw" size={15} color="#AF52DE" />
-                  <Text style={[styles.actionBtnText, { color: "#AF52DE" }]}>Görev İlerlemesini Sıfırla</Text>
+                  <Feather name="slash" size={15} color="#FF3B30" />
+                  <Text style={[styles.actionBtnText, { color: "#FF3B30" }]}>Ban / Askıya Al</Text>
                 </Pressable>
               </Card>
+
+              <SectionTitle title="Kullanım İstatistikleri" icon="trending-up" color="#007AFF" />
+              <Card>
+                <InfoRow label="Toplam Gönderilen Mesaj" value={String(userMsgCount)} />
+                <InfoRow label="Toplam Sohbet" value={String(conversations.length)} />
+                <InfoRow label="Toplam XP" value={String(userMsgCount * 10 + conversations.length * 5)} />
+                <InfoRow label="En Çok Konuştuğu Karakter" value={topChar ? (CHARACTERS.find(c => c.id === topChar[0])?.name ?? topChar[0]) : "—"} />
+                <InfoRow label="Son Aktif" value={conversations.length > 0 ? fmtDate(Math.max(...conversations.map(c => c.updatedAt))) : "—"} last />
+              </Card>
+            </>
+          )}
+
+          {section === "user" && userTab === "ekonomi" && (
+            <>
+              <SectionTitle title="Coin Yönetimi" icon="dollar-sign" color="#FFD700" />
+              <Card>
+                <View style={styles.coinDisplay}>
+                  <Feather name="dollar-sign" size={28} color="#FFD700" />
+                  <Text style={styles.coinAmount}>{coins}</Text>
+                  <Text style={styles.coinLabel}>Coin</Text>
+                </View>
+                <Divider />
+                <Text style={[styles.subNote, { marginBottom: 8 }]}>Manuel coin ekle:</Text>
+                <View style={styles.coinRow}>
+                  <TextInput
+                    style={styles.coinInput}
+                    value={coinInput}
+                    onChangeText={setCoinInput}
+                    placeholder="Miktar..."
+                    placeholderTextColor={TEXT_TER}
+                    keyboardType="numeric"
+                    maxLength={6}
+                  />
+                  <Pressable onPress={addCoinsAdmin} style={styles.coinAddBtn}>
+                    <Feather name="plus" size={15} color="#fff" />
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" }}>Ekle</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.quickCoins}>
+                  {[100, 500, 1000, 5000].map(amt => (
+                    <Pressable key={amt} onPress={() => setCoinInput(String(amt))} style={styles.quickCoinBtn}>
+                      <Text style={styles.quickCoinText}>+{amt}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </Card>
+
+              <SectionTitle title="Günlük Mesaj Kotası" icon="activity" color="#FF9500" />
+              <Card>
+                <View style={styles.quotaBar}>
+                  <View style={[styles.quotaFill, { width: `${Math.min(100, ((quota?.count ?? 0) / 15) * 100)}%` }]} />
+                </View>
+                <InfoRow label="Bugün Kullanılan" value={`${quota?.count ?? 0} mesaj`} />
+                <InfoRow label="Bonus Mesajlar" value={`+${quota?.bonusMessages ?? 0}`} />
+                <InfoRow label="Kalan Hak" value={`${Math.max(0, 15 + (quota?.bonusMessages ?? 0) - (quota?.count ?? 0))} mesaj`} />
+                <InfoRow label="VIP Durumu" value={user?.isVip ? "Sınırsız" : "15/gün"} last />
+                <Divider />
+                <Pressable onPress={resetQuota} style={[styles.actionBtn, { backgroundColor: "#FF950015" }]}>
+                  <Feather name="refresh-cw" size={15} color="#FF9500" />
+                  <Text style={[styles.actionBtnText, { color: "#FF9500" }]}>Kotayı Sıfırla</Text>
+                </Pressable>
+              </Card>
+
+              <SectionTitle title="Hediye Envanteri" icon="gift" color="#34C759" />
+              <Card>
+                {inventory.length === 0 ? (
+                  <View style={{ padding: 16, alignItems: "center", gap: 8 }}>
+                    <Feather name="inbox" size={24} color={TEXT_TER} />
+                    <Text style={styles.subNote}>Envanter boş</Text>
+                  </View>
+                ) : (
+                  inventory.map((item, idx) => {
+                    const gift = GIFTS.find(g => g.id === item.giftId);
+                    return (
+                      <View key={item.giftId} style={[styles.invRow, idx === inventory.length - 1 && { borderBottomWidth: 0 }]}>
+                        <View style={[styles.invIcon, { backgroundColor: (gift?.colorFrom ?? "#888") + "30" }]}>
+                          <Feather name={(gift?.icon ?? "gift") as any} size={14} color={gift?.colorFrom ?? "#888"} />
+                        </View>
+                        <Text style={styles.invName}>{gift?.name ?? item.giftId}</Text>
+                        <Text style={styles.subNote}>{item.quantity} adet</Text>
+                      </View>
+                    );
+                  })
+                )}
+              </Card>
+
+              <SectionTitle title="Abonelik Bilgisi" icon="credit-card" color="#007AFF" />
+              <Card>
+                <InfoRow label="Mevcut Plan" value={user?.isVip ? "VIP Premium" : "Ücretsiz"} />
+                <InfoRow label="Mağaza" value="Apple App Store" />
+                <InfoRow label="Bitiş Tarihi" value={user?.isVip ? "Süresiz (Manuel)" : "—"} last />
+              </Card>
+            </>
+          )}
+
+          {section === "user" && userTab === "hafiza" && (
+            <>
+              <SectionTitle title="Karakter AI Hafızaları" icon="database" color="#AF52DE" />
+              <Text style={[styles.subNote, { marginHorizontal: 0, marginBottom: 8 }]}>
+                Her karakterin bu kullanıcı hakkında hatırladıkları. Yanlış bilgileri silebilirsin.
+              </Text>
+              {CHARACTERS.map(char => {
+                const memories: string[] = charSettings[char.id]?.memories ?? [];
+                return (
+                  <Card key={char.id}>
+                    <View style={styles.memHeader}>
+                      <View style={[styles.charDot, { backgroundColor: char.gradientColors[0], width: 10, height: 10, borderRadius: 5 }]} />
+                      <Text style={styles.memCharName}>{char.name}</Text>
+                      <Text style={styles.subNote}>{memories.length} hafıza</Text>
+                      <Pressable onPress={() => clearMemory(char.id)} hitSlop={8} style={{ marginLeft: 8 }}>
+                        <Feather name="trash-2" size={14} color={memories.length > 0 ? "#FF3B30" : TEXT_TER} />
+                      </Pressable>
+                    </View>
+                    {memories.length === 0 ? (
+                      <Text style={[styles.subNote, { fontStyle: "italic" }]}>Henüz hafıza yok</Text>
+                    ) : (
+                      memories.map((mem, idx) => (
+                        <View key={idx} style={[styles.memRow, idx === memories.length - 1 && { borderBottomWidth: 0 }]}>
+                          <View style={styles.memDot} />
+                          <Text style={styles.memText}>{mem}</Text>
+                        </View>
+                      ))
+                    )}
+                  </Card>
+                );
+              })}
             </>
           )}
         </ScrollView>
@@ -738,58 +763,63 @@ const styles = StyleSheet.create({
   adminBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,149,0,0.15)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
   adminBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#FF9500", letterSpacing: 0.8 },
   backCenterBtn: { marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: ACCENT + "20", borderRadius: 14 },
-  tabScroll: { maxHeight: 52 },
-  tabScrollContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 6, alignItems: "center" },
-  tabBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.06)" },
-  tabBtnActive: { backgroundColor: ACCENT + "25", borderWidth: 1, borderColor: ACCENT + "50" },
-  tabLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: TEXT_SEC },
-  tabLabelActive: { color: ACCENT, fontFamily: "Inter_600SemiBold" },
-  content: { paddingHorizontal: 16, paddingTop: 16, gap: 12 },
-  card: { backgroundColor: CARD, borderRadius: 16, padding: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER, gap: 0 },
+  sectionToggle: { flexDirection: "row", margin: 12, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 4, gap: 4 },
+  sectionToggleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 10, borderRadius: 11 },
+  sectionToggleBtnActive: { backgroundColor: ACCENT },
+  sectionToggleBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: TEXT_SEC },
+  subTabs: { flexDirection: "row", paddingHorizontal: 12, gap: 8, marginBottom: 4 },
+  subTab: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 8, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.05)" },
+  subTabActive: { backgroundColor: ACCENT + "20", borderWidth: 1, borderColor: ACCENT + "40" },
+  subTabLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: TEXT_SEC },
+  subTabLabelActive: { color: ACCENT, fontFamily: "Inter_600SemiBold" },
+  content: { paddingHorizontal: 12, paddingTop: 12, gap: 12 },
+  card: { backgroundColor: CARD, borderRadius: 16, padding: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER },
   sectionTitle: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4, marginBottom: 2 },
   sectionIcon: { width: 26, height: 26, borderRadius: 8, justifyContent: "center", alignItems: "center" },
-  sectionTitleText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: TEXT_SEC, letterSpacing: 0.2, textTransform: "uppercase" },
-  statGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  statCell: { width: "30%", flex: 1, backgroundColor: CARD, borderRadius: 14, padding: 14, alignItems: "center", gap: 6, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER },
+  sectionTitleText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: TEXT_SEC, letterSpacing: 0.5, textTransform: "uppercase" },
+  statGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  statCell: { width: "47%", flex: 1, backgroundColor: CARD, borderRadius: 14, padding: 14, alignItems: "center", gap: 6, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER },
   statIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center" },
-  statVal: { fontSize: 18, fontFamily: "Inter_700Bold", color: TEXT_PRI, letterSpacing: -0.3 },
-  statLbl: { fontSize: 10, fontFamily: "Inter_400Regular", color: TEXT_SEC, textAlign: "center" },
+  statVal: { fontSize: 22, fontFamily: "Inter_700Bold", color: TEXT_PRI, letterSpacing: -0.5 },
+  statLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: TEXT_SEC, textAlign: "center" },
   infoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
   infoLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: TEXT_SEC },
   infoValue: { fontSize: 13, fontFamily: "Inter_500Medium", color: TEXT_PRI, maxWidth: "60%", textAlign: "right" },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: BORDER, marginVertical: 12 },
   charRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
   charDot: { width: 8, height: 8, borderRadius: 4 },
-  charName: { fontSize: 13, fontFamily: "Inter_500Medium", color: TEXT_PRI, width: 52 },
-  charBarBg: { flex: 1, height: 6, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 3, overflow: "hidden" },
-  charBarFill: { height: 6, borderRadius: 3, minWidth: 3 },
-  charCount: { fontSize: 12, fontFamily: "Inter_500Medium", color: TEXT_SEC, width: 28, textAlign: "right" },
+  charName: { fontSize: 12, fontFamily: "Inter_500Medium", color: TEXT_PRI, width: 46 },
+  charBarBg: { flex: 1, height: 5, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 3, overflow: "hidden" },
+  charBarFill: { height: 5, borderRadius: 3, minWidth: 3 },
+  charCount: { fontSize: 11, fontFamily: "Inter_400Regular", color: TEXT_SEC, width: 32, textAlign: "right" },
+  charStatRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
+  charStatName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: TEXT_PRI },
+  charStatSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: TEXT_SEC, marginTop: 2 },
+  trashBtn: { padding: 6 },
+  subNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: TEXT_SEC, lineHeight: 17 },
   toggleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   toggleLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: TEXT_PRI },
-  toggleSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: TEXT_SEC, lineHeight: 17 },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: BORDER, marginVertical: 12 },
   actionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12 },
   actionBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   badge: { backgroundColor: "rgba(255,255,255,0.1)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   badgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: TEXT_SEC },
-  coinDisplay: { alignItems: "center", gap: 6, paddingVertical: 8 },
-  coinAmount: { fontSize: 48, fontFamily: "Inter_700Bold", color: "#FFD700", letterSpacing: -1 },
-  coinLabel: { fontSize: 14, fontFamily: "Inter_400Regular", color: TEXT_SEC },
+  coinDisplay: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 8 },
+  coinAmount: { fontSize: 40, fontFamily: "Inter_700Bold", color: "#FFD700", letterSpacing: -1 },
+  coinLabel: { fontSize: 14, fontFamily: "Inter_400Regular", color: TEXT_SEC, alignSelf: "flex-end", marginBottom: 6 },
   coinRow: { flexDirection: "row", gap: 10, alignItems: "center" },
   coinInput: { flex: 1, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, fontFamily: "Inter_500Medium", color: TEXT_PRI, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER },
   coinAddBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: ACCENT, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
   quickCoins: { flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" },
   quickCoinBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER },
   quickCoinText: { fontSize: 12, fontFamily: "Inter_500Medium", color: TEXT_SEC },
+  quotaBar: { height: 6, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 3, overflow: "hidden", marginBottom: 12 },
+  quotaFill: { height: 6, backgroundColor: "#FF9500", borderRadius: 3 },
   invRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
   invIcon: { width: 32, height: 32, borderRadius: 10, justifyContent: "center", alignItems: "center" },
   invName: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: TEXT_PRI },
-  charStatRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
-  charStatName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: TEXT_PRI },
-  charStatSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: TEXT_SEC, marginTop: 2 },
-  trashBtn: { padding: 6 },
   memHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
   memCharName: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", color: TEXT_PRI },
-  memRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 5, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
+  memRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
   memDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: ACCENT, marginTop: 5 },
   memText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: TEXT_SEC, lineHeight: 18 },
   promptInput: { backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 12, padding: 12, fontSize: 13, fontFamily: "Inter_400Regular", color: TEXT_PRI, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER, minHeight: 100, marginBottom: 10 },
