@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   charName: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
-    color: Colors.text.primary,
+    color: "#fff",
     letterSpacing: -0.2,
   },
   streakPill: {

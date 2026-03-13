@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   tabBtnText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
-    color: Colors.text.secondary,
+    color: "#1D1D1F",
   },
   tabBtnTextActive: {
     color: "#fff",

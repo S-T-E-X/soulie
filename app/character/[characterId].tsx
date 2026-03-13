@@ -30,6 +30,7 @@ import { useCharacterSettings } from "@/hooks/useCharacterSettings";
 import { useAutoMessages } from "@/hooks/useAutoMessages";
 import { useChatContext } from "@/contexts/ChatContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { CharacterCustomizeSheet } from "@/components/chat/CharacterCustomizeSheet";
 import { t } from "@/lib/i18n";
 import Colors from "@/constants/colors";
@@ -44,6 +45,7 @@ export default function CharacterProfileScreen() {
   const character = getCharacter(characterId);
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { isDark, colors } = useTheme();
   const lang = user?.language ?? "tr";
   const scrollY = useSharedValue(0);
   const [showCustomize, setShowCustomize] = useState(false);
@@ -100,20 +102,20 @@ export default function CharacterProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#fff" }]}>
+      <StatusBar barStyle={colors.statusBar} />
 
       <Animated.View style={[styles.stickyHeader, { paddingTop: topPad }, headerOpacityStyle]}>
         {Platform.OS === "ios" ? (
-          <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
         ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.9)" }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? colors.surface : "rgba(255,255,255,0.9)" }]} />
         )}
         <View style={styles.stickyHeaderContent}>
           <Pressable onPress={() => router.back()} style={styles.stickyBack} hitSlop={8}>
-            <Feather name="chevron-left" size={22} color={Colors.text.primary} />
+            <Feather name="chevron-left" size={22} color={colors.text.primary} />
           </Pressable>
-          <Text style={[styles.stickyTitle, { color: Colors.text.primary }]}>{character.name}</Text>
+          <Text style={[styles.stickyTitle, { color: colors.text.primary }]}>{character.name}</Text>
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -430,7 +432,7 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.85)",
   },
   infoSheet: {
-    backgroundColor: "#fff",
+    backgroundColor: "#1C1C2E",
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     marginTop: -32,
@@ -440,7 +442,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(0,0,0,0.15)",
+    backgroundColor: "rgba(255,255,255,0.15)",
     alignSelf: "center",
     marginTop: 10,
     marginBottom: 8,
@@ -448,6 +450,7 @@ const styles = StyleSheet.create({
   infoSection: {
     padding: 20,
     gap: 10,
+    backgroundColor: "#1C1C2E",
   },
   infoHeader: {
     flexDirection: "row",
@@ -469,7 +472,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     marginHorizontal: 20,
   },
   interestGrid: {
