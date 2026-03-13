@@ -10,6 +10,7 @@ import {
   Dimensions,
   ScrollView,
   KeyboardAvoidingView,
+  Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -364,6 +365,32 @@ export default function OnboardingScreen() {
 
   const goNext = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (step === 3) {
+      const d = parseInt(data.birthDay, 10);
+      const m = parseInt(data.birthMonth, 10);
+      const y = parseInt(data.birthYear, 10);
+      if (!data.birthDay || !data.birthMonth || !data.birthYear || data.birthYear.length < 4) {
+        Alert.alert(
+          data.language === "tr" ? "Doğum Tarihi Gerekli" : "Birthdate Required",
+          data.language === "tr" ? "Lütfen doğum tarihini eksiksiz gir." : "Please enter your complete birthdate.",
+        );
+        return;
+      }
+      const birth = new Date(y, m - 1, d);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
+      if (isNaN(age) || age < 18) {
+        Alert.alert(
+          data.language === "tr" ? "Yaş Sınırı" : "Age Restriction",
+          data.language === "tr"
+            ? "Soulie yalnızca 18 yaş ve üzeri kullanıcılara yöneliktir. Bu uygulamayı kullanamazsın."
+            : "Soulie is only available for users aged 18 and above. You cannot use this app.",
+        );
+        return;
+      }
+    }
     if (step < TOTAL_STEPS) {
       setStep((s) => s + 1);
       animateIn();
@@ -383,7 +410,7 @@ export default function OnboardingScreen() {
   const canContinue = () => {
     if (step === 1) return true;
     if (step === 2) return data.name.trim().length >= 2;
-    if (step === 3) return true;
+    if (step === 3) return data.birthDay.length >= 1 && data.birthMonth.length >= 1 && data.birthYear.length === 4;
     if (step === 4) return data.gender !== null;
     return true;
   };
@@ -451,13 +478,6 @@ export default function OnboardingScreen() {
 
       {step < TOTAL_STEPS && (
         <View style={[styles.footer, { paddingBottom: botPad }]}>
-          {step === 3 && (
-            <Pressable style={styles.skipBtn} onPress={goNext}>
-              <Text style={styles.skipText}>
-                {data.language === "tr" ? "Atla" : "Skip"}
-              </Text>
-            </Pressable>
-          )}
           <Pressable
             style={[styles.continueBtn, !canContinue() && styles.continueBtnDisabled]}
             onPress={canContinue() ? goNext : undefined}

@@ -1,28 +1,20 @@
 import React from "react";
-import { StyleSheet, View, Platform } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export function BackgroundGradient({ children }: { children: React.ReactNode }) {
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["#E8EFF8", "#F2F2F7", "#EEF1F8"]}
+        colors={colors.backgroundGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <View
-        style={[
-          styles.blob1,
-          { backgroundColor: "rgba(0, 122, 255, 0.07)" },
-        ]}
-      />
-      <View
-        style={[
-          styles.blob2,
-          { backgroundColor: "rgba(88, 86, 214, 0.05)" },
-        ]}
-      />
+      <View style={[styles.blob1, { backgroundColor: colors.blobA }]} />
+      <View style={[styles.blob2, { backgroundColor: colors.blobB }]} />
       {children}
     </View>
   );

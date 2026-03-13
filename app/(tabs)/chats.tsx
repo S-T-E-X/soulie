@@ -26,6 +26,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getAllStreaks } from "@/hooks/useStreak";
 import { useWeeklyMissions } from "@/hooks/useWeeklyMissions";
 import Colors from "@/constants/colors";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
 
@@ -78,6 +79,7 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
 
 function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: Conversation; index: number; streak?: number; onDelete: () => void }) {
   const character = getCharacter(conversation.characterId);
+  const { colors } = useTheme();
   if (!character) return null;
 
   const timeAgo = () => {
@@ -127,7 +129,7 @@ function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: 
         <View style={styles.chatInfo}>
           <View style={styles.chatTop}>
             <View style={styles.nameRow}>
-              <Text style={styles.charName}>{character.name}</Text>
+              <Text style={[styles.charName, { color: colors.text.primary }]}>{character.name}</Text>
               {streak >= 2 ? (
                 <View style={styles.streakPill}>
                   <Feather name="zap" size={9} color="#FF9500" />
@@ -135,14 +137,14 @@ function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: 
                 </View>
               ) : null}
             </View>
-            <Text style={styles.time}>{timeAgo()}</Text>
+            <Text style={[styles.time, { color: colors.text.tertiary }]}>{timeAgo()}</Text>
           </View>
           <View style={styles.chatBottom}>
-            <Text style={styles.lastMsg} numberOfLines={1}>
+            <Text style={[styles.lastMsg, { color: colors.text.secondary }]} numberOfLines={1}>
               {conversation.lastMessage || `${character.name} ile sohbet başladı`}
             </Text>
-            <View style={styles.rolePill}>
-              <Text style={styles.roleLabel}>{character.shortRole}</Text>
+            <View style={[styles.rolePill, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.roleLabel, { color: colors.text.tertiary }]}>{character.shortRole}</Text>
             </View>
           </View>
         </View>
@@ -152,16 +154,17 @@ function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: 
 }
 
 function EmptyState() {
+  const { colors } = useTheme();
   return (
     <View style={styles.empty}>
       <LinearGradient
         colors={["rgba(0,122,255,0.10)", "rgba(0,122,255,0.03)"]}
         style={styles.emptyIcon}
       >
-        <Feather name="message-circle" size={28} color={Colors.accent} />
+        <Feather name="message-circle" size={28} color={colors.accent} />
       </LinearGradient>
-      <Text style={styles.emptyTitle}>Henüz sohbet yok</Text>
-      <Text style={styles.emptySubtitle}>
+      <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Henüz sohbet yok</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.text.secondary }]}>
         Keşfet sayfasından bir AI arkadaş seç ve sohbet başlat
       </Text>
       <Pressable
@@ -257,6 +260,7 @@ export default function ChatsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { conversations, isLoaded, loadConversations, deleteConversation } = useChatContext();
+  const { isDark, colors } = useTheme();
   const [showMissions, setShowMissions] = React.useState(false);
   const [streaks, setStreaks] = React.useState<Record<string, number>>({});
 
@@ -302,13 +306,13 @@ export default function ChatsScreen() {
 
   return (
     <BackgroundGradient>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={colors.statusBar} />
 
-      <View style={[styles.header, { paddingTop: topPad + 16 }]}>
+      <View style={[styles.header, { paddingTop: topPad + 16, borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.headerTitle}>Sohbetler</Text>
-            <Text style={styles.headerSub}>{sorted.length} aktif sohbet</Text>
+            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Sohbetler</Text>
+            <Text style={[styles.headerSub, { color: colors.text.secondary }]}>{sorted.length} aktif sohbet</Text>
           </View>
           <UserAvatarBadge xp={xp} name={user?.name} profilePhoto={user?.profilePhoto} />
         </View>

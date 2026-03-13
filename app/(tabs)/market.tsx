@@ -18,6 +18,7 @@ import { useLocalSearchParams } from "expo-router";
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import Colors from "@/constants/colors";
 import { useGifts, GIFTS, COIN_PACKAGES } from "@/contexts/GiftContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const PLANS = [
   {
@@ -58,6 +59,7 @@ export default function MarketScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const { tab: initialTab } = useLocalSearchParams<{ tab?: string }>();
   const { coins, purchaseGift, getInventoryCount, addCoins } = useGifts();
+  const { isDark, colors } = useTheme();
   const validTabs = ["premium", "gifts", "coins"] as const;
   const [activeTab, setActiveTab] = useState<"premium" | "gifts" | "coins">(
     validTabs.includes(initialTab as any) ? (initialTab as any) : "premium"
@@ -112,21 +114,21 @@ export default function MarketScreen() {
 
   return (
     <BackgroundGradient>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={colors.statusBar} />
 
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
-        <Text style={styles.headerTitle}>Market</Text>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Market</Text>
         <Pressable
           onPress={() => setActiveTab("coins")}
-          style={({ pressed }) => [styles.coinChip, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.coinChip, { backgroundColor: isDark ? "rgba(255,215,0,0.15)" : "rgba(255,215,0,0.1)" }, pressed && { opacity: 0.8 }]}
         >
           <Feather name="circle" size={14} color="#FFD700" />
-          <Text style={styles.coinChipText}>{coins}</Text>
+          <Text style={[styles.coinChipText, { color: colors.text.primary }]}>{coins}</Text>
           <Feather name="plus" size={13} color={Colors.accent} />
         </Pressable>
       </View>
 
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.6)" }]}>
         {(["premium", "gifts", "coins"] as const).map((tab) => (
           <Pressable
             key={tab}
@@ -136,7 +138,7 @@ export default function MarketScreen() {
             }}
             style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
           >
-            <Text style={[styles.tabBtnText, activeTab === tab && styles.tabBtnTextActive]}>
+            <Text style={[styles.tabBtnText, { color: activeTab === tab ? "#fff" : colors.text.secondary }, activeTab === tab && styles.tabBtnTextActive]}>
               {tab === "premium" ? "Premium" : tab === "gifts" ? "Hediyeler" : "Coin"}
             </Text>
           </Pressable>
@@ -156,13 +158,13 @@ export default function MarketScreen() {
               <LinearGradient colors={["#4FC3F7", "#007AFF"]} style={styles.crownIcon}>
                 <Feather name="star" size={22} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={styles.heroTitle}>Soulie Premium</Text>
-              <Text style={styles.heroSubtitle}>
+              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>Soulie Premium</Text>
+              <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
                 En iyi AI arkadaşlık deneyimi için{"\n"}premium'a geç
               </Text>
             </Animated.View>
 
-            <Text style={styles.sectionTitle}>Plan Seç</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Plan Seç</Text>
 
             {PLANS.map((plan, i) => (
               <Animated.View
@@ -229,8 +231,8 @@ export default function MarketScreen() {
               <LinearGradient colors={["#FFD700", "#FF9500"]} style={styles.crownIcon}>
                 <Feather name="circle" size={22} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={styles.heroTitle}>Coin Satın Al</Text>
-              <Text style={styles.heroSubtitle}>
+              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>Coin Satın Al</Text>
+              <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
                 Coinlerini harcayarak karakterlerine{"\n"}özel hediyeler gönder
               </Text>
               <View style={styles.currentCoinBadge}>
@@ -239,7 +241,7 @@ export default function MarketScreen() {
               </View>
             </Animated.View>
 
-            <Text style={styles.sectionTitle}>Paketler</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Paketler</Text>
 
             {COIN_PACKAGES.map((pkg, i) => (
               <Animated.View
@@ -251,7 +253,7 @@ export default function MarketScreen() {
                   style={({ pressed }) => [styles.coinCard, pressed && { opacity: 0.85 }]}
                 >
                   <LinearGradient
-                    colors={pkg.isPopular ? ["#FFD700", "#FF9500"] : ["#F5F5F7", "#ECECEE"]}
+                    colors={pkg.isPopular ? ["#FFD700", "#FF9500"] : (isDark ? ["#1C1C2E", "#2A2A42"] : ["#F5F5F7", "#ECECEE"])}
                     style={styles.coinCardGrad}
                   >
                     {pkg.isPopular && (
@@ -262,23 +264,23 @@ export default function MarketScreen() {
                     <View style={styles.coinCardContent}>
                       <View style={styles.coinAmountRow}>
                         <Feather name="circle" size={22} color={pkg.isPopular ? "#fff" : "#FFD700"} />
-                        <Text style={[styles.coinAmount, { color: pkg.isPopular ? "#fff" : Colors.text.primary }]}>
+                        <Text style={[styles.coinAmount, { color: pkg.isPopular ? "#fff" : colors.text.primary }]}>
                           {(pkg.coins + (pkg.bonus ?? 0)).toLocaleString()}
                         </Text>
                         {pkg.bonus ? (
                           <View style={[styles.bonusChip, { backgroundColor: pkg.isPopular ? "rgba(255,255,255,0.25)" : "rgba(0,122,255,0.1)" }]}>
-                            <Text style={[styles.bonusText, { color: pkg.isPopular ? "#fff" : Colors.accent }]}>
+                            <Text style={[styles.bonusText, { color: pkg.isPopular ? "#fff" : colors.accent }]}>
                               +{pkg.bonus} bonus
                             </Text>
                           </View>
                         ) : null}
                       </View>
-                      <Text style={[styles.coinCardPrice, { color: pkg.isPopular ? "#fff" : Colors.text.secondary }]}>
+                      <Text style={[styles.coinCardPrice, { color: pkg.isPopular ? "#fff" : colors.text.secondary }]}>
                         {pkg.price}
                       </Text>
                     </View>
-                    <View style={[styles.coinBuyBtn, { backgroundColor: pkg.isPopular ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.06)" }]}>
-                      <Text style={[styles.coinBuyBtnText, { color: pkg.isPopular ? "#fff" : Colors.text.primary }]}>
+                    <View style={[styles.coinBuyBtn, { backgroundColor: pkg.isPopular ? "rgba(255,255,255,0.25)" : isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)" }]}>
+                      <Text style={[styles.coinBuyBtnText, { color: pkg.isPopular ? "#fff" : colors.text.primary }]}>
                         Satın Al
                       </Text>
                     </View>
@@ -295,8 +297,8 @@ export default function MarketScreen() {
               <LinearGradient colors={["#FF6B6B", "#FF1744"]} style={styles.crownIcon}>
                 <Feather name="gift" size={22} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={styles.heroTitle}>Hediye Mağazası</Text>
-              <Text style={styles.heroSubtitle}>
+              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>Hediye Mağazası</Text>
+              <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
                 Karakterlerine özel hediyeler al,{"\n"}sohbetten gönder
               </Text>
               <Pressable
@@ -309,7 +311,7 @@ export default function MarketScreen() {
               </Pressable>
             </Animated.View>
 
-            <Text style={styles.sectionTitle}>Temel Hediyeler</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Temel Hediyeler</Text>
             <View style={styles.giftsGrid}>
               {GIFTS.filter((g) => g.category === "basic").map((gift, i) => (
                 <Animated.View
@@ -319,15 +321,15 @@ export default function MarketScreen() {
                 >
                   <Pressable
                     onPress={() => handleGiftPurchase(gift.id)}
-                    style={({ pressed }) => [styles.giftItem, pressed && { opacity: 0.85 }]}
+                    style={({ pressed }) => [styles.giftItem, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.75)" }, pressed && { opacity: 0.85 }]}
                   >
                     <LinearGradient colors={[gift.colorFrom, gift.colorTo]} style={styles.giftItemIcon}>
                       <Feather name={gift.icon as any} size={24} color="#fff" />
                     </LinearGradient>
-                    <Text style={styles.giftItemName}>{gift.name}</Text>
+                    <Text style={[styles.giftItemName, { color: colors.text.primary }]}>{gift.name}</Text>
                     <View style={styles.giftItemPrice}>
                       <Feather name="circle" size={10} color="#FFD700" />
-                      <Text style={styles.giftItemPriceText}>{gift.price}</Text>
+                      <Text style={[styles.giftItemPriceText, { color: colors.text.secondary }]}>{gift.price}</Text>
                     </View>
                     {getInventoryCount(gift.id) > 0 && (
                       <View style={styles.ownedBadge}>
@@ -339,7 +341,7 @@ export default function MarketScreen() {
               ))}
             </View>
 
-            <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Premium Hediyeler</Text>
+            <Text style={[styles.sectionTitle, { marginTop: 8, color: colors.text.primary }]}>Premium Hediyeler</Text>
             <View style={styles.giftsGrid}>
               {GIFTS.filter((g) => g.category === "premium" || g.category === "rare").map((gift, i) => (
                 <Animated.View
@@ -349,7 +351,7 @@ export default function MarketScreen() {
                 >
                   <Pressable
                     onPress={() => handleGiftPurchase(gift.id)}
-                    style={({ pressed }) => [styles.giftItem, gift.category === "rare" && styles.giftItemRare, pressed && { opacity: 0.85 }]}
+                    style={({ pressed }) => [styles.giftItem, gift.category === "rare" && styles.giftItemRare, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.75)" }, pressed && { opacity: 0.85 }]}
                   >
                     {gift.category === "rare" && (
                       <View style={styles.rareBadge}>
@@ -359,10 +361,10 @@ export default function MarketScreen() {
                     <LinearGradient colors={[gift.colorFrom, gift.colorTo]} style={styles.giftItemIcon}>
                       <Feather name={gift.icon as any} size={24} color="#fff" />
                     </LinearGradient>
-                    <Text style={styles.giftItemName}>{gift.name}</Text>
+                    <Text style={[styles.giftItemName, { color: colors.text.primary }]}>{gift.name}</Text>
                     <View style={styles.giftItemPrice}>
                       <Feather name="circle" size={10} color="#FFD700" />
-                      <Text style={styles.giftItemPriceText}>{gift.price}</Text>
+                      <Text style={[styles.giftItemPriceText, { color: colors.text.secondary }]}>{gift.price}</Text>
                     </View>
                     {getInventoryCount(gift.id) > 0 && (
                       <View style={styles.ownedBadge}>

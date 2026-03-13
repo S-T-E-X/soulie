@@ -17,6 +17,7 @@ const ADMIN_USERNAMES = ["yusuf"];
 
 export type User = {
   id: string;
+  userId: string;
   name: string;
   username: string;
   email?: string;
@@ -70,7 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
         if (stored) {
-          setUser(JSON.parse(stored));
+          const parsed = JSON.parse(stored) as User;
+          if (!parsed.userId) {
+            parsed.userId = String(Math.floor(100000 + Math.random() * 900000));
+            await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(parsed));
+          }
+          setUser(parsed);
         }
       } catch (e) {
         console.error("Auth init failed", e);
@@ -85,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isAdmin = ADMIN_EMAILS.includes(partial.email?.toLowerCase() ?? "") || ADMIN_USERNAMES.includes(username);
     const newUser: User = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 6),
+      userId: String(Math.floor(100000 + Math.random() * 900000)),
       name: partial.name,
       username: partial.name.toLowerCase().replace(/\s+/g, "_"),
       email: partial.email,

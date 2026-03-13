@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import * as FileSystem from "expo-file-system";
 import {
   View,
   Text,
@@ -307,7 +308,23 @@ export default function ChatScreen() {
       try {
         const baseUrl = getApiUrl();
 
-        const chatHistory = newMessages.map((m) => {
+        const convertedMessages = await Promise.all(
+          newMessages.map(async (m) => {
+            if (m.imageUri && (m.imageUri.startsWith("file://") || m.imageUri.startsWith("content://"))) {
+              try {
+                const base64 = await FileSystem.readAsStringAsync(m.imageUri, {
+                  encoding: FileSystem.EncodingType.Base64,
+                });
+                return { ...m, imageUri: `data:image/jpeg;base64,${base64}` };
+              } catch {
+                return { ...m, imageUri: undefined };
+              }
+            }
+            return m;
+          })
+        );
+
+        const chatHistory = convertedMessages.map((m) => {
           if (m.imageUri) {
             return {
               role: m.role,

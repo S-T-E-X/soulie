@@ -24,6 +24,7 @@ import { useChatContext } from "@/contexts/ChatContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAllStreaks } from "@/hooks/useStreak";
 import Colors from "@/constants/colors";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const CATEGORIES = ["Tümü", "Falcı", "Sevgili", "Arkadaş", "Mentor"];
 
@@ -156,6 +157,7 @@ export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { loadConversations, conversations, getConversationByCharacter } = useChatContext();
+  const { isDark, colors } = useTheme();
   const [activeCategory, setActiveCategory] = React.useState("Tümü");
   const [streaks, setStreaks] = React.useState<Record<string, number>>({});
 
@@ -204,15 +206,15 @@ export default function ExploreScreen() {
 
   return (
     <BackgroundGradient>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={colors.statusBar} />
 
-      <View style={[styles.header, { paddingTop: topPad + 16 }]}>
+      <View style={[styles.header, { paddingTop: topPad + 16, borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.greeting}>
+            <Text style={[styles.greeting, { color: colors.text.secondary }]}>
               Merhaba{user?.name ? `, ${user.name}` : ""}
             </Text>
-            <Text style={styles.headerTitle}>Karakterleri Keşfet</Text>
+            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Karakterleri Keşfet</Text>
           </View>
           <UserAvatarBadge xp={xp} name={user?.name} profilePhoto={user?.profilePhoto} />
         </View>
@@ -240,9 +242,9 @@ export default function ExploreScreen() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActiveCategory(cat);
                   }}
-                  style={[styles.catBtn, activeCategory === cat && styles.catBtnActive]}
+                  style={[styles.catBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }, activeCategory === cat && styles.catBtnActive]}
                 >
-                  <Text style={[styles.catText, activeCategory === cat && styles.catTextActive]}>
+                  <Text style={[styles.catText, { color: colors.text.secondary }, activeCategory === cat && styles.catTextActive]}>
                     {cat}
                   </Text>
                 </Pressable>

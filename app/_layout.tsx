@@ -16,6 +16,7 @@ import { queryClient } from "@/lib/query-client";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GiftProvider } from "@/contexts/GiftContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -56,17 +57,19 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ChatProvider>
-            <GiftProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <KeyboardProvider>
-                  <RootLayoutNav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </GiftProvider>
-          </ChatProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <ChatProvider>
+              <GiftProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider>
+                    <RootLayoutNav />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </GiftProvider>
+            </ChatProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
