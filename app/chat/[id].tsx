@@ -313,7 +313,7 @@ export default function ChatScreen() {
             if (m.imageUri && (m.imageUri.startsWith("file://") || m.imageUri.startsWith("content://"))) {
               try {
                 const base64 = await FileSystem.readAsStringAsync(m.imageUri, {
-                  encoding: FileSystem.EncodingType.Base64,
+                  encoding: "base64",
                 });
                 if (!base64) {
                   console.error("Base64 conversion failed: empty result");
@@ -323,7 +323,6 @@ export default function ChatScreen() {
                 return { ...m, imageUri: `data:${mimeType};base64,${base64}` };
               } catch (err) {
                 console.error("Error converting image to base64:", err);
-                Alert.alert("Fotoğraf Hatası", "Fotoğraf yüklenirken hata oluştu. Lütfen tekrar deneyin.");
                 return { ...m, imageUri: undefined };
               }
             }
