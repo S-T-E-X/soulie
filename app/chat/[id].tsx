@@ -315,8 +315,15 @@ export default function ChatScreen() {
                 const base64 = await FileSystem.readAsStringAsync(m.imageUri, {
                   encoding: FileSystem.EncodingType.Base64,
                 });
-                return { ...m, imageUri: `data:image/jpeg;base64,${base64}` };
-              } catch {
+                if (!base64) {
+                  console.error("Base64 conversion failed: empty result");
+                  return { ...m, imageUri: undefined };
+                }
+                const mimeType = m.imageUri.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
+                return { ...m, imageUri: `data:${mimeType};base64,${base64}` };
+              } catch (err) {
+                console.error("Error converting image to base64:", err);
+                Alert.alert("Fotoğraf Hatası", "Fotoğraf yüklenirken hata oluştu. Lütfen tekrar deneyin.");
                 return { ...m, imageUri: undefined };
               }
             }
