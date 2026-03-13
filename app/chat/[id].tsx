@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import {
   View,
   Text,
@@ -313,7 +313,7 @@ export default function ChatScreen() {
             if (m.imageUri && (m.imageUri.startsWith("file://") || m.imageUri.startsWith("content://"))) {
               try {
                 const base64 = await FileSystem.readAsStringAsync(m.imageUri, {
-                  encoding: "base64",
+                  encoding: FileSystem.EncodingType.Base64,
                 });
                 if (!base64) {
                   console.error("Base64 conversion failed: empty result");
