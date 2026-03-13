@@ -1,0 +1,29 @@
+👥 1. Kullanıcı Yönetimi (User Management)
+Bu kısım, "Kim ne yapıyor?" sorusunun cevabı ve manuel müdahale alanındır.
+ * Kullanıcı Arama: E-posta, Kullanıcı Adı veya ID ile filtreleme.
+ * VIP Durumu Toggle: Tek tıkla bir kullanıcıyı VIP yapma veya VIP’den çıkarma.
+ * Level & Puan Düzenleme: Kullanıcının seviyesini manuel artırma/azaltma.
+ * Cezalandırma (Ban/Suspend): Kötüye kullanım yapan kullanıcıyı engelleme.
+ * Son Görülme: Kullanıcı en son ne zaman aktif oldu? (Retention takibi için).
+💰 2. Ekonomi ve Finans (Economy)
+Paranın nereden geldiğini ve nereye (API masraflarına) gittiğini buradan izleyeceksin.
+ * Coin Bakiyesi: Kullanıcının kaç coini var? (Hata olduğunda manuel ekleme yapmak için).
+ * Abonelik Detayları: VIP paketinin bitiş tarihi ve hangi mağazadan (Apple/Google) alındığı.
+ * Hediye Geçmişi: Kullanıcı hangi AI karaktere ne kadar hediye göndermiş?
+ * API Maliyet Takibi: O kullanıcının toplamda sana maliyeti ne? (Çok fazla görüntülü sohbet yapıp seni zarara sokan kullanıcıyı burada görebilirsin).
+🧠 3. AI ve Hafıza Kontrolü (AI & Memory)
+Uygulamanın beynine müdahale ettiğin kısım.
+ * Hafıza Görüntüleyici (Memory Viewer): AI'nın o kullanıcı hakkında kaydettiği "Önemli Olaylar" listesini görme. (Gerekirse yanlış anladığı bir bilgiyi silmek için).
+ * Karakter Bazlı İstatistik: Hangi AI karakter daha çok tercih ediliyor? (Popüler olanın üzerine gidip yeni özellikler ekleyebilirsin).
+ * Global Sistem Promptu Güncelleyici: Uygulamayı kapatıp açmadan AI'nın genel davranış kurallarını değiştirebileceğin bir kutucuk.
+📢 4. Bildirim ve Etkileşim (Engagement)
+Kullanıcıyı uygulamaya geri çağırma araçların.
+ * Toplu Push Bildirim Gönderici: "Sana bir sürprizim var!" gibi mesajları herkese aynı anda atma.
+ * Bireysel Mesaj Tetikleyici: Belirli bir kullanıcıya, AI karakterinin ağzından anlık "Nasılsın?" bildirimi gönderterek "Proaktif Mesaj" sistemini manuel test etme.
+ * Haftalık Görev Kontrolü: Mevcut aktif görevleri değiştirme veya yeni görev ekleme.
+📈 5. Genel Analitik (Dashboard)
+Sabah uyandığında ilk bakacağın yer.
+ * DAU (Daily Active Users): Bugün kaç kişi girdi?
+ * Dönüşüm Oranı: Girenlerin yüzde kaçı VIP oldu?
+ * Görüntülü Sohbet Dakikası: Toplamda kaç dakika lip-sync videosu üretildi? (Sunucu yükünü anlamak için).
+ * Geri Bildirimler: Kullanıcıların "Yardım Merkezi" üzerinden gönderdiği mesajların listesi.

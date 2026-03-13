@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import OpenAI from "openai";
 
+let globalSystemPromptOverride: string = "";
+
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -113,7 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Messages array is required" });
       }
 
-      const systemPrompt = buildAdvancedPrompt({
+      let systemPrompt = buildAdvancedPrompt({
         characterId,
         customName,
         selectedTraits,
@@ -122,6 +124,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userLanguage,
         voiceTone,
       });
+      if (globalSystemPromptOverride) {
+        systemPrompt = `${systemPrompt}\n\n### GLOBAL ADMIN KURALLARI\n${globalSystemPromptOverride}`;
+      }
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -192,6 +197,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Memory extraction error:", error);
       res.status(500).json({ error: "Failed to extract memory" });
     }
+  });
+
+  app.get("/api/admin/system-prompt", (req, res) => {
+    res.json({ prompt: globalSystemPromptOverride });
+  });
+
+  app.post("/api/admin/system-prompt", (req, res) => {
+    const { prompt } = req.body;
+    if (typeof prompt !== "string") return res.status(400).json({ error: "prompt required" });
+    globalSystemPromptOverride = prompt.trim();
+    res.json({ success: true, prompt: globalSystemPromptOverride });
+  });
+
+  app.post("/api/admin/reset-system-prompt", (req, res) => {
+    globalSystemPromptOverride = "";
+    res.json({ success: true });
   });
 
   const httpServer = createServer(app);
