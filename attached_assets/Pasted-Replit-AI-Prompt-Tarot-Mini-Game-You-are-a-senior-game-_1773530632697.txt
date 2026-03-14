@@ -1,0 +1,163 @@
+Replit AI Prompt (Tarot Mini Game)
+
+You are a senior game UI/UX developer.
+Create a highly engaging Tarot Card mini-game for a mobile app (iOS + Android friendly web component).
+
+The goal is to make the Tarot game feel magical, premium and addictive so users want to come back every day.
+
+Core Concept
+
+Users open tarot cards and receive a mystical AI interpretation of their fate.
+
+⸻
+
+UI / Visual Design
+
+Design should feel like:
+
+• dark mystical background
+• glowing particles
+• golden tarot cards
+• smooth animations
+• magical sound feedback
+
+Style inspiration:
+	•	astrology apps
+	•	premium fortune telling apps
+	•	modern mobile game UI
+
+Requirements:
+
+• animated card shuffle
+• card flip animation
+• glowing borders when card selected
+• subtle particle effects
+• elegant serif font for tarot titles
+• soft ambient glow
+
+Card back design:
+
+• dark purple or black
+• golden mystical symbol in center
+• glowing edges
+
+⸻
+
+Game Flow
+	1.	User opens tarot screen
+	2.	Deck of cards appears with shuffle animation
+	3.	User chooses:
+
+• 1 card reading
+• 3 card reading (Past / Present / Future)
+• 5 card destiny spread
+	4.	Cards flip with animation
+	5.	Cards reveal tarot image and title
+	6.	AI generates interpretation
+
+⸻
+
+Tarot Card Data Structure
+
+Each card should include:
+	•	card_name
+	•	arcana_type (major/minor)
+	•	meaning_upright
+	•	meaning_reversed
+	•	emotional_energy
+	•	life_category (love, career, destiny, warning)
+
+Example:
+
+{
+ name: "The Fool",
+ arcana: "Major",
+ energy: "new beginnings",
+ category: "destiny"
+}
+
+
+⸻
+
+AI Interpretation System
+
+After cards are revealed, send selected cards to an AI function.
+
+Prompt example for AI interpretation:
+
+“Interpret the following tarot cards in a mystical and emotionally engaging way.
+Explain the meaning clearly but keep it magical and inspiring.”
+
+AI should generate:
+
+• short mystical summary
+• deeper explanation
+• advice for the user
+
+Output format:
+
+🔮 Your Reading
+
+Summary:
+(short mystical message)
+
+Meaning:
+(detailed explanation)
+
+Advice:
+(actionable guidance)
+
+
+⸻
+
+Engagement Features
+
+Add retention mechanics:
+
+• daily tarot reading limit
+• lucky card of the day
+• streak system
+• rare cards with glow effects
+
+Optional premium idea:
+
+• unlock deeper interpretation
+• unlock special spreads
+
+⸻
+
+Technical Requirements
+
+Use:
+
+• React or simple JS component
+• CSS animations
+• responsive mobile layout
+• smooth card flip animation
+• modular tarot card dataset
+
+Make the code clean and easily expandable.
+
+⸻
+
+Extra Polish
+
+Add small details:
+
+• vibration feedback when card flips
+• magical sparkle particles
+• subtle glow pulse on rare cards
+• loading crystal ball animation while AI generates reading
+
+⸻
+
+Goal
+
+The tarot mini game should feel:
+
+• mystical
+• visually beautiful
+• interactive
+• addictive
+
+Users should feel curious to open tarot cards repeatedly.

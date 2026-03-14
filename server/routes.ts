@@ -199,6 +199,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/tarot-interpret", async (req, res) => {
+    try {
+      const { cards, spreadType, language = "tr" } = req.body;
+      if (!cards || !Array.isArray(cards)) return res.status(400).json({ error: "Cards required" });
+
+      const cardList = cards.map((c: any, i: number) => {
+        const pos = spreadType === "single" ? "" :
+          spreadType === "three" ? ["Geçmiş", "Şu An", "Gelecek"][i] :
+          ["Geçmiş", "Yakın Geçmiş", "Şu An", "Yakın Gelecek", "Sonuç"][i];
+        return `${pos ? pos + ": " : ""}${c.name} (${c.arcana}, ${c.energy}, ${c.category})${c.reversed ? " [Ters]" : ""}`;
+      }).join("\n");
+
+      const langInst = language === "en"
+        ? "Respond in English."
+        : "Türkçe yanıt ver.";
+
+      const prompt = `Sen mistik bir tarot falcısısın. Büyüleyici, gizemli ve ilham verici bir dille yorum yap.
+${langInst}
+
+Aşağıdaki tarot kartlarını yorumla:
+${cardList}
+
+Şu formatta yanıt ver:
+OZET: (1-2 cümle mistik özet)
+YORUM: (her kartın detaylı yorumu, paragraf halinde)
+TAVSIYE: (kullanıcıya somut tavsiye)`;
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
+
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4.1-nano",
+        messages: [
+          { role: "system", content: prompt },
+          { role: "user", content: "Falıma bak ve mistik bir yorum yap." },
+        ],
+        stream: true,
+        max_completion_tokens: 1024,
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      }
+      res.write("data: [DONE]\n\n");
+      res.end();
+    } catch (error) {
+      console.error("Tarot error:", error);
+      if (!res.headersSent) res.status(500).json({ error: "Tarot interpretation failed" });
+      else { res.write(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`); res.end(); }
+    }
+  });
+
   app.get("/api/admin/system-prompt", (req, res) => {
     res.json({ prompt: globalSystemPromptOverride });
   });

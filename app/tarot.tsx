@@ -9,6 +9,8 @@ import {
   Platform,
   Modal,
   StatusBar,
+  Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
@@ -16,257 +18,488 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Colors from "@/constants/colors";
+import { getApiUrl } from "@/lib/query-client";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetch as expoFetch } from "expo/fetch";
 
-const STORAGE_KEY = "soulie_tarot_v1";
+const { width: SCREEN_W } = Dimensions.get("window");
+const STORAGE_KEY = "soulie_tarot_v2";
 
-const TAROT_CARDS = [
-  { id: "fool", name: "Deli", nameEn: "The Fool", icon: "star" as const, gradient: ["#667eea", "#764ba2"] as [string, string], meaning: "Yeni başlangıçlar, özgürlük ve macera seni bekliyor. Korkularını bırak ve hayatın akışına güven." },
-  { id: "magician", name: "Büyücü", nameEn: "The Magician", icon: "zap" as const, gradient: ["#f093fb", "#f5576c"] as [string, string], meaning: "İçindeki güç ve yaratıcılık zirveye ulaşıyor. Elindeki tüm araçları kullanma vakti geldi." },
-  { id: "priestess", name: "Rahibe", nameEn: "High Priestess", icon: "moon" as const, gradient: ["#4facfe", "#00f2fe"] as [string, string], meaning: "Sezgilerine güven. Gizli bilgiler yüzeye çıkıyor; içsesini dinle." },
-  { id: "empress", name: "İmparatoriçe", nameEn: "The Empress", icon: "heart" as const, gradient: ["#43e97b", "#38f9d7"] as [string, string], meaning: "Bereket ve bolluk dönemi. Sevgi ve doğanın gücüyle bağlantı kur." },
-  { id: "emperor", name: "İmparator", nameEn: "The Emperor", icon: "shield" as const, gradient: ["#fa709a", "#fee140"] as [string, string], meaning: "Yapı ve otorite. Hayatında düzeni sağla; kararlı adımlar at." },
-  { id: "hierophant", name: "Hiyerofant", nameEn: "The Hierophant", icon: "book" as const, gradient: ["#a18cd1", "#fbc2eb"] as [string, string], meaning: "Geleneksel bilgelik ve rehberlik. Güvendiğin birine danış." },
-  { id: "lovers", name: "Aşıklar", nameEn: "The Lovers", icon: "sun" as const, gradient: ["#ff9a9e", "#fad0c4"] as [string, string], meaning: "Önemli bir seçim kapıda. Kalbin seni doğru yöne götürecek." },
-  { id: "chariot", name: "Savaş Arabası", nameEn: "The Chariot", icon: "navigation" as const, gradient: ["#30cfd0", "#330867"] as [string, string], meaning: "Zafer ve irade gücü. Odaklan ve hedefe koş; engeller aşılabilir." },
-  { id: "strength", name: "Güç", nameEn: "Strength", icon: "award" as const, gradient: ["#f77062", "#fe5196"] as [string, string], meaning: "İç gücün her zaman beklediğinden fazla. Sabırla ve sevgiyle ilerle." },
-  { id: "hermit", name: "Ermiş", nameEn: "The Hermit", icon: "eye" as const, gradient: ["#96fbc4", "#f9f586"] as [string, string], meaning: "İçsel yolculuk zamanı. Yalnızlık seni güçlendirir; cevaplar içinde." },
-  { id: "wheel", name: "Kader Çarkı", nameEn: "Wheel of Fortune", icon: "refresh-cw" as const, gradient: ["#fddb92", "#d1fdff"] as [string, string], meaning: "Değişim rüzgarı esiyor. Hayatın döngüsünü kabul et; iyi zamanlar geliyor." },
-  { id: "justice", name: "Adalet", nameEn: "Justice", icon: "sliders" as const, gradient: ["#89f7fe", "#66a6ff"] as [string, string], meaning: "Denge ve adalet devrede. Doğru kararlar verilecek; dürüstlük ödüllendirilir." },
-  { id: "star", name: "Yıldız", nameEn: "The Star", icon: "star" as const, gradient: ["#a1c4fd", "#c2e9fb"] as [string, string], meaning: "Umut ve ilham parlıyor. Hayallerini takip et; evren seni destekliyor." },
-  { id: "moon", name: "Ay", nameEn: "The Moon", icon: "moon" as const, gradient: ["#2c3e50", "#3498db"] as [string, string], meaning: "Bilinçaltı mesajlar geliyor. Rüyalarına ve sezgilerine dikkat et." },
-  { id: "world", name: "Dünya", nameEn: "The World", icon: "globe" as const, gradient: ["#11998e", "#38ef7d"] as [string, string], meaning: "Tamamlanma ve başarı. Bir dönem kapanıyor; yeni bir sayfa açılıyor." },
+type ArcanaType = "Major" | "Minor";
+type LifeCategory = "love" | "career" | "destiny" | "warning" | "growth" | "spiritual";
+type SpreadType = "single" | "three" | "five";
+
+type TarotCard = {
+  id: string;
+  name: string;
+  nameEn: string;
+  arcana: ArcanaType;
+  energy: string;
+  category: LifeCategory;
+  meaningUpright: string;
+  meaningReversed: string;
+  gradient: [string, string];
+  icon: string;
+  isRare?: boolean;
+};
+
+const TAROT_DECK: TarotCard[] = [
+  { id: "fool", name: "Deli", nameEn: "The Fool", arcana: "Major", energy: "yeni başlangıçlar", category: "destiny", meaningUpright: "Özgürlük, yeni bir yolculuk, saf potansiyel", meaningReversed: "Düşüncesizlik, riskli kararlar", gradient: ["#667eea", "#764ba2"], icon: "star" },
+  { id: "magician", name: "Büyücü", nameEn: "The Magician", arcana: "Major", energy: "yaratıcılık", category: "career", meaningUpright: "Güç, yetenek, ustalık", meaningReversed: "Manipülasyon, beceriksizlik", gradient: ["#f093fb", "#f5576c"], icon: "zap", isRare: true },
+  { id: "priestess", name: "Başrahibe", nameEn: "High Priestess", arcana: "Major", energy: "sezgi", category: "spiritual", meaningUpright: "Sezgi, gizem, bilinçaltı", meaningReversed: "Gizli gündemler, yüzeysellik", gradient: ["#4facfe", "#00f2fe"], icon: "moon", isRare: true },
+  { id: "empress", name: "İmparatoriçe", nameEn: "The Empress", arcana: "Major", energy: "bereket", category: "love", meaningUpright: "Bereket, doğurganlık, güzellik", meaningReversed: "Bağımlılık, boşluk", gradient: ["#43e97b", "#38f9d7"], icon: "heart" },
+  { id: "emperor", name: "İmparator", nameEn: "The Emperor", arcana: "Major", energy: "otorite", category: "career", meaningUpright: "Yapı, düzen, liderlik", meaningReversed: "Tiranlık, katılık", gradient: ["#fa709a", "#fee140"], icon: "shield" },
+  { id: "hierophant", name: "Hiyerofant", nameEn: "The Hierophant", arcana: "Major", energy: "bilgelik", category: "spiritual", meaningUpright: "Gelenek, rehberlik, öğreti", meaningReversed: "Dogmatizm, uyumsuzluk", gradient: ["#a18cd1", "#fbc2eb"], icon: "book" },
+  { id: "lovers", name: "Aşıklar", nameEn: "The Lovers", arcana: "Major", energy: "aşk", category: "love", meaningUpright: "Birlik, tutku, uyum", meaningReversed: "Dengesizlik, yanlış seçim", gradient: ["#ff9a9e", "#fad0c4"], icon: "heart", isRare: true },
+  { id: "chariot", name: "Savaş Arabası", nameEn: "The Chariot", arcana: "Major", energy: "zafer", category: "career", meaningUpright: "Kararlılık, zafer, kontrol", meaningReversed: "Saldırganlık, yön kaybı", gradient: ["#30cfd0", "#330867"], icon: "navigation" },
+  { id: "strength", name: "Güç", nameEn: "Strength", arcana: "Major", energy: "cesaret", category: "growth", meaningUpright: "İç güç, cesaret, sabır", meaningReversed: "Güvensizlik, zayıflık", gradient: ["#f77062", "#fe5196"], icon: "award" },
+  { id: "hermit", name: "Ermiş", nameEn: "The Hermit", arcana: "Major", energy: "içe dönüş", category: "spiritual", meaningUpright: "Yalnızlık, arayış, bilgelik", meaningReversed: "İzolasyon, kaçış", gradient: ["#96fbc4", "#f9f586"], icon: "eye" },
+  { id: "wheel", name: "Kader Çarkı", nameEn: "Wheel of Fortune", arcana: "Major", energy: "değişim", category: "destiny", meaningUpright: "Şans, kader, dönüm noktası", meaningReversed: "Kötü şans, direnç", gradient: ["#fddb92", "#d1fdff"], icon: "refresh-cw", isRare: true },
+  { id: "justice", name: "Adalet", nameEn: "Justice", arcana: "Major", energy: "denge", category: "career", meaningUpright: "Adalet, dürüstlük, denge", meaningReversed: "Haksızlık, taraf tutma", gradient: ["#89f7fe", "#66a6ff"], icon: "sliders" },
+  { id: "hangedman", name: "Asılan Adam", nameEn: "The Hanged Man", arcana: "Major", energy: "fedakarlık", category: "growth", meaningUpright: "Teslim olmak, yeni bakış açısı", meaningReversed: "Erteleme, direniş", gradient: ["#c471f5", "#fa71cd"], icon: "rotate-ccw" },
+  { id: "death", name: "Ölüm", nameEn: "Death", arcana: "Major", energy: "dönüşüm", category: "destiny", meaningUpright: "Son ve yeni başlangıç, dönüşüm", meaningReversed: "Değişime direnç, durgunluk", gradient: ["#2c3e50", "#4ca1af"], icon: "sunset", isRare: true },
+  { id: "temperance", name: "Denge", nameEn: "Temperance", arcana: "Major", energy: "uyum", category: "growth", meaningUpright: "Sabır, denge, ılımlılık", meaningReversed: "Aşırılık, dengesizlik", gradient: ["#c2e59c", "#64b3f4"], icon: "droplet" },
+  { id: "devil", name: "Şeytan", nameEn: "The Devil", arcana: "Major", energy: "bağımlılık", category: "warning", meaningUpright: "Bağımlılık, tutku, gölge benlik", meaningReversed: "Özgürleşme, farkındalık", gradient: ["#434343", "#000000"], icon: "alert-triangle", isRare: true },
+  { id: "tower", name: "Kule", nameEn: "The Tower", arcana: "Major", energy: "yıkım", category: "warning", meaningUpright: "Ani değişim, yıkım, uyanış", meaningReversed: "Felaketin eşiği, kaçış", gradient: ["#c33764", "#1d2671"], icon: "cloud-lightning" },
+  { id: "star", name: "Yıldız", nameEn: "The Star", arcana: "Major", energy: "umut", category: "spiritual", meaningUpright: "Umut, ilham, iç huzur", meaningReversed: "Umutsuzluk, inanç kaybı", gradient: ["#a1c4fd", "#c2e9fb"], icon: "star", isRare: true },
+  { id: "moon", name: "Ay", nameEn: "The Moon", arcana: "Major", energy: "illüzyon", category: "warning", meaningUpright: "Bilinçaltı, rüyalar, yanılsama", meaningReversed: "Korkuların üstesinden gelme", gradient: ["#0f2027", "#2c5364"], icon: "moon" },
+  { id: "sun", name: "Güneş", nameEn: "The Sun", arcana: "Major", energy: "neşe", category: "love", meaningUpright: "Mutluluk, başarı, canlılık", meaningReversed: "Geçici mutluluk, kibir", gradient: ["#f7971e", "#ffd200"], icon: "sun" },
+  { id: "judgement", name: "Mahkeme", nameEn: "Judgement", arcana: "Major", energy: "uyanış", category: "destiny", meaningUpright: "Yeniden doğuş, içsel çağrı", meaningReversed: "Kendinden şüphe, kaçış", gradient: ["#e44d26", "#f16529"], icon: "bell" },
+  { id: "world", name: "Dünya", nameEn: "The World", arcana: "Major", energy: "tamamlanma", category: "destiny", meaningUpright: "Bütünlük, başarı, döngü sonu", meaningReversed: "Eksiklik, tamamlanmamışlık", gradient: ["#11998e", "#38ef7d"], icon: "globe", isRare: true },
 ];
 
-const POSITIONS = ["Geçmiş", "Şu An", "Gelecek"];
+const SPREAD_OPTIONS: { type: SpreadType; label: string; count: number; icon: string; desc: string }[] = [
+  { type: "single", label: "Tek Kart", count: 1, icon: "square", desc: "Hızlı rehberlik" },
+  { type: "three", label: "Üç Kart", count: 3, icon: "columns", desc: "Geçmiş · Şu An · Gelecek" },
+  { type: "five", label: "Kader Yayılımı", count: 5, icon: "grid", desc: "Derin kader analizi" },
+];
 
-type CardState = "back" | "flipping" | "front";
+const POSITION_LABELS: Record<SpreadType, string[]> = {
+  single: ["Rehberlik"],
+  three: ["Geçmiş", "Şu An", "Gelecek"],
+  five: ["Geçmiş", "Yakın Geçmiş", "Şu An", "Yakın Gelecek", "Sonuç"],
+};
 
-function TarotCard({
-  card,
-  position,
-  state,
-  onFlip,
-}: {
-  card: (typeof TAROT_CARDS)[0];
-  position: string;
-  state: CardState;
-  onFlip: () => void;
-}) {
-  const flipAnim = useRef(new Animated.Value(0)).current;
-  const [showFront, setShowFront] = useState(false);
+const CATEGORY_LABELS: Record<LifeCategory, string> = {
+  love: "Aşk", career: "Kariyer", destiny: "Kader", warning: "Uyarı", growth: "Gelişim", spiritual: "Ruhani",
+};
+const CATEGORY_COLORS: Record<LifeCategory, string> = {
+  love: "#FF6B9D", career: "#007AFF", destiny: "#FFD700", warning: "#FF3B30", growth: "#34C759", spiritual: "#AF52DE",
+};
 
+function getTodayKey() { return new Date().toISOString().split("T")[0]; }
+
+async function getTarotData(): Promise<{ lastRead: string; streak: number; totalReadings: number; luckyCardId: string }> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return { lastRead: "", streak: 0, totalReadings: 0, luckyCardId: "" };
+    return JSON.parse(raw);
+  } catch { return { lastRead: "", streak: 0, totalReadings: 0, luckyCardId: "" }; }
+}
+
+async function saveTarotData(data: any) {
+  try { await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+
+function getLuckyCard(): TarotCard {
+  const seed = getTodayKey().split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return TAROT_DECK[seed % TAROT_DECK.length];
+}
+
+function drawCards(count: number): (TarotCard & { reversed: boolean })[] {
+  const shuffled = [...TAROT_DECK].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count).map(card => ({
+    ...card,
+    reversed: Math.random() < 0.25,
+  }));
+}
+
+function GlowDot({ delay, size = 3, color = "#C084FC" }: { delay: number; size?: number; color?: string }) {
+  const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    if (state === "flipping") {
-      Animated.timing(flipAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }).start(() => setShowFront(true));
-    }
-  }, [state]);
-
-  const backRotate = flipAnim.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "90deg"] });
-  const frontRotate = flipAnim.interpolate({ inputRange: [0, 1], outputRange: ["-90deg", "0deg"] });
-
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 1500 + delay * 200, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 1500 + delay * 200, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.7] });
   return (
-    <View style={styles.cardOuter}>
-      <Text style={styles.positionLabel}>{position}</Text>
-      <Pressable onPress={state === "back" ? onFlip : undefined} style={styles.cardPressable}>
-        {!showFront ? (
-          <Animated.View style={[styles.card, { transform: [{ rotateY: backRotate }] }]}>
-            <LinearGradient colors={["#1A1A3E", "#6B21A8"]} style={styles.cardGradient}>
-              <View style={styles.cardBackPattern}>
-                {[0,1,2,3,4,5,6,7,8].map(i => (
-                  <View key={i} style={styles.cardBackDot} />
-                ))}
-              </View>
-              <Feather name="eye" size={28} color="rgba(255,255,255,0.4)" />
-              <Text style={styles.tapText}>Dokun</Text>
-            </LinearGradient>
-          </Animated.View>
-        ) : (
-          <Animated.View style={[styles.card, { transform: [{ rotateY: frontRotate }] }]}>
-            <LinearGradient colors={card.gradient} style={styles.cardGradient}>
-              <View style={styles.cardIconCircle}>
-                <Feather name={card.icon} size={32} color="rgba(255,255,255,0.9)" />
-              </View>
-              <Text style={styles.cardName}>{card.name}</Text>
-              <Text style={styles.cardNameEn}>{card.nameEn}</Text>
-            </LinearGradient>
-          </Animated.View>
-        )}
-      </Pressable>
-    </View>
+    <Animated.View style={{ position: "absolute", width: size, height: size, borderRadius: size / 2, backgroundColor: color, opacity, top: `${15 + delay * 12}%`, left: `${10 + (delay * 37) % 80}%` }} />
   );
 }
 
-async function getTodayKey() {
-  return new Date().toISOString().split("T")[0];
+function MysticalCardBack({ onPress, isActive, size }: { onPress: () => void; isActive: boolean; size: "sm" | "md" | "lg" }) {
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const w = size === "lg" ? 140 : size === "md" ? 110 : 90;
+  const h = size === "lg" ? 200 : size === "md" ? 165 : 135;
+
+  useEffect(() => {
+    if (isActive) {
+      Animated.loop(Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1200, useNativeDriver: true }),
+      ])).start();
+    }
+  }, [isActive]);
+
+  const glowOpacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.8] });
+
+  return (
+    <Pressable onPress={onPress}>
+      <View style={{ width: w, height: h, alignItems: "center", justifyContent: "center" }}>
+        {isActive && <Animated.View style={[styles.cardGlow, { width: w + 8, height: h + 8, borderRadius: 18, opacity: glowOpacity }]} />}
+        <LinearGradient colors={["#1A0A3E", "#0D0025"]} style={[styles.cardBack, { width: w, height: h }]}>
+          <View style={styles.cardBackInner}>
+            <View style={styles.cardBackSymbol}>
+              <Feather name="eye" size={24} color="rgba(192,132,252,0.5)" />
+            </View>
+            <View style={styles.cardBackLine} />
+            {isActive && <Text style={styles.cardBackTap}>Dokun</Text>}
+          </View>
+          <View style={[styles.cardBackBorder, { width: w - 8, height: h - 8 }]} />
+        </LinearGradient>
+      </View>
+    </Pressable>
+  );
 }
 
-async function hasReadToday(): Promise<boolean> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    return data.lastRead === await getTodayKey();
-  } catch {
-    return false;
-  }
-}
+function RevealedCard({ card, position, reversed, size }: { card: TarotCard; position: string; reversed: boolean; size: "sm" | "md" | "lg" }) {
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const w = size === "lg" ? 140 : size === "md" ? 110 : 90;
+  const h = size === "lg" ? 200 : size === "md" ? 165 : 135;
 
-async function markReadToday() {
-  try {
-    const key = await getTodayKey();
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ lastRead: key }));
-  } catch {}
-}
+  useEffect(() => {
+    Animated.spring(scaleAnim, { toValue: 1, friction: 6, useNativeDriver: true }).start();
+  }, []);
 
-function shuffleCards(): (typeof TAROT_CARDS)[0][] {
-  const today = new Date().toISOString().split("T")[0];
-  const seed = today.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const shuffled = [...TAROT_CARDS].sort((a, b) => {
-    const ha = (seed * a.id.length * 13) % 997;
-    const hb = (seed * b.id.length * 13) % 997;
-    return ha - hb;
-  });
-  return shuffled.slice(0, 3);
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <View style={{ alignItems: "center", gap: 6 }}>
+        <LinearGradient colors={card.gradient} style={[styles.revealedCard, { width: w, height: h }, card.isRare && styles.rareCard]}>
+          {card.isRare && <View style={styles.rareBadge}><Text style={styles.rareBadgeText}>RARE</Text></View>}
+          <View style={[styles.revealedIcon, { transform: [{ rotate: reversed ? "180deg" : "0deg" }] }]}>
+            <Feather name={card.icon as any} size={size === "lg" ? 32 : 22} color="rgba(255,255,255,0.9)" />
+          </View>
+          <Text style={[styles.revealedName, size === "sm" && { fontSize: 10 }]} numberOfLines={1}>{card.name}</Text>
+          <Text style={[styles.revealedNameEn, size === "sm" && { fontSize: 8 }]} numberOfLines={1}>{card.nameEn}</Text>
+          {reversed && <Text style={styles.reversedLabel}>Ters</Text>}
+          <View style={[styles.categoryBadge, { backgroundColor: CATEGORY_COLORS[card.category] + "40" }]}>
+            <Text style={[styles.categoryText, { color: CATEGORY_COLORS[card.category] }]}>{CATEGORY_LABELS[card.category]}</Text>
+          </View>
+        </LinearGradient>
+        <Text style={styles.posLabel}>{position}</Text>
+      </View>
+    </Animated.View>
+  );
 }
 
 export default function TarotScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const { user } = useAuth();
 
-  const [checked, setChecked] = useState(false);
+  const [phase, setPhase] = useState<"loading" | "select" | "deck" | "reading" | "done">("loading");
+  const [spread, setSpread] = useState<SpreadType>("three");
+  const [drawnCards, setDrawnCards] = useState<(TarotCard & { reversed: boolean })[]>([]);
+  const [flipped, setFlipped] = useState<boolean[]>([]);
   const [alreadyRead, setAlreadyRead] = useState(false);
-  const [cards] = useState(() => shuffleCards());
-  const [cardStates, setCardStates] = useState<CardState[]>(["back", "back", "back"]);
-  const [showResult, setShowResult] = useState(false);
+  const [interpretation, setInterpretation] = useState("");
+  const [isInterpreting, setIsInterpreting] = useState(false);
+  const [tarotData, setTarotData] = useState<any>(null);
   const [showVIPModal, setShowVIPModal] = useState(false);
 
-  const allFlipped = cardStates.every((s) => s !== "back");
+  const luckyCard = getLuckyCard();
+  const shuffleAnims = useRef<Animated.Value[]>([]).current;
 
   useEffect(() => {
-    hasReadToday().then((done) => {
-      setAlreadyRead(done);
-      setChecked(true);
-    });
+    (async () => {
+      const data = await getTarotData();
+      setTarotData(data);
+      const today = getTodayKey();
+      setAlreadyRead(data.lastRead === today);
+      setPhase("select");
+    })();
   }, []);
 
-  const flipCard = useCallback(async (idx: number) => {
+  const startReading = useCallback((type: SpreadType) => {
     if (alreadyRead) { setShowVIPModal(true); return; }
-    const prev = [...cardStates];
-    if (prev[idx] !== "back") return;
+    setSpread(type);
+    const count = SPREAD_OPTIONS.find(s => s.type === type)!.count;
+    const cards = drawCards(count);
+    setDrawnCards(cards);
+    setFlipped(new Array(count).fill(false));
+    setInterpretation("");
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setPhase("deck");
+  }, [alreadyRead]);
+
+  const flipCard = useCallback((idx: number) => {
+    if (flipped[idx]) return;
     for (let i = 0; i < idx; i++) {
-      if (prev[i] === "back") return;
+      if (!flipped[i]) return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    prev[idx] = "flipping";
-    setCardStates([...prev]);
+    const newFlipped = [...flipped];
+    newFlipped[idx] = true;
+    setFlipped(newFlipped);
 
-    const newStates = prev.map((s) => (s === "flipping" ? "front" : s));
-    const allDone = newStates.every((s) => s === "front");
-    if (allDone) {
-      await markReadToday();
-      setTimeout(() => setShowResult(true), 800);
+    if (newFlipped.every(f => f)) {
+      setTimeout(() => {
+        fetchInterpretation();
+        markDone();
+      }, 600);
     }
-  }, [cardStates, alreadyRead]);
+  }, [flipped, drawnCards]);
 
-  if (!checked) return null;
+  const markDone = async () => {
+    const today = getTodayKey();
+    const data = await getTarotData();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yKey = yesterday.toISOString().split("T")[0];
+    const newStreak = data.lastRead === yKey ? (data.streak ?? 0) + 1 : 1;
+    const updated = { lastRead: today, streak: newStreak, totalReadings: (data.totalReadings ?? 0) + 1, luckyCardId: luckyCard.id };
+    await saveTarotData(updated);
+    setTarotData(updated);
+    setAlreadyRead(true);
+  };
+
+  const fetchInterpretation = async () => {
+    setIsInterpreting(true);
+    setPhase("reading");
+    try {
+      const url = new URL("/api/tarot-interpret", getApiUrl());
+      const cardData = drawnCards.map(c => ({ name: c.nameEn, arcana: c.arcana, energy: c.energy, category: c.category, reversed: c.reversed }));
+      const res = await expoFetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cards: cardData, spreadType: spread, language: user?.language ?? "tr" }),
+      });
+
+      const reader = res.body?.getReader();
+      if (!reader) return;
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6);
+          if (payload === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(payload);
+            if (parsed.content) {
+              fullText += parsed.content;
+              setInterpretation(fullText);
+            }
+          } catch {}
+        }
+      }
+    } catch (err) {
+      console.error("Tarot interpretation error:", err);
+      setInterpretation("Yıldızlar şu an yanıt veremiyor. Lütfen tekrar dene.");
+    } finally {
+      setIsInterpreting(false);
+      setPhase("done");
+    }
+  };
+
+  const cardSize = drawnCards.length <= 1 ? "lg" as const : drawnCards.length <= 3 ? "md" as const : "sm" as const;
+
+  if (phase === "loading") return <View style={[styles.root, { paddingTop: topPad }]}><LinearGradient colors={["#0D0020", "#1A0040", "#0D0020"]} style={StyleSheet.absoluteFill} /><ActivityIndicator color="#C084FC" style={{ flex: 1 }} /></View>;
 
   return (
-    <View style={[styles.container, { paddingTop: topPad }]}>
+    <View style={[styles.root, { paddingTop: topPad }]}>
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={["#0D0020", "#1A0040", "#0D0020"]} style={StyleSheet.absoluteFill} />
 
+      {[0,1,2,3,4,5,6,7].map(i => <GlowDot key={i} delay={i} size={2 + (i % 3)} color={i % 2 === 0 ? "#C084FC" : "#FFD700"} />)}
+
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+        <Pressable onPress={() => phase === "select" ? router.back() : setPhase("select")} style={styles.backBtn} hitSlop={8}>
           <Feather name="chevron-left" size={24} color="rgba(255,255,255,0.8)" />
         </Pressable>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Tarot Falı</Text>
-          <Text style={styles.headerSub}>Üç kartı sırayla aç</Text>
+          {tarotData?.streak > 0 && (
+            <View style={styles.streakBadge}>
+              <Feather name="zap" size={10} color="#FFD700" />
+              <Text style={styles.streakText}>{tarotData.streak} gün seri</Text>
+            </View>
+          )}
         </View>
         <View style={{ width: 36 }} />
       </View>
 
-      {alreadyRead && (
-        <View style={styles.alreadyReadBanner}>
-          <Feather name="clock" size={14} color="#FFD700" />
-          <Text style={styles.alreadyReadText}>Bugünkü falını baktırdın. Yarın tekrar gel.</Text>
-        </View>
-      )}
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: botPad + 24 }]} showsVerticalScrollIndicator={false}>
 
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: botPad + 24 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.cardsRow}>
-          {cards.map((card, idx) => (
-            <TarotCard
-              key={card.id}
-              card={card}
-              position={POSITIONS[idx]}
-              state={cardStates[idx]}
-              onFlip={() => flipCard(idx)}
-            />
-          ))}
-        </View>
+        {phase === "select" && (
+          <>
+            {alreadyRead && (
+              <View style={styles.alreadyBanner}>
+                <Feather name="clock" size={14} color="#FFD700" />
+                <Text style={styles.alreadyText}>Bugünkü falını baktırdın. Yarın tekrar gel.</Text>
+              </View>
+            )}
 
-        {!allFlipped && !alreadyRead && (
-          <Text style={styles.hintText}>
-            {cardStates[0] === "back" ? "Geçmişini temsil eden kartı aç" :
-             cardStates[1] === "back" ? "Şu anını temsil eden kartı aç" :
-             "Geleceğini temsil eden kartı aç"}
-          </Text>
+            <View style={styles.luckySection}>
+              <Text style={styles.luckyTitle}>Günün Şanslı Kartı</Text>
+              <LinearGradient colors={luckyCard.gradient} style={styles.luckyCard}>
+                <Feather name={luckyCard.icon as any} size={28} color="rgba(255,255,255,0.9)" />
+                <Text style={styles.luckyName}>{luckyCard.name}</Text>
+                <Text style={styles.luckyEnergy}>{luckyCard.energy}</Text>
+              </LinearGradient>
+            </View>
+
+            <Text style={styles.spreadTitle}>Yayılım Seç</Text>
+
+            {SPREAD_OPTIONS.map(opt => (
+              <Pressable
+                key={opt.type}
+                onPress={() => startReading(opt.type)}
+                style={styles.spreadOption}
+              >
+                <LinearGradient colors={["rgba(192,132,252,0.12)", "rgba(192,132,252,0.04)"]} style={styles.spreadOptionGrad}>
+                  <View style={styles.spreadOptionIcon}>
+                    <Feather name={opt.icon as any} size={22} color="#C084FC" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.spreadOptionLabel}>{opt.label}</Text>
+                    <Text style={styles.spreadOptionDesc}>{opt.desc}</Text>
+                  </View>
+                  <View style={styles.spreadCount}>
+                    <Text style={styles.spreadCountText}>{opt.count}</Text>
+                  </View>
+                  <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.3)" />
+                </LinearGradient>
+              </Pressable>
+            ))}
+
+            {(tarotData?.totalReadings ?? 0) > 0 && (
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNum}>{tarotData?.totalReadings ?? 0}</Text>
+                  <Text style={styles.statLabel}>Toplam Fal</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statNum}>{tarotData?.streak ?? 0}</Text>
+                  <Text style={styles.statLabel}>Gün Seri</Text>
+                </View>
+              </View>
+            )}
+          </>
         )}
 
-        {showResult && (
-          <Animated.View style={styles.resultSection}>
-            <LinearGradient colors={["rgba(107,33,168,0.3)", "rgba(107,33,168,0.1)"]} style={styles.resultGradient}>
-              <View style={styles.resultHeader}>
-                <Feather name="eye" size={20} color="#C084FC" />
-                <Text style={styles.resultTitle}>Falın Yorumu</Text>
-              </View>
-              {cards.map((card, idx) => (
-                <View key={card.id} style={styles.resultCard}>
-                  <View style={styles.resultCardHeader}>
-                    <LinearGradient colors={card.gradient} style={styles.resultCardIcon}>
-                      <Feather name={card.icon} size={14} color="#fff" />
-                    </LinearGradient>
-                    <Text style={styles.resultCardPos}>{POSITIONS[idx]}</Text>
-                    <Text style={styles.resultCardName}>{card.name}</Text>
+        {(phase === "deck" || phase === "reading" || phase === "done") && (
+          <>
+            <View style={styles.deckArea}>
+              <Text style={styles.deckTitle}>
+                {flipped.every(f => f) ? "Kartların Açıldı" :
+                  `${flipped.filter(f => !f).length} kart kaldı`}
+              </Text>
+              <View style={[styles.cardsRow, drawnCards.length === 5 && { flexWrap: "wrap" }]}>
+                {drawnCards.map((card, idx) => (
+                  <View key={card.id} style={{ alignItems: "center", gap: 6 }}>
+                    {flipped[idx] ? (
+                      <RevealedCard card={card} position={POSITION_LABELS[spread][idx]} reversed={card.reversed} size={cardSize} />
+                    ) : (
+                      <>
+                        <MysticalCardBack
+                          onPress={() => flipCard(idx)}
+                          isActive={!flipped[idx] && (idx === 0 || flipped[idx - 1])}
+                          size={cardSize}
+                        />
+                        <Text style={styles.posLabel}>{POSITION_LABELS[spread][idx]}</Text>
+                      </>
+                    )}
                   </View>
-                  <Text style={styles.resultCardMeaning}>{card.meaning}</Text>
-                </View>
-              ))}
-            </LinearGradient>
-          </Animated.View>
+                ))}
+              </View>
+              {!flipped.every(f => f) && (
+                <Text style={styles.hintText}>
+                  {POSITION_LABELS[spread][flipped.findIndex(f => !f)]} kartını aç
+                </Text>
+              )}
+            </View>
+
+            {(phase === "reading" || phase === "done") && (
+              <View style={styles.interpretSection}>
+                <LinearGradient colors={["rgba(192,132,252,0.15)", "rgba(107,33,168,0.08)"]} style={styles.interpretGrad}>
+                  <View style={styles.interpretHeader}>
+                    {isInterpreting ? (
+                      <>
+                        <View style={styles.crystalBall}>
+                          <ActivityIndicator size="small" color="#C084FC" />
+                        </View>
+                        <Text style={styles.interpretTitle}>Yıldızlar Konuşuyor...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Feather name="eye" size={18} color="#C084FC" />
+                        <Text style={styles.interpretTitle}>Falın Yorumu</Text>
+                      </>
+                    )}
+                  </View>
+
+                  {drawnCards.map((card, idx) => (
+                    <View key={card.id} style={styles.cardSummary}>
+                      <LinearGradient colors={card.gradient} style={styles.cardSummaryIcon}>
+                        <Feather name={card.icon as any} size={12} color="#fff" />
+                      </LinearGradient>
+                      <Text style={styles.cardSummaryPos}>{POSITION_LABELS[spread][idx]}</Text>
+                      <Text style={styles.cardSummaryName}>{card.name}</Text>
+                      {card.reversed && <Text style={styles.cardSummaryReversed}>Ters</Text>}
+                    </View>
+                  ))}
+
+                  <View style={styles.interpretDivider} />
+
+                  {interpretation ? (
+                    <Text style={styles.interpretText}>{interpretation}</Text>
+                  ) : isInterpreting ? (
+                    <View style={{ padding: 20, alignItems: "center" }}>
+                      <Text style={styles.interpretWait}>Kristal küre parlıyor...</Text>
+                    </View>
+                  ) : null}
+                </LinearGradient>
+              </View>
+            )}
+
+            {phase === "done" && (
+              <Pressable onPress={() => setPhase("select")} style={styles.newReadingBtn}>
+                <LinearGradient colors={["#6B21A8", "#C084FC"]} style={styles.newReadingGrad}>
+                  <Feather name="repeat" size={16} color="#fff" />
+                  <Text style={styles.newReadingText}>Ana Menüye Dön</Text>
+                </LinearGradient>
+              </Pressable>
+            )}
+          </>
         )}
       </ScrollView>
 
       <Modal visible={showVIPModal} transparent animationType="fade" onRequestClose={() => setShowVIPModal(false)}>
-        <View style={styles.vipBackdrop}>
-          <View style={styles.vipCard}>
-            <LinearGradient colors={["#1A1A3E", "#6B21A8"]} style={StyleSheet.absoluteFill} />
-            <View style={styles.vipIconWrap}>
+        <View style={styles.modalBg}>
+          <View style={styles.modalCard}>
+            <LinearGradient colors={["#1A0A3E", "#0D0025"]} style={StyleSheet.absoluteFill} />
+            <View style={styles.modalIcon}>
               <Feather name="eye" size={32} color="#C084FC" />
             </View>
-            <Text style={styles.vipTitle}>Günlük Fal Hakkın Doldu</Text>
-            <Text style={styles.vipDesc}>Her gün ücretsiz 1 tarot falı hakkın var. Daha fazla fal için Market'e git.</Text>
-            <Pressable
-              onPress={() => { setShowVIPModal(false); router.push("/(tabs)/market"); }}
-              style={styles.vipBtn}
-            >
-              <LinearGradient colors={[Colors.userBubble.from, Colors.userBubble.to]} style={styles.vipBtnGrad}>
-                <Feather name="shopping-bag" size={16} color="#fff" />
-                <Text style={styles.vipBtnText}>Market'e Git</Text>
+            <Text style={styles.modalTitle}>Günlük Falın Tamamlandı</Text>
+            <Text style={styles.modalDesc}>Her gün 1 ücretsiz tarot falı hakkın var. Yarın yeni kartlar seni bekliyor.</Text>
+            <Pressable onPress={() => setShowVIPModal(false)} style={styles.modalBtn}>
+              <LinearGradient colors={["#6B21A8", "#C084FC"]} style={styles.modalBtnGrad}>
+                <Text style={styles.modalBtnText}>Anladım</Text>
               </LinearGradient>
-            </Pressable>
-            <Pressable onPress={() => setShowVIPModal(false)} hitSlop={8} style={{ marginTop: 8 }}>
-              <Text style={styles.vipClose}>Kapat</Text>
             </Pressable>
           </View>
         </View>
@@ -275,49 +508,79 @@ export default function TarotScreen() {
   );
 }
 
-const CARD_W = 100;
-const CARD_H = 160;
-
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  root: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12 },
   backBtn: { width: 36, height: 36, justifyContent: "center", alignItems: "center" },
-  headerCenter: { flex: 1, alignItems: "center" },
-  headerTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -0.4 },
-  headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.5)", marginTop: 2 },
-  alreadyReadBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,215,0,0.1)", marginHorizontal: 20, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 8, borderWidth: 1, borderColor: "rgba(255,215,0,0.2)" },
-  alreadyReadText: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#FFD700", flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 24 },
-  cardsRow: { flexDirection: "row", justifyContent: "center", gap: 14, marginBottom: 24 },
-  cardOuter: { alignItems: "center", gap: 10 },
-  positionLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.5)", letterSpacing: 0.5, textTransform: "uppercase" },
-  cardPressable: { width: CARD_W, height: CARD_H },
-  card: { width: CARD_W, height: CARD_H, borderRadius: 16, overflow: "hidden", shadowColor: "#6B21A8", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 16, elevation: 8 },
-  cardGradient: { flex: 1, justifyContent: "center", alignItems: "center", padding: 12, gap: 8 },
-  cardBackPattern: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 6, opacity: 0.15 },
-  cardBackDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: "#fff" },
-  tapText: { fontSize: 10, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.5)" },
-  cardIconCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
-  cardName: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff", textAlign: "center", letterSpacing: -0.2 },
-  cardNameEn: { fontSize: 9, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)", textAlign: "center" },
-  hintText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.5)", textAlign: "center", marginBottom: 16 },
-  resultSection: { marginTop: 8 },
-  resultGradient: { borderRadius: 20, padding: 20, borderWidth: 1, borderColor: "rgba(192,132,252,0.2)" },
-  resultHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
-  resultTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#C084FC" },
-  resultCard: { marginBottom: 16 },
-  resultCardHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
-  resultCardIcon: { width: 26, height: 26, borderRadius: 8, justifyContent: "center", alignItems: "center" },
-  resultCardPos: { fontSize: 11, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.5)", textTransform: "uppercase" },
-  resultCardName: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
-  resultCardMeaning: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)", lineHeight: 20, paddingLeft: 34 },
-  vipBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", paddingHorizontal: 32 },
-  vipCard: { width: "100%", borderRadius: 28, overflow: "hidden", padding: 32, alignItems: "center", gap: 12, borderWidth: 1, borderColor: "rgba(192,132,252,0.3)" },
-  vipIconWrap: { width: 64, height: 64, borderRadius: 20, backgroundColor: "rgba(192,132,252,0.15)", justifyContent: "center", alignItems: "center", marginBottom: 4 },
-  vipTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#fff", textAlign: "center", letterSpacing: -0.5 },
-  vipDesc: { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.65)", textAlign: "center", lineHeight: 21 },
-  vipBtn: { borderRadius: 16, overflow: "hidden", width: "100%", marginTop: 4 },
-  vipBtnGrad: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 },
-  vipBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  vipClose: { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.5)" },
+  headerCenter: { flex: 1, alignItems: "center", gap: 4 },
+  headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -0.5 },
+  streakBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,215,0,0.15)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  streakText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#FFD700" },
+  scrollContent: { paddingHorizontal: 20 },
+  alreadyBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,215,0,0.1)", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,215,0,0.2)" },
+  alreadyText: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#FFD700", flex: 1 },
+  luckySection: { alignItems: "center", marginBottom: 28, gap: 12 },
+  luckyTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.5)", letterSpacing: 1, textTransform: "uppercase" },
+  luckyCard: { width: 100, height: 130, borderRadius: 16, justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#6B21A8", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 10 },
+  luckyName: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
+  luckyEnergy: { fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)" },
+  spreadTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.5)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 },
+  spreadOption: { marginBottom: 10, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: "rgba(192,132,252,0.15)" },
+  spreadOptionGrad: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 16 },
+  spreadOptionIcon: { width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(192,132,252,0.15)", justifyContent: "center", alignItems: "center" },
+  spreadOptionLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  spreadOptionDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.5)", marginTop: 2 },
+  spreadCount: { width: 28, height: 28, borderRadius: 14, backgroundColor: "rgba(192,132,252,0.2)", justifyContent: "center", alignItems: "center" },
+  spreadCountText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#C084FC" },
+  statsRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 24, gap: 24 },
+  statItem: { alignItems: "center", gap: 4 },
+  statNum: { fontSize: 24, fontFamily: "Inter_700Bold", color: "#C084FC" },
+  statLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.4)" },
+  statDivider: { width: 1, height: 30, backgroundColor: "rgba(255,255,255,0.1)" },
+  deckArea: { alignItems: "center", gap: 16, marginBottom: 20 },
+  deckTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.6)" },
+  cardsRow: { flexDirection: "row", justifyContent: "center", gap: 12, flexWrap: "nowrap" },
+  cardGlow: { position: "absolute", backgroundColor: "#C084FC", shadowColor: "#C084FC", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 20 },
+  cardBack: { borderRadius: 16, overflow: "hidden", justifyContent: "center", alignItems: "center", borderWidth: 1.5, borderColor: "rgba(192,132,252,0.3)" },
+  cardBackInner: { alignItems: "center", gap: 12 },
+  cardBackSymbol: { width: 52, height: 52, borderRadius: 26, backgroundColor: "rgba(192,132,252,0.1)", justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "rgba(192,132,252,0.2)" },
+  cardBackLine: { width: 30, height: 1, backgroundColor: "rgba(192,132,252,0.2)" },
+  cardBackTap: { fontSize: 10, fontFamily: "Inter_500Medium", color: "rgba(192,132,252,0.5)" },
+  cardBackBorder: { position: "absolute", borderWidth: 1, borderColor: "rgba(255,215,0,0.1)", borderRadius: 12 },
+  posLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.4)", letterSpacing: 0.5, textTransform: "uppercase" },
+  revealedCard: { borderRadius: 16, justifyContent: "center", alignItems: "center", gap: 6, padding: 8, shadowColor: "#6B21A8", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 8 },
+  rareCard: { borderWidth: 2, borderColor: "#FFD700" },
+  rareBadge: { position: "absolute", top: 6, right: 6, backgroundColor: "#FFD700", paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6 },
+  rareBadgeText: { fontSize: 7, fontFamily: "Inter_700Bold", color: "#000", letterSpacing: 0.5 },
+  revealedIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
+  revealedName: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff", textAlign: "center" },
+  revealedNameEn: { fontSize: 9, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)", textAlign: "center" },
+  reversedLabel: { fontSize: 8, fontFamily: "Inter_600SemiBold", color: "#FF6B6B", backgroundColor: "rgba(255,107,107,0.2)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  categoryBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  categoryText: { fontSize: 8, fontFamily: "Inter_600SemiBold" },
+  hintText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.4)", textAlign: "center" },
+  interpretSection: { marginTop: 8 },
+  interpretGrad: { borderRadius: 20, padding: 20, borderWidth: 1, borderColor: "rgba(192,132,252,0.2)" },
+  interpretHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
+  crystalBall: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(192,132,252,0.15)", justifyContent: "center", alignItems: "center" },
+  interpretTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#C084FC" },
+  cardSummary: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
+  cardSummaryIcon: { width: 24, height: 24, borderRadius: 7, justifyContent: "center", alignItems: "center" },
+  cardSummaryPos: { fontSize: 10, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", width: 70 },
+  cardSummaryName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#fff", flex: 1 },
+  cardSummaryReversed: { fontSize: 9, fontFamily: "Inter_500Medium", color: "#FF6B6B", backgroundColor: "rgba(255,107,107,0.15)", paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4 },
+  interpretDivider: { height: 1, backgroundColor: "rgba(192,132,252,0.15)", marginVertical: 14 },
+  interpretText: { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)", lineHeight: 22 },
+  interpretWait: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(192,132,252,0.6)", fontStyle: "italic" },
+  newReadingBtn: { borderRadius: 16, overflow: "hidden", marginTop: 16 },
+  newReadingGrad: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16 },
+  newReadingText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  modalBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", paddingHorizontal: 32 },
+  modalCard: { width: "100%", borderRadius: 24, overflow: "hidden", padding: 32, alignItems: "center", gap: 12, borderWidth: 1, borderColor: "rgba(192,132,252,0.3)" },
+  modalIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: "rgba(192,132,252,0.15)", justifyContent: "center", alignItems: "center", marginBottom: 4 },
+  modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#fff", textAlign: "center" },
+  modalDesc: { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)", textAlign: "center", lineHeight: 21 },
+  modalBtn: { borderRadius: 16, overflow: "hidden", width: "100%", marginTop: 8 },
+  modalBtnGrad: { alignItems: "center", justifyContent: "center", paddingVertical: 16 },
+  modalBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });
