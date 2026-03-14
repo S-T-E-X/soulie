@@ -225,7 +225,6 @@ export default function TarotScreen() {
   }, []);
 
   const startReading = useCallback((type: SpreadType) => {
-    if (alreadyRead) { setShowVIPModal(true); return; }
     setSpread(type);
     const count = SPREAD_OPTIONS.find(s => s.type === type)!.count;
     const cards = drawCards(count);
@@ -249,7 +248,7 @@ export default function TarotScreen() {
     if (newFlipped.every(f => f)) {
       setTimeout(() => {
         fetchInterpretation();
-        markDone();
+        // markDone() removed - daily limit disabled for now
       }, 600);
     }
   }, [flipped, drawnCards]);
