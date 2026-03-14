@@ -24,6 +24,7 @@ import { fetch as expoFetch } from "expo/fetch";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const STORAGE_KEY = "soulie_tarot_v2";
+const DISPLAY_CARD_COUNT = 12;
 
 type ArcanaType = "Major" | "Minor";
 type LifeCategory = "love" | "career" | "destiny" | "warning" | "growth" | "spiritual";
@@ -106,12 +107,8 @@ function getLuckyCard(): TarotCard {
   return TAROT_DECK[seed % TAROT_DECK.length];
 }
 
-function drawCards(count: number): (TarotCard & { reversed: boolean })[] {
-  const shuffled = [...TAROT_DECK].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count).map(card => ({
-    ...card,
-    reversed: Math.random() < 0.25,
-  }));
+function shuffleDeck(): TarotCard[] {
+  return [...TAROT_DECK].sort(() => Math.random() - 0.5);
 }
 
 function GlowDot({ delay, size = 3, color = "#C084FC" }: { delay: number; size?: number; color?: string }) {
@@ -127,6 +124,102 @@ function GlowDot({ delay, size = 3, color = "#C084FC" }: { delay: number; size?:
   const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.7] });
   return (
     <Animated.View style={{ position: "absolute", width: size, height: size, borderRadius: size / 2, backgroundColor: color, opacity, top: `${15 + delay * 12}%`, left: `${10 + (delay * 37) % 80}%` }} />
+  );
+}
+
+function PickableCardBack({ onPress, isSelected, index }: { onPress: () => void; isSelected: boolean; index: number }) {
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const cardW = (SCREEN_W - 40 - 24) / 3;
+  const cardH = cardW * 1.45;
+
+  useEffect(() => {
+    Animated.timing(enterAnim, {
+      toValue: 1,
+      duration: 400,
+      delay: index * 60,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  useEffect(() => {
+    if (isSelected) {
+      Animated.loop(Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
+      ])).start();
+    } else {
+      pulseAnim.setValue(0);
+    }
+  }, [isSelected]);
+
+  const scale = enterAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
+  const opacity = enterAnim;
+  const glowOpacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
+  const selectedScale = isSelected ? 1.05 : 1;
+
+  return (
+    <Animated.View style={{ opacity, transform: [{ scale: Animated.multiply(enterAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }), new Animated.Value(selectedScale)) }] }}>
+      <Pressable onPress={onPress}>
+        <View style={{ width: cardW, height: cardH, alignItems: "center", justifyContent: "center" }}>
+          {isSelected && (
+            <Animated.View style={{
+              position: "absolute",
+              width: cardW + 6,
+              height: cardH + 6,
+              borderRadius: 16,
+              backgroundColor: "#C084FC",
+              shadowColor: "#C084FC",
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.7,
+              shadowRadius: 16,
+              opacity: glowOpacity,
+            }} />
+          )}
+          <LinearGradient
+            colors={isSelected ? ["#2D1065", "#1A0A3E"] as const : ["#1A0A3E", "#0D0025"] as const}
+            style={{
+              width: cardW,
+              height: cardH,
+              borderRadius: 14,
+              overflow: "hidden",
+              justifyContent: "center",
+              alignItems: "center",
+              borderWidth: isSelected ? 2 : 1.5,
+              borderColor: isSelected ? "#C084FC" : "rgba(192,132,252,0.25)",
+            }}
+          >
+            <View style={{ alignItems: "center", gap: 8 }}>
+              <View style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: isSelected ? "rgba(192,132,252,0.25)" : "rgba(192,132,252,0.1)",
+                justifyContent: "center",
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: isSelected ? "rgba(192,132,252,0.5)" : "rgba(192,132,252,0.2)",
+              }}>
+                <Feather
+                  name={isSelected ? "check" : "eye"}
+                  size={18}
+                  color={isSelected ? "#C084FC" : "rgba(192,132,252,0.4)"}
+                />
+              </View>
+              <View style={{ width: 24, height: 1, backgroundColor: isSelected ? "rgba(192,132,252,0.4)" : "rgba(192,132,252,0.15)" }} />
+            </View>
+            <View style={{
+              position: "absolute",
+              width: cardW - 10,
+              height: cardH - 10,
+              borderWidth: 1,
+              borderColor: isSelected ? "rgba(192,132,252,0.3)" : "rgba(255,215,0,0.08)",
+              borderRadius: 10,
+            }} />
+          </LinearGradient>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -201,8 +294,10 @@ export default function TarotScreen() {
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
   const { user } = useAuth();
 
-  const [phase, setPhase] = useState<"loading" | "select" | "deck" | "reading" | "done">("loading");
+  const [phase, setPhase] = useState<"loading" | "select" | "picking" | "deck" | "reading" | "done">("loading");
   const [spread, setSpread] = useState<SpreadType>("three");
+  const [displayDeck, setDisplayDeck] = useState<TarotCard[]>([]);
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [drawnCards, setDrawnCards] = useState<(TarotCard & { reversed: boolean })[]>([]);
   const [flipped, setFlipped] = useState<boolean[]>([]);
   const [alreadyRead, setAlreadyRead] = useState(false);
@@ -210,9 +305,9 @@ export default function TarotScreen() {
   const [isInterpreting, setIsInterpreting] = useState(false);
   const [tarotData, setTarotData] = useState<any>(null);
   const [showVIPModal, setShowVIPModal] = useState(false);
+  const [requiredCount, setRequiredCount] = useState(0);
 
   const luckyCard = getLuckyCard();
-  const shuffleAnims = useRef<Animated.Value[]>([]).current;
 
   useEffect(() => {
     (async () => {
@@ -227,13 +322,44 @@ export default function TarotScreen() {
   const startReading = useCallback((type: SpreadType) => {
     setSpread(type);
     const count = SPREAD_OPTIONS.find(s => s.type === type)!.count;
-    const cards = drawCards(count);
-    setDrawnCards(cards);
-    setFlipped(new Array(count).fill(false));
+    setRequiredCount(count);
+    setSelectedIndices([]);
+    setDrawnCards([]);
+    setFlipped([]);
     setInterpretation("");
+    const shuffled = shuffleDeck().slice(0, DISPLAY_CARD_COUNT);
+    setDisplayDeck(shuffled);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setPhase("deck");
-  }, [alreadyRead]);
+    setPhase("picking");
+  }, []);
+
+  const pickCard = useCallback((idx: number) => {
+    setSelectedIndices(prev => {
+      if (prev.includes(idx)) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        return prev.filter(i => i !== idx);
+      }
+      if (prev.length >= requiredCount) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        return prev;
+      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const next = [...prev, idx];
+      if (next.length === requiredCount) {
+        setTimeout(() => {
+          const picked = next.map(i => ({
+            ...displayDeck[i],
+            reversed: Math.random() < 0.25,
+          }));
+          setDrawnCards(picked);
+          setFlipped(new Array(requiredCount).fill(false));
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          setPhase("deck");
+        }, 600);
+      }
+      return next;
+    });
+  }, [requiredCount, displayDeck]);
 
   const flipCard = useCallback((idx: number) => {
     if (flipped[idx]) return;
@@ -248,7 +374,6 @@ export default function TarotScreen() {
     if (newFlipped.every(f => f)) {
       setTimeout(() => {
         fetchInterpretation();
-        // markDone() removed - daily limit disabled for now
       }, 600);
     }
   }, [flipped, drawnCards]);
@@ -314,6 +439,16 @@ export default function TarotScreen() {
 
   const cardSize = drawnCards.length <= 1 ? "lg" as const : drawnCards.length <= 3 ? "md" as const : "sm" as const;
 
+  const goBack = () => {
+    if (phase === "select") {
+      router.back();
+    } else if (phase === "picking") {
+      setPhase("select");
+    } else {
+      setPhase("select");
+    }
+  };
+
   if (phase === "loading") return <View style={[styles.root, { paddingTop: topPad }]}><LinearGradient colors={["#0D0020", "#1A0040", "#0D0020"]} style={StyleSheet.absoluteFill} /><ActivityIndicator color="#C084FC" style={{ flex: 1 }} /></View>;
 
   return (
@@ -324,7 +459,7 @@ export default function TarotScreen() {
       {[0,1,2,3,4,5,6,7].map(i => <GlowDot key={i} delay={i} size={2 + (i % 3)} color={i % 2 === 0 ? "#C084FC" : "#FFD700"} />)}
 
       <View style={styles.header}>
-        <Pressable onPress={() => phase === "select" ? router.back() : setPhase("select")} style={styles.backBtn} hitSlop={8}>
+        <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
           <Feather name="chevron-left" size={24} color="rgba(255,255,255,0.8)" />
         </Pressable>
         <View style={styles.headerCenter}>
@@ -343,13 +478,6 @@ export default function TarotScreen() {
 
         {phase === "select" && (
           <>
-            {alreadyRead && (
-              <View style={styles.alreadyBanner}>
-                <Feather name="clock" size={14} color="#FFD700" />
-                <Text style={styles.alreadyText}>Bugünkü falını baktırdın. Yarın tekrar gel.</Text>
-              </View>
-            )}
-
             <View style={styles.luckySection}>
               <Text style={styles.luckyTitle}>Günün Şanslı Kartı</Text>
               <LinearGradient colors={luckyCard.gradient} style={styles.luckyCard}>
@@ -397,6 +525,52 @@ export default function TarotScreen() {
               </View>
             )}
           </>
+        )}
+
+        {phase === "picking" && (
+          <View style={styles.pickingArea}>
+            <View style={styles.pickingHeader}>
+              <Text style={styles.pickingTitle}>Kartlarını Seç</Text>
+              <View style={styles.pickingCounter}>
+                <Text style={styles.pickingCounterText}>
+                  {selectedIndices.length} / {requiredCount}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.pickingSubtitle}>
+              Sezgilerine güven ve {requiredCount} kart seç
+            </Text>
+
+            <View style={styles.pickingProgress}>
+              {Array.from({ length: requiredCount }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.pickingDot,
+                    i < selectedIndices.length && styles.pickingDotActive,
+                  ]}
+                />
+              ))}
+            </View>
+
+            <View style={styles.pickingGrid}>
+              {displayDeck.map((card, idx) => (
+                <PickableCardBack
+                  key={card.id}
+                  index={idx}
+                  isSelected={selectedIndices.includes(idx)}
+                  onPress={() => pickCard(idx)}
+                />
+              ))}
+            </View>
+
+            {selectedIndices.length === requiredCount && (
+              <View style={styles.pickingTransition}>
+                <ActivityIndicator size="small" color="#C084FC" />
+                <Text style={styles.pickingTransitionText}>Kartlar açılıyor...</Text>
+              </View>
+            )}
+          </View>
         )}
 
         {(phase === "deck" || phase === "reading" || phase === "done") && (
@@ -516,8 +690,6 @@ const styles = StyleSheet.create({
   streakBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,215,0,0.15)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   streakText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#FFD700" },
   scrollContent: { paddingHorizontal: 20 },
-  alreadyBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,215,0,0.1)", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,215,0,0.2)" },
-  alreadyText: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#FFD700", flex: 1 },
   luckySection: { alignItems: "center", marginBottom: 28, gap: 12 },
   luckyTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.5)", letterSpacing: 1, textTransform: "uppercase" },
   luckyCard: { width: 100, height: 130, borderRadius: 16, justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#6B21A8", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 10 },
@@ -536,6 +708,20 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 24, fontFamily: "Inter_700Bold", color: "#C084FC" },
   statLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.4)" },
   statDivider: { width: 1, height: 30, backgroundColor: "rgba(255,255,255,0.1)" },
+
+  pickingArea: { alignItems: "center", gap: 16 },
+  pickingHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  pickingTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff" },
+  pickingCounter: { backgroundColor: "rgba(192,132,252,0.2)", paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: "rgba(192,132,252,0.3)" },
+  pickingCounterText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#C084FC" },
+  pickingSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.45)", textAlign: "center" },
+  pickingProgress: { flexDirection: "row", gap: 8, marginTop: 4 },
+  pickingDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "rgba(192,132,252,0.2)", borderWidth: 1, borderColor: "rgba(192,132,252,0.3)" },
+  pickingDotActive: { backgroundColor: "#C084FC", borderColor: "#C084FC" },
+  pickingGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 10, marginTop: 8, paddingHorizontal: 0 },
+  pickingTransition: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12, backgroundColor: "rgba(192,132,252,0.1)", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16 },
+  pickingTransitionText: { fontSize: 14, fontFamily: "Inter_500Medium", color: "#C084FC" },
+
   deckArea: { alignItems: "center", gap: 16, marginBottom: 20 },
   deckTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.6)" },
   cardsRow: { flexDirection: "row", justifyContent: "center", gap: 12, flexWrap: "nowrap" },
