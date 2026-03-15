@@ -136,9 +136,15 @@ export default function MarketScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setActiveTab(tab);
             }}
-            style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
+            style={[
+              styles.tabBtn,
+              {
+                backgroundColor: activeTab === tab ? Colors.accent : (isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.6)"),
+                borderColor: activeTab === tab ? Colors.accent : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)"),
+              },
+            ]}
           >
-            <Text style={[styles.tabBtnText, { color: activeTab === tab ? "#fff" : colors.text.secondary }, activeTab === tab && styles.tabBtnTextActive]}>
+            <Text style={[styles.tabBtnText, { color: activeTab === tab ? "#fff" : (isDark ? "rgba(255,255,255,0.7)" : "#1D1D1F") }, activeTab === tab && styles.tabBtnTextActive]}>
               {tab === "premium" ? "Premium" : tab === "gifts" ? "Hediyeler" : "Coin"}
             </Text>
           </Pressable>

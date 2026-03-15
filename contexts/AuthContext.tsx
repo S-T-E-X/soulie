@@ -44,6 +44,7 @@ interface AuthContextValue {
 }
 
 const AUTH_STORAGE_KEY = "lumina_auth_user";
+const USERS_DB_KEY = "soulie_users_db_v1";
 
 const ALL_STORAGE_KEYS = [
   "lumina_auth_user",
@@ -106,6 +107,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isVip: partial.isVip ?? false,
     };
     await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUser));
+    try {
+      const existing = await AsyncStorage.getItem(USERS_DB_KEY);
+      const users: User[] = existing ? JSON.parse(existing) : [];
+      const idx = users.findIndex((u) => u.id === newUser.id);
+      if (idx >= 0) users[idx] = newUser; else users.push(newUser);
+      await AsyncStorage.setItem(USERS_DB_KEY, JSON.stringify(users));
+    } catch {}
     setUser(newUser);
   }, []);
 
@@ -114,6 +122,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!prev) return prev;
       const updated = { ...prev, ...partial };
       AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated)).catch(console.error);
+      AsyncStorage.getItem(USERS_DB_KEY).then((existing) => {
+        const users: User[] = existing ? JSON.parse(existing) : [];
+        const idx = users.findIndex((u) => u.id === updated.id);
+        if (idx >= 0) users[idx] = updated; else users.push(updated);
+        AsyncStorage.setItem(USERS_DB_KEY, JSON.stringify(users)).catch(() => {});
+      }).catch(() => {});
       return updated;
     });
   }, []);

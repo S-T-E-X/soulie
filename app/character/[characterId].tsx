@@ -210,54 +210,54 @@ export default function CharacterProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.infoSheet}>
-          <View style={styles.sheetHandle} />
+        <View style={[styles.infoSheet, { backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF" }]}>
+          <View style={[styles.sheetHandle, { backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" }]} />
 
-          <Animated.View entering={FadeInDown.delay(80).springify().damping(18)} style={styles.infoSection}>
+          <Animated.View entering={FadeInDown.delay(80).springify().damping(18)} style={[styles.infoSection, { backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF" }]}>
             <View style={styles.infoHeader}>
               <Feather name="user" size={16} color={Colors.accent} />
-              <Text style={styles.infoTitle}>{t("char_about", lang)}</Text>
+              <Text style={[styles.infoTitle, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("char_about", lang)}</Text>
             </View>
-            <Text style={styles.descText}>{character.description}</Text>
+            <Text style={[styles.descText, { color: isDark ? "rgba(255,255,255,0.65)" : Colors.text.secondary }]}>{character.description}</Text>
           </Animated.View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }]} />
 
-          <Animated.View entering={FadeInDown.delay(120).springify().damping(18)} style={styles.infoSection}>
+          <Animated.View entering={FadeInDown.delay(120).springify().damping(18)} style={[styles.infoSection, { backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF" }]}>
             <View style={styles.infoHeader}>
               <Feather name="heart" size={16} color={Colors.accent} />
-              <Text style={styles.infoTitle}>{t("char_interests", lang)}</Text>
+              <Text style={[styles.infoTitle, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("char_interests", lang)}</Text>
             </View>
             <View style={styles.interestGrid}>
               {character.tags.map((tag) => (
-                <View key={tag} style={styles.interestChip}>
-                  <Text style={styles.interestChipText}>{tag}</Text>
+                <View key={tag} style={[styles.interestChip, { backgroundColor: isDark ? "rgba(124,92,252,0.15)" : "rgba(0,122,255,0.08)", borderColor: isDark ? "rgba(124,92,252,0.3)" : "rgba(0,122,255,0.15)" }]}>
+                  <Text style={[styles.interestChipText, { color: isDark ? "#A78BFA" : Colors.accent }]}>{tag}</Text>
                 </View>
               ))}
             </View>
           </Animated.View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }]} />
 
-          <Animated.View entering={FadeInDown.delay(160).springify().damping(18)} style={styles.infoSection}>
+          <Animated.View entering={FadeInDown.delay(160).springify().damping(18)} style={[styles.infoSection, { backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF" }]}>
             <View style={styles.infoHeader}>
               <Feather name="info" size={16} color={Colors.accent} />
-              <Text style={styles.infoTitle}>{t("char_profile", lang)}</Text>
+              <Text style={[styles.infoTitle, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("char_profile", lang)}</Text>
             </View>
-            <View style={styles.statsGrid}>
+            <View style={[styles.statsGrid, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#F8F9FA" }]}>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{character.age}</Text>
-                <Text style={styles.statLabel}>{t("char_age", lang)}</Text>
+                <Text style={[styles.statValue, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{character.age}</Text>
+                <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.45)" : Colors.text.tertiary }]}>{t("char_age", lang)}</Text>
               </View>
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)" }]} />
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{character.gender === "female" ? t("char_female", lang) : t("char_male", lang)}</Text>
-                <Text style={styles.statLabel}>{t("char_gender_label", lang)}</Text>
+                <Text style={[styles.statValue, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{character.gender === "female" ? t("char_female", lang) : t("char_male", lang)}</Text>
+                <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.45)" : Colors.text.tertiary }]}>{t("char_gender_label", lang)}</Text>
               </View>
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)" }]} />
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{t("char_ai_type", lang)}</Text>
-                <Text style={styles.statLabel}>{t("char_type", lang)}</Text>
+                <Text style={[styles.statValue, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("char_ai_type", lang)}</Text>
+                <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.45)" : Colors.text.tertiary }]}>{t("char_type", lang)}</Text>
               </View>
             </View>
           </Animated.View>

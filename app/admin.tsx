@@ -19,9 +19,10 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { useAuth } from "@/contexts/AuthContext";
+import type { User } from "@/contexts/AuthContext";
 import { useChatContext } from "@/contexts/ChatContext";
 import { CHARACTERS } from "@/constants/characters";
-import { GIFTS } from "@/contexts/GiftContext";
+import { GIFTS, useGifts } from "@/contexts/GiftContext";
 import { getApiUrl } from "@/lib/query-client";
 
 const FEEDBACK_KEY = "soulie_feedback_v1";
@@ -111,13 +112,15 @@ export default function AdminScreen() {
 
   const { user, updateProfile } = useAuth();
   const { conversations } = useChatContext();
+  const { coins, addCoins: addCoinsCtx } = useGifts();
 
   const [section, setSection] = useState<TopSection>("app");
   const [appTab, setAppTab] = useState<AppTab>("genel");
   const [userTab, setUserTab] = useState<UserTab>("profil");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [usersList, setUsersList] = useState<User[]>([]);
 
   const [feedbackList, setFeedbackList] = useState<FeedbackEntry[]>([]);
-  const [coins, setCoins] = useState(0);
   const [inventory, setInventory] = useState<{ giftId: string; quantity: number }[]>([]);
   const [quota, setQuota] = useState<{ count: number; bonusMessages: number } | null>(null);
   const [charSettings, setCharSettings] = useState<Record<string, any>>({});
@@ -131,6 +134,8 @@ export default function AdminScreen() {
   const [secretTaps, setSecretTaps] = useState(0);
   const [loaded, setLoaded] = useState(false);
 
+  const selectedUser = usersList.find(u => u.id === selectedUserId) ?? user;
+
   useEffect(() => {
     if (!user?.isAdmin) return;
     loadAll();
@@ -138,24 +143,24 @@ export default function AdminScreen() {
 
   const loadAll = async () => {
     try {
-      const [fb, c, inv, q, cs, sk] = await Promise.all([
+      const [fb, inv, q, cs, sk, usersRaw] = await Promise.all([
         AsyncStorage.getItem(FEEDBACK_KEY),
-        AsyncStorage.getItem(COINS_KEY),
         AsyncStorage.getItem(INVENTORY_KEY),
         AsyncStorage.getItem(QUOTA_KEY),
         AsyncStorage.getItem(CHAR_SETTINGS_KEY),
         AsyncStorage.getItem(STREAKS_KEY),
+        AsyncStorage.getItem("soulie_users_db_v1"),
       ]);
       if (fb) setFeedbackList(JSON.parse(fb));
-      if (c) {
-        const parsed = parseInt(c, 10);
-        if (!isNaN(parsed)) { setCoins(parsed); }
-        else { try { const obj = JSON.parse(c); setCoins(obj.coins ?? 0); } catch { setCoins(0); } }
-      }
       if (inv) setInventory(JSON.parse(inv));
       if (q) setQuota(JSON.parse(q));
       if (cs) setCharSettings(JSON.parse(cs));
       if (sk) setStreaks(JSON.parse(sk));
+      if (usersRaw) {
+        setUsersList(JSON.parse(usersRaw));
+      } else if (user) {
+        setUsersList([user]);
+      }
     } catch {}
     setLoaded(true);
     fetchGlobalPrompt();
@@ -213,9 +218,7 @@ export default function AdminScreen() {
   const addCoinsAdmin = async () => {
     const amount = parseInt(coinInput, 10);
     if (isNaN(amount) || amount <= 0) { Alert.alert("Geçersiz miktar"); return; }
-    const newCoins = coins + amount;
-    await AsyncStorage.setItem(COINS_KEY, String(newCoins));
-    setCoins(newCoins);
+    await addCoinsCtx(amount);
     setCoinInput("");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -324,14 +327,14 @@ export default function AdminScreen() {
       {/* Top Section Toggle */}
       <View style={styles.sectionToggle}>
         <Pressable
-          onPress={() => { setSection("app"); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          onPress={() => { setSection("app"); setSelectedUserId(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
           style={[styles.sectionToggleBtn, section === "app" && styles.sectionToggleBtnActive]}
         >
           <Feather name="globe" size={14} color={section === "app" ? "#fff" : TEXT_SEC} />
           <Text style={[styles.sectionToggleBtnText, section === "app" && { color: "#fff" }]}>Uygulama</Text>
         </Pressable>
         <Pressable
-          onPress={() => { setSection("user"); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          onPress={() => { setSection("user"); setSelectedUserId(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
           style={[styles.sectionToggleBtn, section === "user" && styles.sectionToggleBtnActive]}
         >
           <Feather name="user" size={14} color={section === "user" ? "#fff" : TEXT_SEC} />
@@ -339,26 +342,37 @@ export default function AdminScreen() {
         </Pressable>
       </View>
 
-      {/* Sub Tabs */}
-      <View style={styles.subTabs}>
-        {currentTabs.map(t => {
-          const isActive = section === "app" ? appTab === t.id : userTab === t.id;
-          return (
-            <Pressable
-              key={t.id}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                if (section === "app") setAppTab(t.id as AppTab);
-                else setUserTab(t.id as UserTab);
-              }}
-              style={[styles.subTab, isActive && styles.subTabActive]}
-            >
-              <Feather name={t.icon as any} size={12} color={isActive ? ACCENT : TEXT_SEC} />
-              <Text style={[styles.subTabLabel, isActive && styles.subTabLabelActive]}>{t.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {/* Sub Tabs — hidden when showing user list */}
+      {(section === "app" || selectedUserId !== null) && (
+        <View style={styles.subTabs}>
+          {currentTabs.map(t => {
+            const isActive = section === "app" ? appTab === t.id : userTab === t.id;
+            return (
+              <Pressable
+                key={t.id}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  if (section === "app") setAppTab(t.id as AppTab);
+                  else setUserTab(t.id as UserTab);
+                }}
+                style={[styles.subTab, isActive && styles.subTabActive]}
+              >
+                <Feather name={t.icon as any} size={12} color={isActive ? ACCENT : TEXT_SEC} />
+                <Text style={[styles.subTabLabel, isActive && styles.subTabLabelActive]}>{t.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+      {section === "user" && selectedUserId !== null && (
+        <Pressable
+          onPress={() => { setSelectedUserId(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          style={styles.userBackBtn}
+        >
+          <Feather name="chevron-left" size={14} color={ACCENT} />
+          <Text style={styles.userBackBtnText}>Kullanıcı Listesi</Text>
+        </Pressable>
+      )}
 
       {!loaded ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -577,19 +591,57 @@ export default function AdminScreen() {
 
           {/* ===================== USER SECTION ===================== */}
 
-          {section === "user" && userTab === "profil" && (
+          {/* USER LIST */}
+          {section === "user" && selectedUserId === null && (
+            <>
+              <SectionTitle title={`Kayıtlı Kullanıcılar (${usersList.length})`} icon="users" />
+              {usersList.length === 0 ? (
+                <Card>
+                  <View style={{ alignItems: "center", padding: 20, gap: 8 }}>
+                    <Feather name="users" size={28} color={TEXT_TER} />
+                    <Text style={styles.subNote}>Henüz kayıtlı kullanıcı yok</Text>
+                  </View>
+                </Card>
+              ) : (
+                usersList.map((u) => (
+                  <Pressable
+                    key={u.id}
+                    onPress={() => { setSelectedUserId(u.id); setUserTab("profil"); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                    style={({ pressed }) => [styles.userListCard, pressed && { opacity: 0.75 }]}
+                  >
+                    <View style={styles.userListAvatar}>
+                      <Text style={styles.userListAvatarText}>{(u.name?.[0] ?? "?").toUpperCase()}</Text>
+                    </View>
+                    <View style={{ flex: 1, gap: 3 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={styles.userListName}>{u.name}</Text>
+                        {u.isVip && <View style={[styles.badge, { backgroundColor: "#FFD70025" }]}><Text style={[styles.badgeText, { color: "#FFD700" }]}>VIP</Text></View>}
+                        {u.isAdmin && <View style={[styles.badge, { backgroundColor: "#FF950025" }]}><Text style={[styles.badgeText, { color: "#FF9500" }]}>ADMIN</Text></View>}
+                        {u.id === user?.id && <View style={[styles.badge, { backgroundColor: ACCENT + "25" }]}><Text style={[styles.badgeText, { color: ACCENT }]}>Aktif</Text></View>}
+                      </View>
+                      <Text style={[styles.subNote, { fontSize: 11 }]}>@{u.username} · ID: {u.userId}</Text>
+                    </View>
+                    <Feather name="chevron-right" size={16} color={TEXT_TER} />
+                  </Pressable>
+                ))
+              )}
+            </>
+          )}
+
+          {/* USER MANAGEMENT (after selecting a user) */}
+          {section === "user" && selectedUserId !== null && userTab === "profil" && (
             <>
               <SectionTitle title="Kullanıcı Bilgileri" icon="user" />
               <Card>
-                <InfoRow label="İsim" value={user?.name ?? "—"} />
-                <InfoRow label="Kullanıcı Adı" value={`@${user?.username ?? "—"}`} />
-                <InfoRow label="E-posta" value={user?.email ?? "—"} />
-                <InfoRow label="Kullanıcı ID" value={user?.userId ?? "—"} />
-                <InfoRow label="Dil" value={user?.language === "en" ? "English" : "Türkçe"} />
-                <InfoRow label="Cinsiyet" value={user?.gender ?? "—"} />
-                <InfoRow label="Doğum Tarihi" value={user?.birthdate ?? "—"} />
-                <InfoRow label="Bio" value={user?.bio || "—"} />
-                <InfoRow label="Hobiler" value={user?.hobbies?.join(", ") || "—"} last />
+                <InfoRow label="İsim" value={selectedUser?.name ?? "—"} />
+                <InfoRow label="Kullanıcı Adı" value={`@${selectedUser?.username ?? "—"}`} />
+                <InfoRow label="E-posta" value={selectedUser?.email ?? "—"} />
+                <InfoRow label="Kullanıcı ID" value={selectedUser?.userId ?? "—"} />
+                <InfoRow label="Dil" value={selectedUser?.language === "en" ? "English" : "Türkçe"} />
+                <InfoRow label="Cinsiyet" value={selectedUser?.gender ?? "—"} />
+                <InfoRow label="Doğum Tarihi" value={selectedUser?.birthdate ?? "—"} />
+                <InfoRow label="Bio" value={selectedUser?.bio || "—"} />
+                <InfoRow label="Hobiler" value={selectedUser?.hobbies?.join(", ") || "—"} last />
               </Card>
 
               <SectionTitle title="VIP & Erişim" icon="star" color="#FFD700" />
@@ -597,11 +649,11 @@ export default function AdminScreen() {
                 <View style={styles.toggleRow}>
                   <View style={{ flex: 1, gap: 3 }}>
                     <Text style={styles.toggleLabel}>VIP Durumu</Text>
-                    <Text style={styles.subNote}>{user?.isVip ? "Sınırsız mesaj · Tüm özellikler aktif" : "Günlük 15 mesaj limiti"}</Text>
+                    <Text style={styles.subNote}>{selectedUser?.isVip ? "Sınırsız mesaj · Tüm özellikler aktif" : "Günlük 15 mesaj limiti"}</Text>
                   </View>
                   <Switch
-                    value={!!user?.isVip}
-                    onValueChange={toggleVIP}
+                    value={!!selectedUser?.isVip}
+                    onValueChange={selectedUserId === user?.id ? toggleVIP : undefined}
                     trackColor={{ false: "rgba(255,255,255,0.15)", true: "#FFD700" }}
                     thumbColor="#fff"
                   />
@@ -637,7 +689,7 @@ export default function AdminScreen() {
             </>
           )}
 
-          {section === "user" && userTab === "ekonomi" && (
+          {section === "user" && selectedUserId !== null && userTab === "ekonomi" && (
             <>
               <SectionTitle title="Coin Yönetimi" icon="dollar-sign" color="#FFD700" />
               <Card>
@@ -713,14 +765,14 @@ export default function AdminScreen() {
 
               <SectionTitle title="Abonelik Bilgisi" icon="credit-card" color="#007AFF" />
               <Card>
-                <InfoRow label="Mevcut Plan" value={user?.isVip ? "VIP Premium" : "Ücretsiz"} />
+                <InfoRow label="Mevcut Plan" value={selectedUser?.isVip ? "VIP Premium" : "Ücretsiz"} />
                 <InfoRow label="Mağaza" value="Apple App Store" />
-                <InfoRow label="Bitiş Tarihi" value={user?.isVip ? "Süresiz (Manuel)" : "—"} last />
+                <InfoRow label="Bitiş Tarihi" value={selectedUser?.isVip ? "Süresiz (Manuel)" : "—"} last />
               </Card>
             </>
           )}
 
-          {section === "user" && userTab === "hafiza" && (
+          {section === "user" && selectedUserId !== null && userTab === "hafiza" && (
             <>
               <SectionTitle title="Karakter AI Hafızaları" icon="database" color="#AF52DE" />
               <Text style={[styles.subNote, { marginHorizontal: 0, marginBottom: 8 }]}>
@@ -826,6 +878,12 @@ const styles = StyleSheet.create({
   memRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
   memDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: ACCENT, marginTop: 5 },
   memText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: TEXT_SEC, lineHeight: 18 },
+  userListCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: CARD, borderRadius: 16, padding: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER },
+  userListAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: ACCENT + "30", justifyContent: "center", alignItems: "center" },
+  userListAvatarText: { fontSize: 18, fontFamily: "Inter_700Bold", color: ACCENT },
+  userListName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: TEXT_PRI },
+  userBackBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, marginHorizontal: 12, marginBottom: 4, alignSelf: "flex-start" },
+  userBackBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: ACCENT },
   promptInput: { backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 12, padding: 12, fontSize: 13, fontFamily: "Inter_400Regular", color: TEXT_PRI, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER, minHeight: 100, marginBottom: 10 },
   promptBtns: { flexDirection: "row", gap: 10 },
   promptBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 12, paddingHorizontal: 16 },
