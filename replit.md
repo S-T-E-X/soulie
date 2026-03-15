@@ -43,6 +43,7 @@ Preferred communication style: Simple, everyday language.
   - `/(tabs)/profile` — User profile (photo, bio, hobbies, logout)
   - `/(tabs)/settings` — Account settings
   - `/chat/[id]` — Individual chat screen (dynamic route)
+  - `/video-chat/[characterId]` — Voice/video chat with lip sync animation
   - `/privacy` — Privacy policy page (modal)
 - **State management:**
   - `AuthContext` — Manages user session using `AsyncStorage` (no server-side sessions for auth; entirely client-local). Admin detection via `ADMIN_EMAILS`/`ADMIN_USERNAMES` lists + 7-tap secret on version text in settings.
@@ -60,7 +61,8 @@ Preferred communication style: Simple, everyday language.
 
 - **Framework:** Express 5 running via `tsx` in development.
 - **Main entry:** `server/index.ts` → registers routes from `server/routes.ts`.
-- **Primary API route:** `POST /api/chat` — Accepts a messages array and optional `characterId`, selects the appropriate system prompt, and streams the OpenAI completion back as SSE.
+- **Primary API route:** `POST /api/chat` — Accepts a messages array and optional `characterId`, selects the appropriate system prompt, and streams the OpenAI completion back as SSE. Auto-switches to `gpt-4.1-mini` when images are present.
+- **Voice chat route:** `POST /api/voice-chat` — Accepts base64 audio + characterId, transcribes via STT (gpt-4o-mini-transcribe), generates character response (gpt-4.1-mini), synthesizes speech via TTS (gpt-audio with character-specific voice), returns JSON with userTranscript, responseText, and audio base64. Character voice mapping: aylin=shimmer, cem=echo, lara=nova, kaan=onyx, mert=onyx, zeynep=nova, sibel=shimmer.
 - **CORS:** Dynamic allow-list built from Replit environment variables (`REPLIT_DEV_DOMAIN`, `REPLIT_DOMAINS`); also allows localhost for Expo web development.
 - **Storage layer:** `server/storage.ts` provides a `MemStorage` class for in-memory user storage (not currently wired into auth flow; auth is AsyncStorage-only on the client).
 

@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
+import express from "express";
 import OpenAI from "openai";
+import { speechToText, ensureCompatibleFormat, textToSpeech } from "./replit_integrations/audio/client";
 
 let globalSystemPromptOverride: string = "";
 
@@ -381,6 +383,92 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
       console.error("Tarot error:", error);
       if (!res.headersSent) res.status(500).json({ error: "Tarot interpretation failed" });
       else { res.write(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`); res.end(); }
+    }
+  });
+
+  const CHAR_VOICES: Record<string, "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"> = {
+    aylin: "shimmer",
+    cem: "echo",
+    lara: "nova",
+    kaan: "onyx",
+    mert: "onyx",
+    zeynep: "nova",
+    sibel: "shimmer",
+  };
+
+  const audioBodyParser = express.json({ limit: "50mb" });
+
+  app.post("/api/voice-chat", audioBodyParser, async (req, res) => {
+    try {
+      const {
+        audio,
+        characterId,
+        customName,
+        selectedTraits,
+        memories,
+        userLevel = 1,
+        userLanguage = "tr",
+        voiceTone,
+        relationshipLevelName,
+        conversationHistory = [],
+      } = req.body;
+
+      if (!audio) {
+        return res.status(400).json({ error: "Audio data required" });
+      }
+
+      const rawBuffer = Buffer.from(audio, "base64");
+      const { buffer: audioBuffer, format: inputFormat } = await ensureCompatibleFormat(rawBuffer);
+
+      const userTranscript = await speechToText(audioBuffer, inputFormat);
+
+      let systemPrompt = buildAdvancedPrompt({
+        characterId,
+        customName,
+        selectedTraits,
+        userMemories: memories,
+        userLevel,
+        userLanguage,
+        voiceTone,
+        relationshipLevelName,
+      });
+
+      systemPrompt += "\n\n### SESLİ SOHBET KURALLARI\nBu bir sesli sohbet. Cevaplarını kısa ve doğal tut (1-3 cümle). Konuşma dilinde yaz, uzun paragraflardan kaçın. Emoji kullanma.";
+
+      if (globalSystemPromptOverride) {
+        systemPrompt = `${systemPrompt}\n\n### GLOBAL ADMIN KURALLARI\n${globalSystemPromptOverride}`;
+      }
+
+      const messages = [
+        { role: "system" as const, content: systemPrompt },
+        ...conversationHistory.slice(-10).map((m: any) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+        { role: "user" as const, content: userTranscript },
+      ];
+
+      const textResponse = await openai.chat.completions.create({
+        model: "gpt-4.1-mini",
+        messages,
+        max_completion_tokens: 300,
+      });
+
+      const responseText = textResponse.choices[0]?.message?.content || "Duyamadım, tekrar eder misin?";
+
+      const voice = CHAR_VOICES[characterId] || "alloy";
+      const audioResponse = await textToSpeech(responseText, voice, "mp3");
+      const audioBase64 = audioResponse.toString("base64");
+
+      res.json({
+        userTranscript,
+        responseText,
+        audio: audioBase64,
+        audioFormat: "mp3",
+      });
+    } catch (error) {
+      console.error("Voice chat error:", error);
+      res.status(500).json({ error: "Voice chat failed" });
     }
   });
 
