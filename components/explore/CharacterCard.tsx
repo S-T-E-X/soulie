@@ -17,6 +17,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { type Character } from "@/constants/characters";
 import Colors from "@/constants/colors";
+import { useI18n } from "@/hooks/useI18n";
 
 interface Props {
   character: Character;
@@ -87,6 +88,7 @@ function CharacterImage({ source, gradientColors, noImage }: { source: any; grad
 }
 
 export function CharacterCard({ character, onPress, hasChat, streak = 0 }: Props) {
+  const { t } = useI18n();
   const scale = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -145,7 +147,7 @@ export function CharacterCard({ character, onPress, hasChat, streak = 0 }: Props
               <Text style={styles.age}>{character.age}</Text>
             </View>
             <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>{character.shortRole}</Text>
+              <Text style={styles.roleText}>{t(character.shortRoleKey as any)}</Text>
             </View>
           </View>
 

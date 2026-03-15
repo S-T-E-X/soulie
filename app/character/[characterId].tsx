@@ -196,7 +196,7 @@ export default function CharacterProfileScreen() {
 
             <Animated.View entering={FadeInDown.delay(200)} style={styles.roleRow}>
               <View style={styles.roleBadge}>
-                <Text style={styles.roleText}>{character.shortRole}</Text>
+                <Text style={styles.roleText}>{t(character.shortRoleKey as any)}</Text>
               </View>
             </Animated.View>
 

@@ -105,6 +105,7 @@ function CharacterAvatar({ character, size = 38 }: { character: Character; size?
 
 function WelcomeMessage({ character, customName }: { character: Character; customName?: string }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const displayName = customName || character.name;
   return (
     <Animated.View entering={FadeInUp.springify().damping(18)} style={styles.welcomeContainer}>
@@ -126,7 +127,7 @@ function WelcomeMessage({ character, customName }: { character: Character; custo
       </View>
       <Text style={[styles.welcomeName, { color: colors.text.primary }]}>{displayName}</Text>
       <View style={styles.welcomeRoleBadge}>
-        <Text style={styles.welcomeRoleText}>{character.shortRole}</Text>
+        <Text style={styles.welcomeRoleText}>{t(character.shortRoleKey as any)}</Text>
       </View>
       <Text style={[styles.welcomeDesc, { color: colors.text.secondary }]}>{character.description}</Text>
       <View style={styles.tagsRow}>
@@ -841,16 +842,19 @@ export default function ChatScreen() {
   }
 
   return (
-    <BackgroundGradient>
-      <StatusBar barStyle={colors.statusBar} />
+    <BackgroundGradient
+      customColors={isSibel ? ["#0D0020", "#1A0040", "#2D0654"] : undefined}
+      showBlobs={!isSibel}
+    >
+      <StatusBar barStyle={isSibel ? "light-content" : colors.statusBar} />
 
-      <View style={[styles.header, { paddingTop: topPad + 10, borderBottomColor: isDark ? colors.borderSubtle : "rgba(0,0,0,0.05)" }]}>
+      <View style={[styles.header, { paddingTop: topPad + 10, borderBottomColor: isSibel ? "rgba(139,92,246,0.2)" : isDark ? colors.borderSubtle : "rgba(0,0,0,0.05)" }]}>
         {Platform.OS === "ios" ? (
-          <BlurView intensity={50} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+          <BlurView intensity={50} tint={isSibel ? "dark" : isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
         ) : null}
         <View style={styles.headerContent}>
           <Pressable onPress={() => router.back()} style={styles.headerSideBtn} hitSlop={8}>
-            <Feather name="chevron-left" size={22} color={colors.text.primary} />
+            <Feather name="chevron-left" size={22} color={isSibel ? "#E9D5FF" : colors.text.primary} />
           </Pressable>
 
           <Pressable
@@ -867,17 +871,17 @@ export default function ChatScreen() {
             </View>
             <View>
               <View style={styles.headerNameRow}>
-                <Text style={[styles.headerName, { color: colors.text.primary }]}>{displayName}</Text>
+                <Text style={[styles.headerName, { color: isSibel ? "#E9D5FF" : colors.text.primary }]}>{displayName}</Text>
                 {streak.streak >= 2 ? (
                   <View style={styles.headerStreakBadge}>
                     <Feather name="zap" size={9} color="#FF9500" />
                     <Text style={styles.headerStreakText}>{streak.streak}</Text>
                   </View>
                 ) : null}
-                <Feather name="chevron-right" size={13} color={colors.text.tertiary} />
+                <Feather name="chevron-right" size={13} color={isSibel ? "#A78BFA" : colors.text.tertiary} />
               </View>
-              <Text style={[styles.headerStatus, { color: colors.text.secondary }]}>
-                {isStreaming ? t("chat.typing") : character.shortRole}
+              <Text style={[styles.headerStatus, { color: isSibel ? "#C4B5FD" : colors.text.secondary }]}>
+                {isStreaming ? t("chat.typing") : t(character.shortRoleKey as any)}
               </Text>
             </View>
           </Pressable>

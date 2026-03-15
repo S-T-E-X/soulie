@@ -3,18 +3,29 @@ import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/contexts/ThemeContext";
 
-export function BackgroundGradient({ children }: { children: React.ReactNode }) {
+interface Props {
+  children: React.ReactNode;
+  customColors?: [string, string, ...string[]];
+  showBlobs?: boolean;
+}
+
+export function BackgroundGradient({ children, customColors, showBlobs = true }: Props) {
   const { colors } = useTheme();
+  const gradientColors = customColors ?? (colors.backgroundGradient as [string, string, ...string[]]);
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={colors.backgroundGradient}
+        colors={gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <View style={[styles.blob1, { backgroundColor: colors.blobA }]} />
-      <View style={[styles.blob2, { backgroundColor: colors.blobB }]} />
+      {showBlobs && (
+        <>
+          <View style={[styles.blob1, { backgroundColor: colors.blobA }]} />
+          <View style={[styles.blob2, { backgroundColor: colors.blobB }]} />
+        </>
+      )}
       {children}
     </View>
   );

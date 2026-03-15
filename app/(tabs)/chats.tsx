@@ -113,7 +113,11 @@ function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: 
           );
         }}
         delayLongPress={450}
-        style={({ pressed }) => [styles.chatRow, pressed && { opacity: 0.75 }]}
+        style={({ pressed }) => [
+          styles.chatRow,
+          character.id === "sibel" && { backgroundColor: "rgba(107,33,168,0.07)", borderLeftWidth: 3, borderLeftColor: "#7C3AED" },
+          pressed && { opacity: 0.75 },
+        ]}
       >
         <View style={styles.avatarContainer}>
           {character.image ? (
@@ -145,8 +149,8 @@ function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: 
             <Text style={[styles.lastMsg, { color: colors.text.secondary }]} numberOfLines={1}>
               {conversation.lastMessage || t("chats.chatStarted", { name: character.name })}
             </Text>
-            <View style={[styles.rolePill, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.roleLabel, { color: colors.text.tertiary }]}>{character.shortRole}</Text>
+            <View style={[styles.rolePill, { backgroundColor: character.id === "sibel" ? "rgba(107,33,168,0.15)" : colors.surface }]}>
+              <Text style={[styles.roleLabel, { color: character.id === "sibel" ? "#A855F7" : colors.text.tertiary }]}>{t(character.shortRoleKey as any)}</Text>
             </View>
           </View>
         </View>
