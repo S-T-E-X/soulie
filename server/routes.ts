@@ -184,47 +184,49 @@ ${relationshipLevelName ? getRelationshipBehavior(relationshipLevelName) : ""}`;
         ? "Respond in English. Be mystical and deep."
         : "Türkçe konuş. Mistik, derin ve sezgisel bir dil kullan.";
 
-      const systemPrompt = `Sen ${charName}'sin. Mistik bir falcısın — kahve falı, tarot ve astroloji konusunda uzmansın. Gizemli, derin ve sezgisel konuşursun. Kullanıcının sorularına sembolik ve düşündürücü yanıtlar ver. Sırlarla dolu, akıcı ve büyüleyici bir dil kullan. Kehanetleri dramatik ama nazik sun.
+      const systemPrompt = `Sen bir kahve falcısısın. Mistik, derin ve sezgisel bir dil kullanırsın.
 ${langInst}
-Kullanıcı sana kahve fincanının 3 farklı açıdan fotoğrafını gönderdi. Bu fotoğraflardaki şekilleri, lekeleri ve kalıpları titizlikle inceleyerek kapsamlı bir kahve falı yorumu yap. Şunlara dikkat et: fincanın dibindeki şekiller, kenardaki lekeler, oluşan semboller, genel enerji. Yorumunu bölümler halinde sun: yakın gelecek, aşk/ilişkiler, kariyer/para, önemli bir mesaj. Mistik ve büyüleyici ama samimi bir ton kullan.`;
 
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache, no-transform");
-      res.setHeader("X-Accel-Buffering", "no");
-      res.setHeader("Connection", "keep-alive");
-      res.flushHeaders();
+KURALLAR:
+- Gönderilen fotoğraflar bir kahve fincanı veya kahve telvesi içermiyorsa, yorum YAPMA. Sadece "Bu fotoğraflarda kahve fincanı göremiyorum. Lütfen kahve içip fincanının 3 farklı açıdan fotoğrafını çek." de.
+- Fotoğraflar kahve fincanı ise: fincanın dibindeki şekiller, kenardaki lekeler ve oluşan semboller hakkında yorum yap.
+- Yanıtını 4 bölüm halinde yaz. Her bölüm arasında tam olarak "---" kullan, başka hiçbir yerde kullanma:
+  Yakın Gelecek bölümü
+  ---
+  Aşk & İlişkiler bölümü
+  ---
+  Kariyer & Para bölümü
+  ---
+  Önemli Mesaj bölümü
+- Her bölüm 2-3 cümle olsun. Mistik ve akıcı bir dil kullan.
+- Yanıtının sonuna KESİNLİKLE hiçbir kapanış cümlesi, kendini tanıtma, imza veya yorum EKLEME. Sadece 4 bölümü yaz, bitir.`;
 
       const imageContent = images.map((imgUrl: string) => ({
         type: "image_url" as const,
-        image_url: { url: imgUrl, detail: "high" as const },
+        image_url: { url: imgUrl, detail: "low" as const },
       }));
 
-      const stream = await openai.chat.completions.create({
+      const response = await openai.chat.completions.create({
         model: "gpt-4.1-mini",
         messages: [
           { role: "system", content: systemPrompt },
           {
             role: "user",
             content: [
-              { type: "text", text: "Kahve fincanımın 3 farklı açıdan fotoğrafını gönderiyorum. Lütfen detaylı bir fal yorumu yap." },
+              { type: "text", text: "Kahve fincanımın 3 farklı açıdan fotoğrafını gönderiyorum." },
               ...imageContent,
             ],
           },
         ],
-        stream: true,
-        max_completion_tokens: 800,
+        stream: false,
+        max_completion_tokens: 700,
       });
 
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || "";
-        if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
-      }
-      res.write("data: [DONE]\n\n");
-      res.end();
+      const fullText = response.choices[0]?.message?.content || "";
+      res.json({ content: fullText });
     } catch (error) {
       console.error("Fortune error:", error);
-      if (!res.headersSent) res.status(500).json({ error: "Failed to read fortune" });
-      else { res.write(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`); res.end(); }
+      res.status(500).json({ error: "Failed to read fortune" });
     }
   });
 

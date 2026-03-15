@@ -43,6 +43,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { GIFTS } from "@/contexts/GiftContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const FORTUNE_DATE_KEY = "soulie_fortune_date_v1";
+
+async function getTodayFortuneUsed(): Promise<boolean> {
+  try {
+    const stored = await AsyncStorage.getItem(FORTUNE_DATE_KEY);
+    if (!stored) return false;
+    const today = new Date().toISOString().slice(0, 10);
+    return stored === today;
+  } catch { return false; }
+}
+
+async function markFortuneUsed(): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
+  await AsyncStorage.setItem(FORTUNE_DATE_KEY, today);
+}
 
 function CharacterAvatar({ character, size = 38 }: { character: Character; size?: number }) {
   if (!character.image) {
@@ -728,6 +745,8 @@ export default function ChatScreen() {
     setShowTyping(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    await markFortuneUsed();
+
     const userMsg: Message = {
       id: generateId(),
       role: "user",
@@ -741,7 +760,7 @@ export default function ChatScreen() {
     try {
       const response = await fetch(`${baseUrl}api/fortune`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           images: fortuneImages,
           customName: settings.customName,
@@ -749,52 +768,28 @@ export default function ChatScreen() {
         }),
       });
 
-      if (!response.body) throw new Error("No response body");
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let fullContent = "";
-      let assistantAdded = false;
-      const assistantId = generateId();
+      const data = await response.json();
+      const fullText: string = data.content || "Falınıza bakılamadı, tekrar deneyin.";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6);
-          if (data === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.content) {
-              fullContent += parsed.content;
-              if (!assistantAdded) {
-                setShowTyping(false);
-                setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: fullContent, timestamp: Date.now() }]);
-                assistantAdded = true;
-              } else {
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { ...updated[updated.length - 1], content: fullContent };
-                  return updated;
-                });
-              }
-            }
-          } catch {}
+      setShowTyping(false);
+
+      const rawSections = fullText.split(/\n\s*---\s*\n/).map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+      const sections = rawSections.length > 1 ? rawSections : [fullText.trim()];
+
+      const newMessages: Message[] = [...withUser];
+      for (let i = 0; i < sections.length; i++) {
+        const msg: Message = { id: generateId(), role: "assistant", content: sections[i], timestamp: Date.now() + i };
+        newMessages.push(msg);
+        setMessages([...newMessages]);
+        if (i < sections.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 600));
         }
       }
 
-      const finalMessages: Message[] = [
-        ...withUser,
-        { id: assistantId, role: "assistant", content: fullContent, timestamp: Date.now() },
-      ];
-      await createConversationWithMessages(character.id, settings.customName || character.name, finalMessages);
+      await createConversationWithMessages(character.id, settings.customName || character.name, newMessages);
     } catch {
       setShowTyping(false);
-      setMessages((prev) => [...prev, { id: generateId(), role: "assistant", content: "Falınıza bakarken bir hata oluştu. Tekrar deneyebilirsiniz.", timestamp: Date.now() }]);
+      setMessages((prev) => [...prev, { id: generateId(), role: "assistant", content: "Falınıza bakarken bir hata oluştu. Tekrar deneyin.", timestamp: Date.now() }]);
     } finally {
       setIsStreaming(false);
       setShowTyping(false);
@@ -863,15 +858,19 @@ export default function ChatScreen() {
 
           {isSibel ? (
             <Pressable
-              onPress={() => {
+              onPress={async () => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                const used = await getTodayFortuneUsed();
+                if (used) {
+                  Alert.alert("Günlük Hakkın Doldu", "Günde 1 kez fal baktırabilirsin. Yarın tekrar gel ✨");
+                  return;
+                }
                 setShowFortuneSheet(true);
               }}
-              style={[styles.headerSideBtn, { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, backgroundColor: "rgba(139,92,246,0.15)", borderRadius: 12 }]}
+              style={[styles.headerSideBtn, { backgroundColor: "rgba(139,92,246,0.15)" }]}
               hitSlop={4}
             >
-              <Text style={{ fontSize: 13 }}>☕</Text>
-              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#8B5CF6" }}>Fal Baktır</Text>
+              <Text style={{ fontSize: 19, lineHeight: 22 }}>☕</Text>
             </Pressable>
           ) : (
             <>
