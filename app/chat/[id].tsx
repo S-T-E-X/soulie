@@ -39,6 +39,7 @@ import { useAutoMessages } from "@/hooks/useAutoMessages";
 import { useStreak } from "@/hooks/useStreak";
 import { useDailyQuota } from "@/hooks/useDailyQuota";
 import { getCharacter, type Character } from "@/constants/characters";
+import { useCustomChars } from "@/contexts/CustomCharContext";
 import { getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
@@ -425,7 +426,10 @@ export default function ChatScreen() {
   const streak = useStreak(characterId ?? "");
   const quota = useDailyQuota(isVipActive);
 
-  const character = characterId ? getCharacter(characterId) : undefined;
+  const { customChars } = useCustomChars();
+  const character = characterId
+    ? (getCharacter(characterId) ?? customChars.find(c => c.id === characterId))
+    : undefined;
 
   const initializedRef = useRef(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -599,12 +603,13 @@ export default function ChatScreen() {
             messages: chatHistory,
             characterId: character.id,
             userLevel: charLevel,
-            customName: settings.customName,
+            customName: settings.customName || character.name,
             selectedTraits: settings.traits,
             memories: settings.memories,
             userLanguage: user?.language ?? "tr",
             voiceTone: settings.voiceTone,
             relationshipLevelName: currentRelLevel.name,
+            customSystemPrompt: (character as any).isCustom ? character.systemPrompt : undefined,
           }),
         });
 

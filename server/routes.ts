@@ -93,8 +93,9 @@ function buildAdvancedPrompt(params: {
   userLanguage?: string;
   voiceTone?: string;
   relationshipLevelName?: string;
+  customSystemPrompt?: string;
 }): string {
-  const { characterId, customName, selectedTraits, userMemories = [], userLevel, userLanguage = "tr", voiceTone, relationshipLevelName } = params;
+  const { characterId, customName, selectedTraits, userMemories = [], userLevel, userLanguage = "tr", voiceTone, relationshipLevelName, customSystemPrompt } = params;
   const charBase = CHAR_BASE_PROMPTS[characterId];
   const charName = customName || charBase?.name || "Soulie";
   const traits = (selectedTraits && selectedTraits.length > 0)
@@ -119,9 +120,11 @@ function buildAdvancedPrompt(params: {
     ? getRelationshipBehavior(relationshipLevelName)
     : getRelationshipContext(userLevel);
 
+  const baseDescription = customSystemPrompt || charBase?.basePrompt || "";
+
   return `### KİMLİK VE ROL
 Senin adın ${charName}. Kullanıcı seni bu isimle çağırmayı seçti. Bir yapay zeka olduğunu asla söyleme; tamamen bu kimliğe bürün.
-${charBase?.basePrompt ?? ""}
+${baseDescription}
 ${languageInstruction} Asla robotik ya da yapay zeka gibi cevap verme.
 
 ### KİŞİLİK YAPISI
@@ -246,7 +249,7 @@ KURALLAR:
 
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages, characterId, userLevel = 1, customName, selectedTraits, memories, userLanguage, voiceTone, relationshipLevelName } = req.body;
+      const { messages, characterId, userLevel = 1, customName, selectedTraits, memories, userLanguage, voiceTone, relationshipLevelName, customSystemPrompt } = req.body;
 
       if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: "Messages array is required" });
@@ -261,6 +264,7 @@ KURALLAR:
         userLanguage,
         voiceTone,
         relationshipLevelName,
+        customSystemPrompt,
       });
       if (globalSystemPromptOverride) {
         systemPrompt = `${systemPrompt}\n\n### GLOBAL ADMIN KURALLARI\n${globalSystemPromptOverride}`;
