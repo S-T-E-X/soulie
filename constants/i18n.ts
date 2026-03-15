@@ -340,6 +340,7 @@ const t: LangMap = {
     "explore.cat_friend": "Friend",
     "explore.cat_mentor": "Mentor",
     "explore.tarot": "Tarot",
+    "explore.tarotSubtitle": "Reveal your cards, read your fate",
 
     // Chats (new keys)
     "chats.chatWith": "Chat with {name}",
@@ -709,6 +710,7 @@ const t: LangMap = {
     "explore.cat_friend": "Arkadaş",
     "explore.cat_mentor": "Mentor",
     "explore.tarot": "Tarot Falı",
+    "explore.tarotSubtitle": "Kartlarını aç, kaderini oku",
 
     "chats.chatWith": "{name} ile sohbet",
     "chats.chatStarted": "{name} ile sohbet başladı",
@@ -1075,6 +1077,7 @@ const t: LangMap = {
     "explore.cat_friend": "Freund",
     "explore.cat_mentor": "Mentor",
     "explore.tarot": "Tarot",
+    "explore.tarotSubtitle": "Karten aufdecken, Schicksal lesen",
 
     "chats.chatWith": "Chat mit {name}",
     "chats.chatStarted": "Chat mit {name} gestartet",
@@ -1441,6 +1444,7 @@ const t: LangMap = {
     "explore.cat_friend": "朋友",
     "explore.cat_mentor": "导师",
     "explore.tarot": "塔罗牌",
+    "explore.tarotSubtitle": "翻开你的牌，读懂命运",
 
     "chats.chatWith": "与 {name} 聊天",
     "chats.chatStarted": "与 {name} 的对话已开始",
@@ -1807,6 +1811,7 @@ const t: LangMap = {
     "explore.cat_friend": "친구",
     "explore.cat_mentor": "멘토",
     "explore.tarot": "타로",
+    "explore.tarotSubtitle": "카드를 펼쳐 운명을 읽다",
 
     "chats.chatWith": "{name}과의 대화",
     "chats.chatStarted": "{name}과의 대화 시작",
@@ -2173,6 +2178,7 @@ const t: LangMap = {
     "explore.cat_friend": "Amigo",
     "explore.cat_mentor": "Mentor",
     "explore.tarot": "Tarot",
+    "explore.tarotSubtitle": "Revela tus cartas, lee tu destino",
 
     "chats.chatWith": "Chat con {name}",
     "chats.chatStarted": "Chat con {name} iniciado",
@@ -2539,6 +2545,7 @@ const t: LangMap = {
     "explore.cat_friend": "Друг",
     "explore.cat_mentor": "Ментор",
     "explore.tarot": "Таро",
+    "explore.tarotSubtitle": "Открой карты, прочти судьбу",
 
     "chats.chatWith": "Чат с {name}",
     "chats.chatStarted": "Начат чат с {name}",
