@@ -25,6 +25,8 @@ import { useChatContext } from "@/contexts/ChatContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useI18n } from "@/hooks/useI18n";
 
+const DEFAULT_AVATAR_SETTINGS = require("@/assets/default_pp/default-avatar-profile.png");
+
 const LEVEL_IMAGES: Record<number, any> = {
   1: require("@/assets/levels/lvl1.png"),
   2: require("@/assets/levels/lvl2.png"),
@@ -258,13 +260,7 @@ export default function SettingsScreen() {
               colors={isDark ? ["rgba(35,35,58,0.95)", "rgba(28,28,48,0.9)"] : ["rgba(255,255,255,0.85)", "rgba(255,255,255,0.7)"]}
               style={styles.profileGradient}
             >
-              {user?.profilePhoto ? (
-                <Image source={{ uri: user.profilePhoto }} style={styles.profileAvatarPhoto} />
-              ) : (
-                <LinearGradient colors={["#007AFF", "#0059C4"]} style={styles.profileAvatar}>
-                  <Text style={styles.profileInitial}>{user?.name?.charAt(0).toUpperCase() ?? "S"}</Text>
-                </LinearGradient>
-              )}
+              <Image source={user?.profilePhoto ? { uri: user.profilePhoto } : DEFAULT_AVATAR_SETTINGS} style={styles.profileAvatarPhoto} />
               <View style={styles.profileInfo}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <Text style={[styles.profileName, { color: colors.text.primary }]}>{user?.name ?? t("settings.user")}</Text>

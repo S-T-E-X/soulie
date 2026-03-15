@@ -54,10 +54,13 @@ function getLevelFrameColors(level: number): [string, string] {
   return ["#FFD700", "#FFB800"];
 }
 
+const DEFAULT_AVATAR_EXPLORE = require("@/assets/default_pp/default-avatar-profile.png");
+
 function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string; profilePhoto?: string }) {
   const level = getUserLevel(xp);
   const frameColors = getLevelFrameColors(level);
   const initial = name?.charAt(0).toUpperCase() ?? "S";
+  const avatarSource = profilePhoto ? { uri: profilePhoto } : DEFAULT_AVATAR_EXPLORE;
 
   return (
     <Pressable
@@ -67,11 +70,9 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
     >
       <LinearGradient colors={frameColors} style={styles.avatarFrame}>
         {profilePhoto ? (
-          <Image source={{ uri: profilePhoto }} style={styles.avatarPhoto} />
+          <Image source={avatarSource} style={styles.avatarPhoto} />
         ) : (
-          <LinearGradient colors={[Colors.userBubble.from, Colors.userBubble.to]} style={styles.avatarInner}>
-            <Text style={styles.avatarInitial}>{initial}</Text>
-          </LinearGradient>
+          <Image source={DEFAULT_AVATAR_EXPLORE} style={styles.avatarPhoto} />
         )}
       </LinearGradient>
       <View style={styles.levelBadge}>

@@ -39,17 +39,15 @@ const DEFAULT_HOBBIES = [
   "Film", "Doğa", "Teknoloji", "Sanat", "Dans",
 ];
 
+const DEFAULT_AVATAR = require("@/assets/default_pp/default-avatar-profile.png");
+
 function Avatar({ uri, name, onPress }: { uri?: string | null; name: string; onPress: () => void }) {
   const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+  const avatarSource = uri ? { uri } : DEFAULT_AVATAR;
+  
   return (
     <Pressable style={styles.avatarContainer} onPress={onPress}>
-      {uri ? (
-        <Image source={{ uri }} style={styles.avatarImage} />
-      ) : (
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarInitials}>{initials}</Text>
-        </View>
-      )}
+      <Image source={avatarSource} style={styles.avatarImage} />
       <View style={styles.avatarEditBadge}>
         <Feather name="camera" size={14} color="#fff" />
       </View>
