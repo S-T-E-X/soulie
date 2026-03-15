@@ -80,7 +80,7 @@ function CharacterImage({ source, gradientColors, noImage }: { source: any; grad
         style={[styles.characterImage, !loaded && { opacity: 0 }]}
         resizeMode="cover"
         onLoad={() => setLoaded(true)}
-        fadeDuration={Platform.OS === "android" ? 200 : 0}
+        fadeDuration={Platform.OS === "android" ? 100 : 0}
       />
     </View>
   );

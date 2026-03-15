@@ -33,7 +33,7 @@ import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useI18n } from "@/hooks/useI18n";
 
-type CategoryKey = "all" | "female" | "male";
+type CategoryKey = "all" | "female" | "male" | "fortune";
 
 const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
 
@@ -303,6 +303,12 @@ export default function ExploreScreen() {
       }
       setStreaks(map);
     });
+    // Preload character images for faster rendering
+    CHARACTERS.forEach((char) => {
+      if (char.image && typeof char.image === "object" && "uri" in char.image) {
+        Image.prefetch(char.image.uri);
+      }
+    });
   }, []);
 
   const myCustomChars = user ? customChars.filter((c) => c.ownerId === user.id) : [];
@@ -315,6 +321,7 @@ export default function ExploreScreen() {
     : CHARACTERS.filter((c) => {
         if (activeCategory === "female") return c.gender === "female";
         if (activeCategory === "male") return c.gender === "male";
+        if (activeCategory === "fortune") return c.role === "Falcı";
         return true;
       });
 
@@ -417,10 +424,28 @@ export default function ExploreScreen() {
         </View>
 
         <View style={styles.filtersRow}>
-          <View style={styles.genderFilterRow}>
-            {(["all", "female", "male"] as CategoryKey[]).map((key) => {
-              const label = key === "all" ? t("explore.cat_all" as any) : key === "female" ? t("explore.cat_female" as any) : t("explore.cat_male" as any);
+          <View style={styles.filterBtnRow}>
+            {(["all", "female", "male", "fortune"] as CategoryKey[]).map((key) => {
+              const label = key === "all" ? t("explore.cat_all" as any) : key === "female" ? t("explore.cat_female" as any) : key === "male" ? t("explore.cat_male" as any) : t("explore.cat_fortune" as any);
               const isActive = activeCategory === key;
+              const isFortune = key === "fortune";
+              
+              if (isFortune) {
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setActiveCategory(key);
+                    }}
+                    style={[styles.fortuneBtn, isActive && styles.fortuneBtnActive]}
+                  >
+                    <Feather name="eye" size={13} color={isActive ? "#fff" : "#16A34A"} />
+                    <Text style={[styles.fortuneBtnText, isActive && styles.fortuneBtnTextActive]}>{label}</Text>
+                  </Pressable>
+                );
+              }
+
               return (
                 <Pressable
                   key={key}
@@ -428,12 +453,12 @@ export default function ExploreScreen() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActiveCategory(key);
                   }}
-                  style={[styles.genderBtn, isActive && styles.genderBtnActive]}
+                  style={[styles.filterBtn, isActive && styles.filterBtnActive]}
                 >
                   {isActive ? (
                     <LinearGradient colors={["#7C3AED", "#A855F7"]} style={StyleSheet.absoluteFill} />
                   ) : null}
-                  <Text style={[styles.genderBtnText, isActive && styles.genderBtnTextActive]}>{label}</Text>
+                  <Text style={[styles.filterBtnText, isActive && styles.filterBtnTextActive]}>{label}</Text>
                 </Pressable>
               );
             })}
@@ -584,11 +609,11 @@ const styles = StyleSheet.create({
   levelBadge: { position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: Colors.accent, justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#fff" },
   levelBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
   filtersRow: { paddingHorizontal: 14, marginTop: 10 },
-  genderFilterRow: {
+  filterBtnRow: {
     flexDirection: "row",
     gap: 8,
   },
-  genderBtn: {
+  filterBtn: {
     flex: 1,
     paddingVertical: 9,
     borderRadius: 22,
@@ -599,11 +624,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(124,58,237,0.2)",
   },
-  genderBtnActive: {
+  filterBtnActive: {
     borderColor: "transparent",
   },
-  genderBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "rgba(124,58,237,0.8)" },
-  genderBtnTextActive: { color: "#FFFFFF" },
+  filterBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "rgba(124,58,237,0.8)" },
+  filterBtnTextActive: { color: "#FFFFFF" },
+  fortuneBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: "rgba(74,222,128,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(74,222,128,0.3)",
+  },
+  fortuneBtnActive: {
+    backgroundColor: "rgba(34,197,94,0.95)",
+    borderColor: "rgba(74,222,128,0.9)",
+  },
+  fortuneBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#16A34A" },
+  fortuneBtnTextActive: { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" },
   falciBtn: {
     flexDirection: "row",
     alignItems: "center",
