@@ -258,8 +258,13 @@ KURALLAR:
       res.setHeader("Connection", "keep-alive");
       res.flushHeaders();
 
+      const hasImages = messages.some((m: any) =>
+        Array.isArray(m.content) && m.content.some((c: any) => c.type === "image_url")
+      );
+      const chatModel = hasImages ? "gpt-4.1-mini" : "gpt-5.2";
+
       const stream = await openai.chat.completions.create({
-        model: "gpt-5.2",
+        model: chatModel,
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,
