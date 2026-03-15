@@ -216,6 +216,21 @@ export default function AdminScreen() {
     await updateProfile({ isVip: newVip });
   };
 
+  const toggleSelectedUserVip = async () => {
+    if (!selectedUserId) return;
+    const target = usersList.find(u => u.id === selectedUserId);
+    if (!target) return;
+    const newVip = !target.isVip;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const updated = { ...target, isVip: newVip, vipExpiry: newVip ? undefined : undefined };
+    const newList = usersList.map(u => u.id === selectedUserId ? updated : u);
+    setUsersList(newList);
+    await AsyncStorage.setItem("soulie_users_db_v1", JSON.stringify(newList));
+    if (selectedUserId === user?.id) {
+      await updateProfile({ isVip: newVip });
+    }
+  };
+
   const addCoinsAdmin = async () => {
     const amount = parseInt(coinInput, 10);
     if (isNaN(amount) || amount <= 0) { Alert.alert("Geçersiz miktar"); return; }
@@ -682,7 +697,7 @@ export default function AdminScreen() {
                   </View>
                   <Switch
                     value={!!selectedUser?.isVip}
-                    onValueChange={selectedUserId === user?.id ? toggleVIP : undefined}
+                    onValueChange={toggleSelectedUserVip}
                     trackColor={{ false: "rgba(255,255,255,0.15)", true: "#FFD700" }}
                     thumbColor="#fff"
                   />

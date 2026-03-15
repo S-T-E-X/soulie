@@ -91,7 +91,7 @@ export function CharacterCustomizeSheet({
   const toggleTrait = (id: string) => {
     if (!isVip) {
       onClose();
-      router.push({ pathname: "/(tabs)/market", params: { tab: "coins" } });
+      router.push({ pathname: "/(tabs)/market", params: { tab: "premium" } });
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -113,7 +113,7 @@ export function CharacterCustomizeSheet({
 
   const handleVipPress = () => {
     onClose();
-    router.push({ pathname: "/(tabs)/market", params: { tab: "coins" } });
+    router.push({ pathname: "/(tabs)/market", params: { tab: "premium" } });
   };
 
   const handleVoiceToneSelect = (tone: VoiceTone) => {
@@ -330,7 +330,7 @@ export function CharacterCustomizeSheet({
                 Ses tonu seçimi Premium üyelere özel bir özelliktir. Premium'a geçerek karakterinin konuşma tarzını özelleştirebilirsin.
               </Text>
               <Pressable
-                onPress={() => { setShowPremiumSheet(false); onClose(); router.push({ pathname: "/(tabs)/market", params: { tab: "coins" } }); }}
+                onPress={() => { setShowPremiumSheet(false); onClose(); router.push({ pathname: "/(tabs)/market", params: { tab: "premium" } }); }}
                 style={({ pressed }) => [styles.premiumBtn, pressed && { opacity: 0.88 }]}
               >
                 <LinearGradient colors={["#FFD700", "#FF9500"]} style={styles.premiumBtnGradient}>

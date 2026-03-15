@@ -44,7 +44,7 @@ export default function CharacterProfileScreen() {
   const { characterId } = useLocalSearchParams<{ characterId: string }>();
   const character = getCharacter(characterId);
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, isVipActive } = useAuth();
   const { isDark, colors } = useTheme();
   const { t } = useI18n();
   const scrollY = useSharedValue(0);
@@ -90,9 +90,9 @@ export default function CharacterProfileScreen() {
 
   const handleStartChat = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (character.isPremium) {
+    if (character.isPremium && !isVipActive) {
       router.back();
-      setTimeout(() => router.push("/(tabs)/market"), 50);
+      setTimeout(() => router.push({ pathname: "/(tabs)/market", params: { tab: "premium" } }), 50);
       return;
     }
     router.back();
@@ -268,14 +268,14 @@ export default function CharacterProfileScreen() {
               style={({ pressed }) => [styles.ctaButton, pressed && { opacity: 0.88 }]}
             >
               <LinearGradient
-                colors={character.isPremium
+                colors={character.isPremium && !isVipActive
                   ? ["#FFD700", "#FF9500"]
                   : [Colors.userBubble.from, Colors.userBubble.to]}
                 style={styles.ctaGradient}
               >
-                <Feather name={character.isPremium ? "star" : "message-circle"} size={18} color="#fff" />
+                <Feather name={character.isPremium && !isVipActive ? "star" : "message-circle"} size={18} color="#fff" />
                 <Text style={styles.ctaText}>
-                  {character.isPremium ? t("character.premiumRequired") : t("character.chat")}
+                  {character.isPremium && !isVipActive ? t("character.premiumRequired") : t("character.chat")}
                 </Text>
               </LinearGradient>
             </Pressable>
@@ -288,7 +288,7 @@ export default function CharacterProfileScreen() {
         onClose={() => setShowCustomize(false)}
         characterName={character.name}
         settings={settings}
-        isVip={settings.isPremium}
+        isVip={isVipActive}
         onSave={(partial) => updateSettings(partial)}
         onRemoveMemory={removeMemory}
       />

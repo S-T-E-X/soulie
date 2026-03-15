@@ -1007,7 +1007,7 @@ export default function ChatScreen() {
         onClose={() => setShowCustomize(false)}
         characterName={character.name}
         settings={settings}
-        isVip={settings.isPremium}
+        isVip={isVipActive}
         onSave={(partial) => updateSettings(partial)}
         onRemoveMemory={removeMemory}
       />
