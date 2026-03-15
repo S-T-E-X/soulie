@@ -189,6 +189,8 @@ export default function VideoChatScreen() {
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
   const isMutedRef = useRef(false);
+  const conversationHistoryRef = useRef<{ role: string; content: string }[]>([]);
+  const sendRecordingRef = useRef<() => Promise<void>>(async () => {});
 
   const breatheAnim = useRef(new Animated.Value(1)).current;
   const listeningPulse = useRef(new Animated.Value(0)).current;
@@ -196,6 +198,11 @@ export default function VideoChatScreen() {
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
+
+  useEffect(() => {
+    conversationHistoryRef.current = conversationHistory;
+  }, [conversationHistory]);
+
 
   useEffect(() => {
     mountedRef.current = true;
@@ -324,7 +331,7 @@ export default function VideoChatScreen() {
             meteringUnavailableCount++;
             if (meteringUnavailableCount > 30 && Date.now() - recordingStart > 20000) {
               clearInterval(meteringPollRef.current);
-              sendRecording();
+              sendRecordingRef.current();
             }
             return;
           }
@@ -337,11 +344,11 @@ export default function VideoChatScreen() {
               silenceSince = Date.now();
             } else if (Date.now() - silenceSince >= SILENCE_DURATION_MS) {
               clearInterval(meteringPollRef.current);
-              sendRecording();
+              sendRecordingRef.current();
             }
           } else if (Date.now() - recordingStart > 25000) {
             clearInterval(meteringPollRef.current);
-            sendRecording();
+            sendRecordingRef.current();
           }
         } catch {}
       }, 150);
@@ -353,13 +360,15 @@ export default function VideoChatScreen() {
   const sendRecording = useCallback(async () => {
     if (!recordingRef.current || !mountedRef.current) return;
 
+    const rec = recordingRef.current;
+    recordingRef.current = null;
+
     try {
       if (mountedRef.current) setCallState("processing");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-      await recordingRef.current.stopAndUnloadAsync();
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
+      const uri = rec.getURI();
+      await rec.stopAndUnloadAsync().catch(() => {});
 
       if (!uri || !mountedRef.current) {
         if (mountedRef.current) startListening();
@@ -381,7 +390,7 @@ export default function VideoChatScreen() {
           reader.readAsDataURL(blob);
         });
       } else {
-        const FileSystem = await import("expo-file-system");
+        const FileSystem = await import("expo-file-system/legacy");
         base64Audio = await FileSystem.readAsStringAsync(uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
@@ -401,13 +410,16 @@ export default function VideoChatScreen() {
           characterId,
           userLevel: 5,
           userLanguage: "tr",
-          conversationHistory,
+          conversationHistory: conversationHistoryRef.current,
         }),
         signal: abortRef.current.signal,
       });
 
       if (!mountedRef.current) return;
-      if (!res.ok) throw new Error("Voice chat failed");
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        throw new Error(`Voice chat failed (${res.status}): ${errText}`);
+      }
 
       const data = await res.json();
       if (!mountedRef.current) return;
@@ -417,8 +429,8 @@ export default function VideoChatScreen() {
 
       setConversationHistory((prev) => [
         ...prev,
-        { role: "user", content: data.userTranscript },
-        { role: "assistant", content: data.responseText },
+        { role: "user", content: data.userTranscript || "" },
+        { role: "assistant", content: data.responseText || "" },
       ]);
 
       if (data.audio) {
@@ -431,11 +443,15 @@ export default function VideoChatScreen() {
       console.error("Voice chat error:", e);
       if (mountedRef.current) {
         setCallState("idle");
-        setTranscript("Bir hata oluştu, tekrar denenecek...");
-        setTimeout(() => { if (mountedRef.current) startListening(); }, 2000);
+        setTranscript("Hata: " + (e?.message || "Bilinmeyen hata"));
+        setTimeout(() => { if (mountedRef.current) startListening(); }, 2500);
       }
     }
-  }, [characterId, conversationHistory]);
+  }, [characterId]);
+
+  useEffect(() => {
+    sendRecordingRef.current = sendRecording;
+  }, [sendRecording]);
 
   const playAudioResponse = useCallback(async (base64Audio: string, format: string) => {
     if (!mountedRef.current) return;
@@ -451,7 +467,7 @@ export default function VideoChatScreen() {
 
       let sourceUri: string;
       if (Platform.OS !== "web") {
-        const FileSystem = await import("expo-file-system");
+        const FileSystem = await import("expo-file-system/legacy");
         const filePath = `${FileSystem.cacheDirectory}soulie_voice_${Date.now()}.${format}`;
         await FileSystem.writeAsStringAsync(filePath, base64Audio, {
           encoding: FileSystem.EncodingType.Base64,
@@ -501,11 +517,11 @@ export default function VideoChatScreen() {
   const handleScreenTap = useCallback(() => {
     if (callState === "listening") {
       clearInterval(meteringPollRef.current);
-      sendRecording();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      sendRecordingRef.current();
     } else if (callState === "idle" && !isMutedRef.current) {
-      startListening();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      startListening();
     }
   }, [callState]);
 
