@@ -27,6 +27,7 @@ import { getAllStreaks } from "@/hooks/useStreak";
 import { useWeeklyMissions } from "@/hooks/useWeeklyMissions";
 import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useI18n } from "@/hooks/useI18n";
 
 const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
 
@@ -80,16 +81,17 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
 function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: Conversation; index: number; streak?: number; onDelete: () => void }) {
   const character = getCharacter(conversation.characterId);
   const { colors } = useTheme();
+  const { t } = useI18n();
   if (!character) return null;
 
   const timeAgo = () => {
     const diff = Date.now() - conversation.updatedAt;
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "şimdi";
-    if (mins < 60) return `${mins}dk`;
+    if (mins < 1) return t("chats.justNow");
+    if (mins < 60) return `${mins}${t("chats.min")}`;
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}s`;
-    return `${Math.floor(hours / 24)}g`;
+    if (hours < 24) return `${hours}${t("chats.hour")}`;
+    return `${Math.floor(hours / 24)}${t("chats.day")}`;
   };
 
   return (
@@ -102,11 +104,11 @@ function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: 
         onLongPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
           Alert.alert(
-            `${character.name} ile sohbet`,
-            "Bu sohbeti silmek istediğine emin misin?",
+            t("chats.chatWith", { name: character.name }),
+            t("chats.deleteConfirm"),
             [
-              { text: "İptal", style: "cancel" },
-              { text: "Sil", style: "destructive", onPress: onDelete },
+              { text: t("common.cancel"), style: "cancel" },
+              { text: t("common.delete"), style: "destructive", onPress: onDelete },
             ]
           );
         }}
@@ -141,7 +143,7 @@ function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: 
           </View>
           <View style={styles.chatBottom}>
             <Text style={[styles.lastMsg, { color: colors.text.secondary }]} numberOfLines={1}>
-              {conversation.lastMessage || `${character.name} ile sohbet başladı`}
+              {conversation.lastMessage || t("chats.chatStarted", { name: character.name })}
             </Text>
             <View style={[styles.rolePill, { backgroundColor: colors.surface }]}>
               <Text style={[styles.roleLabel, { color: colors.text.tertiary }]}>{character.shortRole}</Text>
@@ -155,6 +157,7 @@ function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: 
 
 function EmptyState() {
   const { colors } = useTheme();
+  const { t } = useI18n();
   return (
     <View style={styles.empty}>
       <LinearGradient
@@ -163,9 +166,9 @@ function EmptyState() {
       >
         <Feather name="message-circle" size={28} color={colors.accent} />
       </LinearGradient>
-      <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Henüz sohbet yok</Text>
+      <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>{t("chats.empty")}</Text>
       <Text style={[styles.emptySubtitle, { color: colors.text.secondary }]}>
-        Keşfet sayfasından bir AI arkadaş seç ve sohbet başlat
+        {t("chats.emptySubtitle")}
       </Text>
       <Pressable
         onPress={() => router.push("/(tabs)/explore")}
@@ -175,7 +178,7 @@ function EmptyState() {
           colors={[Colors.userBubble.from, Colors.userBubble.to]}
           style={styles.emptyButtonGrad}
         >
-          <Text style={styles.emptyButtonText}>Keşfete Git</Text>
+          <Text style={styles.emptyButtonText}>{t("chats.goExplore")}</Text>
         </LinearGradient>
       </Pressable>
     </View>
@@ -194,6 +197,7 @@ function MissionsBanner({
   bottom: number;
 }) {
   const pulseAnim = useRef(new Animated.Value(0)).current;
+  const { t } = useI18n();
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -232,9 +236,9 @@ function MissionsBanner({
           <Feather name={allDone ? "award" : "target"} size={16} color="#fff" />
         </LinearGradient>
         <View>
-          <Text style={styles.missionsBannerTitle}>Haftalık Görevler</Text>
+          <Text style={styles.missionsBannerTitle}>{t("chats.weeklyMissions")}</Text>
           <Text style={styles.missionsBannerSub}>
-            {allDone ? "Tümünü tamamladın!" : `${completedCount}/${totalMissions} tamamlandı`}
+            {allDone ? t("chats.allDone") : t("chats.missionsProgress", { completed: completedCount, total: totalMissions })}
           </Text>
         </View>
       </View>
@@ -261,6 +265,7 @@ export default function ChatsScreen() {
   const { user } = useAuth();
   const { conversations, isLoaded, loadConversations, deleteConversation } = useChatContext();
   const { isDark, colors } = useTheme();
+  const { t } = useI18n();
   const [showMissions, setShowMissions] = React.useState(false);
   const [streaks, setStreaks] = React.useState<Record<string, number>>({});
 
@@ -311,8 +316,8 @@ export default function ChatsScreen() {
       <View style={[styles.header, { paddingTop: topPad + 16, borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Sohbetler</Text>
-            <Text style={[styles.headerSub, { color: colors.text.secondary }]}>{sorted.length} aktif sohbet</Text>
+            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>{t("chats.title")}</Text>
+            <Text style={[styles.headerSub, { color: colors.text.secondary }]}>{t("chats.activeCount", { count: sorted.length })}</Text>
           </View>
           <UserAvatarBadge xp={xp} name={user?.name} profilePhoto={user?.profilePhoto} />
         </View>

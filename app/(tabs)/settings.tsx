@@ -23,6 +23,7 @@ import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatContext } from "@/contexts/ChatContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useI18n } from "@/hooks/useI18n";
 
 const LEVEL_IMAGES: Record<number, any> = {
   1: require("@/assets/levels/lvl1.png"),
@@ -89,6 +90,7 @@ const LEVEL_NAMES: Record<number, string> = {
 
 function LevelCard({ xp, isDark }: { xp: number; isDark: boolean }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const { level, progress, nextLevelXp } = getLevelInfo(xp);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const levelName = LEVEL_NAMES[level] ?? "Efsane";
@@ -102,12 +104,14 @@ function LevelCard({ xp, isDark }: { xp: number; isDark: boolean }) {
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert(`Seviye ${level} — ${levelName}`, `Toplam XP: ${xp}\nSonraki seviye için: ${xpLeft} XP daha kazan\nHer sohbet +10 XP kazandırır!`, [{ text: "Tamam" }]);
+    Alert.alert(
+      t("settings.level", { level, name: levelName }),
+      t("settings.levelInfo", { xp, xpLeft }),
+      [{ text: t("common.ok") }]
+    );
   };
 
-  const cardBg = isDark ? "rgba(28,28,48,0.9)" : "rgba(255,255,255,0.9)";
   const borderClr = isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.5)";
-
   const levelImage = LEVEL_IMAGES[level] ?? LEVEL_IMAGES[1];
 
   return (
@@ -120,7 +124,7 @@ function LevelCard({ xp, isDark }: { xp: number; isDark: boolean }) {
           <View style={styles.levelInfo}>
             <View style={styles.levelTitleRow}>
               <Text style={[styles.levelTitle, { color: colors.text.primary }]}>{levelName}</Text>
-              <Text style={[styles.levelSub, { color: colors.text.tertiary }]}>Seviye {level}</Text>
+              <Text style={[styles.levelSub, { color: colors.text.tertiary }]}>{t("character.level")} {level}</Text>
             </View>
             <Text style={[styles.levelXpText, { color: colors.accent }]}>{xp} XP</Text>
           </View>
@@ -135,8 +139,8 @@ function LevelCard({ xp, isDark }: { xp: number; isDark: boolean }) {
             </Animated.View>
           </View>
           <View style={styles.levelBarLabels}>
-            <Text style={[styles.levelBarLabel, { color: colors.text.tertiary }]}>Seviye {level}</Text>
-            <Text style={[styles.levelBarLabel, { color: colors.text.tertiary }]}>{xpLeft > 0 ? `${xpLeft} XP kaldı` : "Max!"}</Text>
+            <Text style={[styles.levelBarLabel, { color: colors.text.tertiary }]}>{t("character.level")} {level}</Text>
+            <Text style={[styles.levelBarLabel, { color: colors.text.tertiary }]}>{xpLeft > 0 ? t("settings.xpLeft", { xp: xpLeft }) : t("settings.maxLevel")}</Text>
           </View>
         </View>
       </LinearGradient>
@@ -175,6 +179,7 @@ export default function SettingsScreen() {
   const { user, logout, deleteAccount, grantAdminAccess } = useAuth();
   const { conversations } = useChatContext();
   const { isDark, colors, toggleTheme } = useTheme();
+  const { t } = useI18n();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -204,17 +209,17 @@ export default function SettingsScreen() {
 
   const handleLogout = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert("Çıkış Yap", "Hesabından çıkmak istediğine emin misin?", [
-      { text: "İptal", style: "cancel" },
-      { text: "Çıkış Yap", style: "destructive", onPress: async () => { await logout(); router.replace("/"); } },
+    Alert.alert(t("settings.logoutConfirm"), t("settings.logoutMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("settings.logout"), style: "destructive", onPress: async () => { await logout(); router.replace("/"); } },
     ]);
   };
 
   const handleDeleteAccount = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert("Hesabı Sil", "Hesabını kalıcı olarak silmek istediğine emin misin? Tüm verilen silinecek ve bu işlem geri alınamaz.", [
-      { text: "İptal", style: "cancel" },
-      { text: "Hesabı Sil", style: "destructive", onPress: async () => { await deleteAccount?.(); router.replace("/"); } },
+    Alert.alert(t("settings.deleteConfirm"), t("settings.deleteMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("settings.deleteAccount"), style: "destructive", onPress: async () => { await deleteAccount?.(); router.replace("/"); } },
     ]);
   };
 
@@ -224,14 +229,14 @@ export default function SettingsScreen() {
     if (next >= 7) {
       setVersionTaps(0);
       if (!user?.isAdmin) {
-        Alert.alert("Geliştirici Modu", "Admin yetkisi aktifleştirildi!", [
-          { text: "Tamam", onPress: async () => { await grantAdminAccess(); } }
+        Alert.alert(t("settings.adminActivated"), t("settings.adminActivatedMessage"), [
+          { text: t("common.ok"), onPress: async () => { await grantAdminAccess(); } }
         ]);
       } else {
-        Alert.alert("Bilgi", "Zaten admin yetkin var.");
+        Alert.alert(t("settings.alreadyAdmin"), t("settings.alreadyAdminMessage"));
       }
     } else if (next >= 4) {
-      Alert.alert("", `${7 - next} kez daha dokun...`, [{ text: "Tamam" }]);
+      Alert.alert("", t("settings.tapVersion", { count: 7 - next }), [{ text: t("common.ok") }]);
     }
   };
 
@@ -262,7 +267,7 @@ export default function SettingsScreen() {
               )}
               <View style={styles.profileInfo}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Text style={[styles.profileName, { color: colors.text.primary }]}>{user?.name ?? "Kullanıcı"}</Text>
+                  <Text style={[styles.profileName, { color: colors.text.primary }]}>{user?.name ?? t("settings.user")}</Text>
                   {user?.isAdmin && (
                     <View style={styles.adminBadge}>
                       <Feather name="shield" size={10} color="#FF9500" />
@@ -283,7 +288,7 @@ export default function SettingsScreen() {
               <View style={styles.profileStats}>
                 <View style={styles.statItem}>
                   <Text style={[styles.statNumber, { color: colors.text.primary }]}>{conversations.length}</Text>
-                  <Text style={[styles.statLabel, { color: colors.text.tertiary }]}>Sohbet</Text>
+                  <Text style={[styles.statLabel, { color: colors.text.tertiary }]}>{t("settings.chats")}</Text>
                 </View>
               </View>
             </LinearGradient>
@@ -293,13 +298,13 @@ export default function SettingsScreen() {
         <LevelCard xp={xp} isDark={isDark} />
 
         <AnimatedRN.View entering={FadeInDown.delay(60).springify().damping(18)} style={styles.section}>
-          <SectionHeader title="Hesap" isDark={isDark} />
+          <SectionHeader title={t("settings.account")} isDark={isDark} />
           <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <SettingRow icon="user" label="Profili Düzenle" value={user?.name} isDark={isDark} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/profile" as any); }} />
+            <SettingRow icon="user" label={t("settings.editProfile")} value={user?.name} isDark={isDark} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/profile" as any); }} />
             <View style={[styles.rowDivider, { backgroundColor: dividerColor }]} />
             <SettingRow
               icon="bell"
-              label="Bildirimler"
+              label={t("settings.notifications")}
               isDark={isDark}
               onPress={() => toggleNotifications(!notificationsEnabled)}
               chevron={false}
@@ -310,7 +315,7 @@ export default function SettingsScreen() {
             <View style={[styles.rowDivider, { backgroundColor: dividerColor }]} />
             <SettingRow
               icon="moon"
-              label="Koyu Tema"
+              label={t("settings.darkMode")}
               isDark={isDark}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); toggleTheme(); }}
               chevron={false}
@@ -322,34 +327,34 @@ export default function SettingsScreen() {
         </AnimatedRN.View>
 
         <AnimatedRN.View entering={FadeInDown.delay(100).springify().damping(18)} style={styles.section}>
-          <SectionHeader title="Premium" isDark={isDark} />
+          <SectionHeader title={t("settings.premium")} isDark={isDark} />
           <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <SettingRow icon="star" label="Premium'a Geç" isDark={isDark} value={user?.isVip ? "VIP Aktif" : "Ücretsiz Plan"} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(tabs)/market"); }} />
+            <SettingRow icon="star" label={t("settings.upgradePremium")} isDark={isDark} value={user?.isVip ? t("settings.vipActive") : t("settings.freePlan")} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(tabs)/market"); }} />
             <View style={[styles.rowDivider, { backgroundColor: dividerColor }]} />
-            <SettingRow icon="refresh-cw" label="Satın Alımları Geri Yükle" isDark={isDark} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)} />
+            <SettingRow icon="refresh-cw" label={t("settings.restorePurchases")} isDark={isDark} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)} />
           </View>
         </AnimatedRN.View>
 
         <AnimatedRN.View entering={FadeInDown.delay(140).springify().damping(18)} style={styles.section}>
-          <SectionHeader title="Destek" isDark={isDark} />
+          <SectionHeader title={t("settings.support")} isDark={isDark} />
           <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <SettingRow icon="message-square" label="Geri Bildirim" isDark={isDark} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/feedback" as any); }} />
+            <SettingRow icon="message-square" label={t("settings.feedback")} isDark={isDark} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/feedback" as any); }} />
             <View style={[styles.rowDivider, { backgroundColor: dividerColor }]} />
-            <SettingRow icon="file-text" label="Gizlilik Politikası" isDark={isDark} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/privacy"); }} />
+            <SettingRow icon="file-text" label={t("settings.privacyPolicy")} isDark={isDark} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/privacy"); }} />
           </View>
         </AnimatedRN.View>
 
         <AnimatedRN.View entering={FadeInDown.delay(180).springify().damping(18)} style={styles.section}>
           <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <SettingRow icon="log-out" label="Çıkış Yap" isDark={isDark} onPress={handleLogout} danger chevron={false} />
+            <SettingRow icon="log-out" label={t("settings.logout")} isDark={isDark} onPress={handleLogout} danger chevron={false} />
             <View style={[styles.rowDivider, { backgroundColor: dividerColor }]} />
-            <SettingRow icon="trash-2" label="Hesabı Sil" isDark={isDark} onPress={handleDeleteAccount} danger chevron={false} />
+            <SettingRow icon="trash-2" label={t("settings.deleteAccount")} isDark={isDark} onPress={handleDeleteAccount} danger chevron={false} />
           </View>
         </AnimatedRN.View>
 
         {user?.isAdmin && (
           <AnimatedRN.View entering={FadeInDown.delay(220).springify().damping(18)} style={styles.section}>
-            <SectionHeader title="Yönetim" isDark={isDark} />
+            <SectionHeader title={t("settings.management")} isDark={isDark} />
             <Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push("/admin" as any); }} style={({ pressed }) => [styles.adminPanelBtn, pressed && { opacity: 0.8 }]}>
               <LinearGradient colors={["rgba(255,149,0,0.15)", "rgba(255,149,0,0.08)"]} style={styles.adminPanelBtnGrad}>
                 <View style={styles.adminPanelLeft}>
@@ -357,8 +362,8 @@ export default function SettingsScreen() {
                     <Feather name="shield" size={18} color="#FF9500" />
                   </View>
                   <View>
-                    <Text style={styles.adminPanelLabel}>Admin Paneli</Text>
-                    <Text style={styles.adminPanelSub}>Kullanıcı, VIP ve istatistikler</Text>
+                    <Text style={styles.adminPanelLabel}>{t("settings.adminPanel")}</Text>
+                    <Text style={styles.adminPanelSub}>{t("settings.adminPanelSub")}</Text>
                   </View>
                 </View>
                 <Feather name="chevron-right" size={16} color="#FF9500" />

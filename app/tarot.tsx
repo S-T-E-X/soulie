@@ -22,6 +22,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetch as expoFetch } from "expo/fetch";
+import { useI18n } from "@/hooks/useI18n";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const STORAGE_KEY = "soulie_tarot_v2";
@@ -70,21 +71,6 @@ const TAROT_DECK: TarotCard[] = [
   { id: "world", name: "Dünya", nameEn: "The World", arcana: "Major", energy: "tamamlanma", category: "destiny", meaningUpright: "Bütünlük, başarı, döngü sonu", meaningReversed: "Eksiklik, tamamlanmamışlık", gradient: ["#11998e", "#38ef7d"], icon: "globe", isRare: true },
 ];
 
-const SPREAD_OPTIONS: { type: SpreadType; label: string; count: number; icon: string; desc: string }[] = [
-  { type: "single", label: "Tek Kart", count: 1, icon: "square", desc: "Hızlı rehberlik" },
-  { type: "three", label: "Üç Kart", count: 3, icon: "columns", desc: "Geçmiş · Şu An · Gelecek" },
-  { type: "five", label: "Kader Yayılımı", count: 5, icon: "grid", desc: "Derin kader analizi" },
-];
-
-const POSITION_LABELS: Record<SpreadType, string[]> = {
-  single: ["Rehberlik"],
-  three: ["Geçmiş", "Şu An", "Gelecek"],
-  five: ["Geçmiş", "Yakın Geçmiş", "Şu An", "Yakın Gelecek", "Sonuç"],
-};
-
-const CATEGORY_LABELS: Record<LifeCategory, string> = {
-  love: "Aşk", career: "Kariyer", destiny: "Kader", warning: "Uyarı", growth: "Gelişim", spiritual: "Ruhani",
-};
 const CATEGORY_COLORS: Record<LifeCategory, string> = {
   love: "#FF6B9D", career: "#007AFF", destiny: "#FFD700", warning: "#FF3B30", growth: "#34C759", spiritual: "#AF52DE",
 };
@@ -280,7 +266,7 @@ function RevealedCard({ card, position, reversed, size }: { card: TarotCard; pos
           <Text style={[styles.revealedNameEn, size === "sm" && { fontSize: 8 }]} numberOfLines={1}>{card.nameEn}</Text>
           {reversed && <Text style={styles.reversedLabel}>Ters</Text>}
           <View style={[styles.categoryBadge, { backgroundColor: CATEGORY_COLORS[card.category] + "40" }]}>
-            <Text style={[styles.categoryText, { color: CATEGORY_COLORS[card.category] }]}>{CATEGORY_LABELS[card.category]}</Text>
+            <Text style={[styles.categoryText, { color: CATEGORY_COLORS[card.category] }]}>{categoryLabels[card.category]}</Text>
           </View>
         </LinearGradient>
         <Text style={styles.posLabel}>{position}</Text>
@@ -294,6 +280,28 @@ export default function TarotScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
   const { user, isVipActive } = useAuth();
+  const { t } = useI18n();
+
+  const spreadOptions = React.useMemo(() => [
+    { type: "single" as SpreadType, label: t("tarot.single"), count: 1, icon: "square", desc: t("tarot.singleDesc") },
+    { type: "three" as SpreadType, label: t("tarot.three"), count: 3, icon: "columns", desc: t("tarot.threeDesc") },
+    { type: "five" as SpreadType, label: t("tarot.five"), count: 5, icon: "grid", desc: t("tarot.fiveDesc") },
+  ], [t]);
+
+  const positionLabels = React.useMemo((): Record<SpreadType, string[]> => ({
+    single: [t("tarot.guidance")],
+    three: [t("tarot.past"), t("tarot.present"), t("tarot.future")],
+    five: [t("tarot.past"), t("tarot.recentPast"), t("tarot.present"), t("tarot.recentFuture"), t("tarot.outcome")],
+  }), [t]);
+
+  const categoryLabels = React.useMemo((): Record<LifeCategory, string> => ({
+    love: t("tarot.love"),
+    career: t("tarot.career"),
+    destiny: t("tarot.destiny"),
+    warning: t("tarot.warning"),
+    growth: t("tarot.growth"),
+    spiritual: t("tarot.spiritual"),
+  }), [t]);
 
   const [phase, setPhase] = useState<"loading" | "select" | "picking" | "deck" | "reading" | "done">("loading");
   const [spread, setSpread] = useState<SpreadType>("three");
@@ -325,7 +333,7 @@ export default function TarotScreen() {
     if (isVipActive) {
       const usedToday: string[] = (tarotData?.lastRead === today ? tarotData?.vipUsedSpreads : null) ?? [];
       if (usedToday.includes(type)) {
-        Alert.alert("Yayılım Kullanıldı", "Bu yayılım türünü bugün zaten kullandın. Yarın tekrar dene.");
+        Alert.alert(t("tarot.spreadUsed"), t("tarot.spreadUsedMessage"));
         return;
       }
     } else if (alreadyRead) {
@@ -333,7 +341,7 @@ export default function TarotScreen() {
       return;
     }
     setSpread(type);
-    const count = SPREAD_OPTIONS.find(s => s.type === type)!.count;
+    const count = spreadOptions.find(s => s.type === type)!.count;
     setRequiredCount(count);
     setSelectedIndices([]);
     setDrawnCards([]);
@@ -446,7 +454,7 @@ export default function TarotScreen() {
       }
     } catch (err) {
       console.error("Tarot interpretation error:", err);
-      setInterpretation("Yıldızlar şu an yanıt veremiyor. Lütfen tekrar dene.");
+      setInterpretation(t("tarot.error"));
     } finally {
       setIsInterpreting(false);
       setPhase("done");
@@ -505,7 +513,7 @@ export default function TarotScreen() {
 
             <Text style={styles.spreadTitle}>Yayılım Seç</Text>
 
-            {SPREAD_OPTIONS.map(opt => (
+            {spreadOptions.map(opt => (
               <Pressable
                 key={opt.type}
                 onPress={() => startReading(opt.type)}
@@ -593,14 +601,14 @@ export default function TarotScreen() {
           <>
             <View style={styles.deckArea}>
               <Text style={styles.deckTitle}>
-                {flipped.every(f => f) ? "Kartların Açıldı" :
-                  `${flipped.filter(f => !f).length} kart kaldı`}
+                {flipped.every(f => f) ? t("tarot.cardsRevealed") :
+                  t("tarot.cardsRemaining", { count: flipped.filter(f => !f).length })}
               </Text>
               <View style={[styles.cardsRow, drawnCards.length === 5 && { flexWrap: "wrap" }]}>
                 {drawnCards.map((card, idx) => (
                   <View key={card.id} style={{ alignItems: "center", gap: 6 }}>
                     {flipped[idx] ? (
-                      <RevealedCard card={card} position={POSITION_LABELS[spread][idx]} reversed={card.reversed} size={cardSize} />
+                      <RevealedCard card={card} position={positionLabels[spread][idx]} reversed={card.reversed} size={cardSize} />
                     ) : (
                       <>
                         <MysticalCardBack
@@ -608,7 +616,7 @@ export default function TarotScreen() {
                           isActive={!flipped[idx] && (idx === 0 || flipped[idx - 1])}
                           size={cardSize}
                         />
-                        <Text style={styles.posLabel}>{POSITION_LABELS[spread][idx]}</Text>
+                        <Text style={styles.posLabel}>{positionLabels[spread][idx]}</Text>
                       </>
                     )}
                   </View>
@@ -616,7 +624,7 @@ export default function TarotScreen() {
               </View>
               {!flipped.every(f => f) && (
                 <Text style={styles.hintText}>
-                  {POSITION_LABELS[spread][flipped.findIndex(f => !f)]} kartını aç
+                  {positionLabels[spread][flipped.findIndex(f => !f)]} — {t("tarot.flipHint")}
                 </Text>
               )}
             </View>
@@ -645,7 +653,7 @@ export default function TarotScreen() {
                       <LinearGradient colors={card.gradient} style={styles.cardSummaryIcon}>
                         <Feather name={card.icon as any} size={12} color="#fff" />
                       </LinearGradient>
-                      <Text style={styles.cardSummaryPos}>{POSITION_LABELS[spread][idx]}</Text>
+                      <Text style={styles.cardSummaryPos}>{positionLabels[spread][idx]}</Text>
                       <Text style={styles.cardSummaryName}>{card.name}</Text>
                       {card.reversed && <Text style={styles.cardSummaryReversed}>Ters</Text>}
                     </View>

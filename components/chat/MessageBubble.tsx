@@ -17,6 +17,7 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { GIFTS, GIFT_IMAGES } from "@/contexts/GiftContext";
+import { useI18n } from "@/hooks/useI18n";
 
 export type Message = {
   id: string;
@@ -37,13 +38,14 @@ interface Props {
 const SWIPE_THRESHOLD = 60;
 
 function GiftBubble({ giftId, isUser }: { giftId: string; isUser: boolean }) {
+  const { t } = useI18n();
   const gift = GIFTS.find((g) => g.id === giftId);
   if (!gift) return null;
   return (
     <View style={[styles.giftBubble, isUser ? styles.giftBubbleUser : styles.giftBubbleAI]}>
       <Image source={GIFT_IMAGES[gift.imageKey]} style={styles.giftBubbleImg} resizeMode="contain" />
       <Text style={styles.giftName}>{gift.name}</Text>
-      <Text style={styles.giftSent}>{isUser ? "hediye gönderdin" : "sana hediye gönderdi"}</Text>
+      <Text style={styles.giftSent}>{isUser ? t("gifts.youSentGift") : t("gifts.theySentGift")}</Text>
     </View>
   );
 }

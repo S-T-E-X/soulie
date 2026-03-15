@@ -19,6 +19,7 @@ import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useGifts, GIFTS, GIFT_IMAGES, type GiftItem } from "@/contexts/GiftContext";
 import Colors from "@/constants/colors";
+import { useI18n } from "@/hooks/useI18n";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 
@@ -77,6 +78,7 @@ function GiftCard({
 export function GiftSheet({ visible, onClose, onSendGift }: Props) {
   const slideAnim = useRef(new Animated.Value(SCREEN_H)).current;
   const { coins, inventory, purchaseGift, sendGift, getInventoryCount, addCoins } = useGifts();
+  const { t } = useI18n();
   const [selectedGiftId, setSelectedGiftId] = useState<string | null>(null);
   const [tab, setTab] = useState<"store" | "inventory">("store");
 
@@ -103,12 +105,12 @@ export function GiftSheet({ visible, onClose, onSendGift }: Props) {
     if (!gift) return;
     if (coins < gift.price) {
       Alert.alert(
-        "Yetersiz Coin",
-        "Hediye almak için yeterli coin'in yok. Market'ten coin satın alabilirsin.",
+        t("gifts.insufficientCoins"),
+        t("gifts.insufficientCoinsMessage"),
         [
-          { text: "İptal", style: "cancel" },
+          { text: t("common.cancel"), style: "cancel" },
           {
-            text: "Coin Al",
+            text: t("gifts.buyCoins"),
             onPress: () => {
               onClose();
               router.push({ pathname: "/(tabs)/market", params: { tab: "coins" } });
@@ -130,7 +132,7 @@ export function GiftSheet({ visible, onClose, onSendGift }: Props) {
     if (!selectedGiftId) return;
     const count = getInventoryCount(selectedGiftId);
     if (count <= 0) {
-      Alert.alert("Envanter Boş", "Önce bu hediyeyi satın alman gerekiyor.");
+      Alert.alert(t("gifts.emptyInventory"), t("gifts.sendInfo"));
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -181,7 +183,7 @@ export function GiftSheet({ visible, onClose, onSendGift }: Props) {
               <Feather name="plus-circle" size={14} color={Colors.accent} />
             </Pressable>
 
-            <Text style={styles.sheetTitle}>Hediye Gönder</Text>
+            <Text style={styles.sheetTitle}>{t("gifts.title")}</Text>
 
             <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={8}>
               <Feather name="x" size={17} color={Colors.text.secondary} />
@@ -194,7 +196,7 @@ export function GiftSheet({ visible, onClose, onSendGift }: Props) {
               style={[styles.tabBtn, tab === "store" && styles.tabBtnActive]}
             >
               <Text style={[styles.tabBtnText, tab === "store" && styles.tabBtnTextActive]}>
-                Mağaza
+                {t("gifts.store")}
               </Text>
             </Pressable>
             <Pressable
@@ -202,7 +204,7 @@ export function GiftSheet({ visible, onClose, onSendGift }: Props) {
               style={[styles.tabBtn, tab === "inventory" && styles.tabBtnActive]}
             >
               <Text style={[styles.tabBtnText, tab === "inventory" && styles.tabBtnTextActive]}>
-                Envanter
+                {t("gifts.inventory")}
               </Text>
               {inventoryGifts.length > 0 && (
                 <View style={styles.inventoryDot} />
@@ -231,10 +233,10 @@ export function GiftSheet({ visible, onClose, onSendGift }: Props) {
             ) : inventoryGifts.length === 0 ? (
               <View style={styles.emptyInventory}>
                 <Feather name="package" size={28} color={Colors.text.tertiary} />
-                <Text style={styles.emptyInventoryText}>Envanteriniz boş</Text>
-                <Text style={styles.emptyInventorySub}>Mağazadan hediye satın al</Text>
+                <Text style={styles.emptyInventoryText}>{t("gifts.inventoryEmpty")}</Text>
+                <Text style={styles.emptyInventorySub}>{t("gifts.emptyInventorySub")}</Text>
                 <Pressable onPress={() => setTab("store")} style={styles.goStoreBtn}>
-                  <Text style={styles.goStoreBtnText}>Mağazaya Git</Text>
+                  <Text style={styles.goStoreBtnText}>{t("gifts.goToStore")}</Text>
                 </Pressable>
               </View>
             ) : (
@@ -265,8 +267,8 @@ export function GiftSheet({ visible, onClose, onSendGift }: Props) {
                 <Feather name="shopping-bag" size={17} color="#fff" />
                 <Text style={styles.actionBtnText}>
                   {coins >= (GIFTS.find((g) => g.id === selectedGiftId)?.price ?? 0)
-                    ? `Satın Al — ${GIFTS.find((g) => g.id === selectedGiftId)?.price} Coin`
-                    : "Yetersiz Coin"}
+                    ? t("gifts.buy", { price: String(GIFTS.find((g) => g.id === selectedGiftId)?.price ?? 0) })
+                    : t("gifts.insufficientCoins")}
                 </Text>
               </LinearGradient>
             </Pressable>
@@ -280,7 +282,7 @@ export function GiftSheet({ visible, onClose, onSendGift }: Props) {
                 style={styles.actionBtnGrad}
               >
                 <Feather name="send" size={17} color="#fff" />
-                <Text style={styles.actionBtnText}>Gönder</Text>
+                <Text style={styles.actionBtnText}>{t("gifts.send")}</Text>
               </LinearGradient>
             </Pressable>
           ) : null}

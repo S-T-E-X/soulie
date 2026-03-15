@@ -6,25 +6,27 @@ import { Platform, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useI18n } from "@/hooks/useI18n";
 
 function NativeTabLayout() {
+  const { t } = useI18n();
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="explore">
         <Icon sf={{ default: "safari", selected: "safari.fill" }} />
-        <Label>Keşfet</Label>
+        <Label>{t("tabs.explore")}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="chats">
         <Icon sf={{ default: "message", selected: "message.fill" }} />
-        <Label>Sohbetler</Label>
+        <Label>{t("tabs.chats")}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="market">
         <Icon sf={{ default: "bag", selected: "bag.fill" }} />
-        <Label>Market</Label>
+        <Label>{t("tabs.market")}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
-        <Label>Ayarlar</Label>
+        <Label>{t("tabs.settings")}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -34,6 +36,7 @@ function ClassicTabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const { isDark, colors } = useTheme();
+  const { t } = useI18n();
 
   return (
     <Tabs
@@ -65,7 +68,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: "Keşfet",
+          title: t("tabs.explore"),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "compass" : "compass-outline"} size={24} color={color} />
           ),
@@ -74,7 +77,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="chats"
         options={{
-          title: "Sohbetler",
+          title: t("tabs.chats"),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "chatbubble" : "chatbubble-outline"} size={22} color={color} />
           ),
@@ -83,7 +86,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="market"
         options={{
-          title: "Market",
+          title: t("tabs.market"),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "bag" : "bag-outline"} size={22} color={color} />
           ),
@@ -92,7 +95,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Ayarlar",
+          title: t("tabs.settings"),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "settings" : "settings-outline"} size={22} color={color} />
           ),

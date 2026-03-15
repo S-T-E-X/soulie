@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export type UserLanguage = "tr" | "en";
+export type UserLanguage = "en" | "tr" | "de" | "zh" | "ko" | "es" | "ru";
 export type UserGender = "male" | "female" | "other" | "prefer_not_to_say";
 
 const ADMIN_EMAILS = ["admin@soulie.app", "soulie_admin@admin.com"];

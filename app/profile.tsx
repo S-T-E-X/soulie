@@ -20,20 +20,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import Colors from "@/constants/colors";
 import type { UserLanguage } from "@/contexts/AuthContext";
+import { useI18n } from "@/hooks/useI18n";
 
 const ACCENT = "#6C5CE7";
 
-const GENDER_LABELS: Record<string, string> = {
-  male: "Erkek",
-  female: "Kadın",
-  other: "Diğer",
-  prefer_not_to_say: "Belirtilmedi",
-};
-
-const LANG_LABELS: Record<string, string> = {
-  tr: "Türkçe",
-  en: "English",
-};
+const LANG_OPTIONS: { key: UserLanguage; label: string; flag: string }[] = [
+  { key: "en", label: "English", flag: "🇬🇧" },
+  { key: "tr", label: "Türkçe", flag: "🇹🇷" },
+  { key: "de", label: "Deutsch", flag: "🇩🇪" },
+  { key: "zh", label: "中文", flag: "🇨🇳" },
+  { key: "ko", label: "한국어", flag: "🇰🇷" },
+  { key: "es", label: "Español", flag: "🇪🇸" },
+  { key: "ru", label: "Русский", flag: "🇷🇺" },
+];
 
 const DEFAULT_HOBBIES = [
   "Müzik", "Spor", "Okumak", "Seyahat", "Yemek Pişirme",
@@ -62,6 +61,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, updateProfile, logout } = useAuth();
   const { isDark, colors } = useTheme();
+  const { t } = useI18n();
 
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState(user?.name ?? "");
@@ -77,7 +77,7 @@ export default function ProfileScreen() {
   const pickImage = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("İzin Gerekli", "Fotoğraf seçmek için galeri izni gerekiyor.");
+      Alert.alert(t("profile.permissionRequired"), t("profile.photoPermissionMessage"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -109,9 +109,9 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Çıkış Yap", "Hesabından çıkmak istediğine emin misin?", [
-      { text: "İptal", style: "cancel" },
-      { text: "Çıkış Yap", style: "destructive", onPress: async () => { await logout(); router.replace("/"); } },
+    Alert.alert(t("settings.logoutConfirm"), t("settings.logoutMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("settings.logout"), style: "destructive", onPress: async () => { await logout(); router.replace("/"); } },
     ]);
   };
 
@@ -126,20 +126,20 @@ export default function ProfileScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
           <Feather name="chevron-left" size={24} color={colors.text.primary} />
         </Pressable>
-        <Text style={[styles.navTitle, { color: colors.text.primary }]}>Profil</Text>
+        <Text style={[styles.navTitle, { color: colors.text.primary }]}>{t("profile.title")}</Text>
         {!editMode ? (
           <Pressable style={styles.editBtn} onPress={() => {
             setEditName(user?.name ?? "");
             setEditBio(user?.bio ?? "");
             setEditHobbies(user?.hobbies ?? []);
-            setEditLanguage(user?.language ?? "tr");
+            setEditLanguage(user?.language ?? "en");
             setEditMode(true);
           }}>
             <Feather name="edit-2" size={18} color={ACCENT} />
           </Pressable>
         ) : (
           <Pressable style={styles.editBtn} onPress={saveProfile}>
-            <Text style={styles.saveText}>Kaydet</Text>
+            <Text style={styles.saveText}>{t("common.save")}</Text>
           </Pressable>
         )}
       </View>
@@ -155,38 +155,38 @@ export default function ProfileScreen() {
               style={[styles.nameInput, { color: colors.text.primary, borderBottomColor: ACCENT }]}
               value={editName}
               onChangeText={setEditName}
-              placeholder="Adın"
+              placeholder={t("profile.namePlaceholder")}
               placeholderTextColor={colors.text.tertiary}
               maxLength={30}
               textAlign="center"
             />
           ) : (
-            <Text style={[styles.userName, { color: colors.text.primary }]}>{user?.name ?? "Kullanıcı"}</Text>
+            <Text style={[styles.userName, { color: colors.text.primary }]}>{user?.name ?? t("settings.user")}</Text>
           )}
           {user?.email && <Text style={[styles.userEmail, { color: colors.text.secondary }]}>{user.email}</Text>}
           {user?.userId && <Text style={[styles.userEmail, { color: colors.text.tertiary, fontSize: 13 }]}>ID: {user.userId}</Text>}
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text.secondary }]}>Hakkımda</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text.secondary }]}>{t("profile.about")}</Text>
           {editMode ? (
             <TextInput
               style={[styles.bioInput, { backgroundColor: cardBg, color: colors.text.primary, borderColor: `${ACCENT}40` }]}
               value={editBio}
               onChangeText={setEditBio}
-              placeholder="Kendini kısaca anlat..."
+              placeholder={t("profile.bioPlaceholder")}
               placeholderTextColor={colors.text.tertiary}
               multiline
               numberOfLines={3}
               maxLength={200}
             />
           ) : (
-            <Text style={[styles.bioText, { backgroundColor: cardBg, color: colors.text.secondary }]}>{user?.bio ? user.bio : "Henüz bir şey yazılmadı..."}</Text>
+            <Text style={[styles.bioText, { backgroundColor: cardBg, color: colors.text.secondary }]}>{user?.bio ? user.bio : t("profile.noContent")}</Text>
           )}
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text.secondary }]}>Hobiler</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text.secondary }]}>{t("profile.hobbies")}</Text>
           <View style={styles.hobbiesWrap}>
             {displayHobbies.map((h) => (
               <Pressable key={h} style={[styles.hobbyChip, editMode && styles.hobbyChipEdit]} onPress={() => editMode && toggleHobby(h)}>
@@ -197,51 +197,51 @@ export default function ProfileScreen() {
             {editMode && (
               <Pressable style={styles.addHobbyChip} onPress={() => setShowHobbyPicker(true)}>
                 <Feather name="plus" size={14} color={ACCENT} />
-                <Text style={styles.addHobbyText}>Ekle</Text>
+                <Text style={styles.addHobbyText}>{t("common.add")}</Text>
               </Pressable>
             )}
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text.secondary }]}>Bilgiler</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text.secondary }]}>{t("profile.info")}</Text>
           <View style={[styles.infoCard, { backgroundColor: cardBg }]}>
             {user?.birthdate && (
               <View style={[styles.infoRow, { borderBottomColor: borderColor }]}>
                 <Ionicons name="calendar-outline" size={18} color={colors.text.tertiary} />
-                <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>Doğum Tarihi</Text>
+                <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>{t("profile.birthdate")}</Text>
                 <Text style={[styles.infoValue, { color: colors.text.primary }]}>{user.birthdate}</Text>
               </View>
             )}
             {user?.gender && (
               <View style={[styles.infoRow, { borderBottomColor: borderColor }]}>
                 <Ionicons name="person-outline" size={18} color={colors.text.tertiary} />
-                <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>Cinsiyet</Text>
-                <Text style={[styles.infoValue, { color: colors.text.primary }]}>{GENDER_LABELS[user.gender] ?? user.gender}</Text>
+                <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>{t("profile.gender")}</Text>
+                <Text style={[styles.infoValue, { color: colors.text.primary }]}>{t(`profile.gender_${user.gender}` as any) ?? user.gender}</Text>
               </View>
             )}
             {editMode ? (
               <View style={[styles.infoRow, { borderBottomColor: borderColor, flexDirection: "column", alignItems: "flex-start", gap: 10, paddingVertical: 16 }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                   <Ionicons name="globe-outline" size={18} color={colors.text.tertiary} />
-                  <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>Uygulama Dili</Text>
+                  <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>{t("profile.appLanguage")}</Text>
                 </View>
-                <View style={{ flexDirection: "row", gap: 10, paddingLeft: 28 }}>
-                  {(["tr", "en"] as UserLanguage[]).map((lang) => (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, paddingLeft: 28 }}>
+                  {LANG_OPTIONS.map((opt) => (
                     <Pressable
-                      key={lang}
-                      onPress={() => { setEditLanguage(lang); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                      key={opt.key}
+                      onPress={() => { setEditLanguage(opt.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
                       style={{
-                        paddingHorizontal: 20,
-                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
                         borderRadius: 12,
                         borderWidth: 1.5,
-                        borderColor: editLanguage === lang ? ACCENT : isDark ? "rgba(255,255,255,0.15)" : "#E5E5EA",
-                        backgroundColor: editLanguage === lang ? `${ACCENT}15` : "transparent",
+                        borderColor: editLanguage === opt.key ? ACCENT : isDark ? "rgba(255,255,255,0.15)" : "#E5E5EA",
+                        backgroundColor: editLanguage === opt.key ? `${ACCENT}15` : "transparent",
                       }}
                     >
-                      <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: editLanguage === lang ? ACCENT : colors.text.secondary }}>
-                        {lang === "tr" ? "🇹🇷 Türkçe" : "🇬🇧 English"}
+                      <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: editLanguage === opt.key ? ACCENT : colors.text.secondary }}>
+                        {opt.flag} {opt.label}
                       </Text>
                     </Pressable>
                   ))}
@@ -250,8 +250,10 @@ export default function ProfileScreen() {
             ) : (
               <View style={[styles.infoRow, { borderBottomColor: borderColor }]}>
                 <Ionicons name="globe-outline" size={18} color={colors.text.tertiary} />
-                <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>Dil</Text>
-                <Text style={[styles.infoValue, { color: colors.text.primary }]}>{LANG_LABELS[user?.language ?? "tr"]}</Text>
+                <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>{t("profile.language")}</Text>
+                <Text style={[styles.infoValue, { color: colors.text.primary }]}>
+                  {LANG_OPTIONS.find(o => o.key === (user?.language ?? "en"))?.label ?? "English"}
+                </Text>
               </View>
             )}
           </View>
@@ -261,13 +263,13 @@ export default function ProfileScreen() {
           <View style={[styles.menuCard, { backgroundColor: cardBg }]}>
             <Pressable style={styles.menuRow} onPress={() => router.push("/privacy")}>
               <Feather name="shield" size={18} color={colors.text.tertiary} />
-              <Text style={[styles.menuLabel, { color: colors.text.primary }]}>Gizlilik Politikası</Text>
+              <Text style={[styles.menuLabel, { color: colors.text.primary }]}>{t("settings.privacyPolicy")}</Text>
               <Feather name="chevron-right" size={16} color={colors.text.tertiary} />
             </Pressable>
             <View style={[styles.menuDivider, { backgroundColor: borderColor }]} />
             <Pressable style={styles.menuRow} onPress={handleLogout}>
               <Feather name="log-out" size={18} color="#FF3B30" />
-              <Text style={[styles.menuLabel, { color: "#FF3B30" }]}>Çıkış Yap</Text>
+              <Text style={[styles.menuLabel, { color: "#FF3B30" }]}>{t("settings.logout")}</Text>
               <Feather name="chevron-right" size={16} color={colors.text.tertiary} />
             </Pressable>
           </View>
@@ -277,7 +279,7 @@ export default function ProfileScreen() {
       <Modal visible={showHobbyPicker} transparent animationType="slide">
         <Pressable style={styles.modalOverlay} onPress={() => setShowHobbyPicker(false)} />
         <View style={[styles.modalSheet, { backgroundColor: isDark ? "#1C1C30" : "#fff", paddingBottom: botPad + 16 }]}>
-          <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Hobi Seç veya Ekle</Text>
+          <Text style={[styles.modalTitle, { color: colors.text.primary }]}>{t("profile.pickHobby")}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {DEFAULT_HOBBIES.filter((h) => !editHobbies.includes(h)).map((h) => (
@@ -292,7 +294,7 @@ export default function ProfileScreen() {
               style={[styles.customHobbyInput, { borderColor: isDark ? "rgba(255,255,255,0.15)" : "#E5E5E5", color: colors.text.primary, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#fff" }]}
               value={customHobby}
               onChangeText={setCustomHobby}
-              placeholder="Özel hobi yaz..."
+              placeholder={t("profile.customHobbyPlaceholder")}
               placeholderTextColor={colors.text.tertiary}
               returnKeyType="done"
               onSubmitEditing={addCustomHobby}

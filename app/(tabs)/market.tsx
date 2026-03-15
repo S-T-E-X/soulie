@@ -21,38 +21,41 @@ import { useGifts, GIFTS, GIFT_IMAGES, COIN_PACKAGES } from "@/contexts/GiftCont
 import { Image } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useI18n } from "@/hooks/useI18n";
 
-const PLANS = [
+const PLAN_META = [
   {
     id: "weekly",
-    name: "Haftalık",
     price: "₺29,99",
-    period: "/ hafta",
-    features: ["3 AI Karakter", "Sınırsız Mesaj", "Temel Özellikler"],
     gradient: ["#E8EFF8", "#D8E8F8"] as [string, string],
     textColor: Colors.text.primary,
     isPopular: false,
+    badge: null as string | null,
+    featKeys: ["market.feat3Chars", "market.featUnlimitedMessages", "market.featBasic"],
+    periodKey: "market.perWeek",
+    nameKey: "market.weekly",
   },
   {
     id: "monthly",
-    name: "Aylık",
     price: "₺79,99",
-    period: "/ ay",
-    features: ["Tüm Karakterler", "Sınırsız Mesaj", "Premium Özellikler", "Öncelikli Destek"],
     gradient: [Colors.userBubble.from, Colors.userBubble.to] as [string, string],
     textColor: "#FFFFFF",
     isPopular: true,
+    badge: null as string | null,
+    featKeys: ["market.featAllChars", "market.featUnlimitedMessages", "market.featPremiumFeatures", "market.featPrioritySupport"],
+    periodKey: "market.perMonth",
+    nameKey: "market.monthly",
   },
   {
     id: "yearly",
-    name: "Yıllık",
     price: "₺599,99",
-    period: "/ yıl",
-    features: ["Tüm Karakterler", "Sınırsız Her Şey", "Özel Karakter Oluştur", "AI Sesli Sohbet"],
     gradient: ["#1D1D1F", "#3A3A3C"] as [string, string],
     textColor: "#FFFFFF",
     isPopular: false,
-    badge: "%37 İndirim",
+    badge: "market.discount37" as string | null,
+    featKeys: ["market.featAllChars", "market.featUnlimitedAll", "market.featCustomChar", "market.featVoiceChat"],
+    periodKey: "market.perYear",
+    nameKey: "market.yearly",
   },
 ];
 
@@ -63,6 +66,7 @@ export default function MarketScreen() {
   const { coins, purchaseGift, getInventoryCount, addCoins } = useGifts();
   const { isDark, colors } = useTheme();
   const { user, isVipActive, activateVip } = useAuth();
+  const { t } = useI18n();
   const validTabs = ["premium", "gifts", "coins"] as const;
   const [activeTab, setActiveTab] = useState<"premium" | "gifts" | "coins">(
     validTabs.includes(initialTab as any) ? (initialTab as any) : "premium"
@@ -76,11 +80,12 @@ export default function MarketScreen() {
 
   const handleCoinPurchase = (pkg: typeof COIN_PACKAGES[0]) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addCoins(pkg.coins + (pkg.bonus ?? 0));
+    const total = pkg.coins + (pkg.bonus ?? 0);
+    addCoins(total);
     Alert.alert(
-      "Coin Eklendi",
-      `${pkg.coins + (pkg.bonus ?? 0)} coin hesabına eklendi!`,
-      [{ text: "Harika" }]
+      t("market.coinAdded"),
+      t("market.coinAddedMessage", { count: total }),
+      [{ text: t("market.great") }]
     );
   };
 
@@ -89,26 +94,26 @@ export default function MarketScreen() {
     if (!gift) return;
     if (coins < gift.price) {
       Alert.alert(
-        "Yetersiz Coin",
-        `Bu hediye için ${gift.price} coin gerekiyor. Şu an ${coins} coin'in var.`,
+        t("gifts.insufficientCoins"),
+        t("gifts.insufficientCoinsMessage"),
         [
-          { text: "İptal", style: "cancel" },
-          { text: "Coin Al", onPress: () => setActiveTab("coins") },
+          { text: t("common.cancel"), style: "cancel" },
+          { text: t("gifts.buyCoins"), onPress: () => setActiveTab("coins") },
         ]
       );
       return;
     }
     Alert.alert(
-      `${gift.name} Satın Al`,
-      `${gift.price} coin karşılığında 1 adet ${gift.name} satın almak istiyor musun?`,
+      t("market.confirmGiftTitle", { name: gift.name }),
+      t("market.confirmGiftMessage", { price: String(gift.price), name: gift.name }),
       [
-        { text: "İptal", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Satın Al",
+          text: t("market.buy"),
           onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             await purchaseGift(giftId);
-            Alert.alert("Başarılı", `${gift.name} envanterine eklendi!`);
+            Alert.alert(t("market.success"), t("market.giftAddedToInventory", { name: gift.name }));
           },
         },
       ]
@@ -120,7 +125,7 @@ export default function MarketScreen() {
       <StatusBar barStyle={colors.statusBar} />
 
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
-        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Market</Text>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>{t("market.title")}</Text>
         <Pressable
           onPress={() => setActiveTab("coins")}
           style={({ pressed }) => [styles.coinChip, { backgroundColor: isDark ? "rgba(255,215,0,0.15)" : "rgba(255,215,0,0.1)" }, pressed && { opacity: 0.8 }]}
@@ -148,7 +153,7 @@ export default function MarketScreen() {
             ]}
           >
             <Text style={[styles.tabBtnText, { color: activeTab === tab ? "#fff" : (isDark ? "rgba(255,255,255,0.7)" : "#1D1D1F") }, activeTab === tab && styles.tabBtnTextActive]}>
-              {tab === "premium" ? "Premium" : tab === "gifts" ? "Hediyeler" : "Coin"}
+              {tab === "premium" ? t("market.premium") : tab === "gifts" ? t("market.gifts") : t("market.coins")}
             </Text>
           </Pressable>
         ))}
@@ -169,13 +174,13 @@ export default function MarketScreen() {
               </LinearGradient>
               <Text style={[styles.heroTitle, { color: colors.text.primary }]}>Soulie Premium</Text>
               <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
-                En iyi AI arkadaşlık deneyimi için{"\n"}premium'a geç
+                {t("market.premiumHeroSubtitle")}
               </Text>
             </Animated.View>
 
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Plan Seç</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>{t("market.choosePlan")}</Text>
 
-            {PLANS.map((plan, i) => (
+            {PLAN_META.map((plan, i) => (
               <Animated.View
                 key={plan.id}
                 entering={FadeInDown.delay(80 + i * 60).springify().damping(18)}
@@ -184,22 +189,21 @@ export default function MarketScreen() {
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     if (isVipActive) {
-                      Alert.alert("Zaten VIP'sin!", "VIP üyeliğin aktif. Teşekkürler!");
+                      Alert.alert(t("market.alreadyVip"), t("market.alreadyVipMessage"));
                       return;
                     }
                     const planId = plan.id as "weekly" | "monthly" | "yearly";
-                    const planNames: Record<string, string> = { weekly: "Haftalık", monthly: "Aylık", yearly: "Yıllık" };
                     Alert.alert(
-                      `${planNames[planId] ?? plan.id} Plan`,
-                      `${plan.price} ${plan.period} ile VIP'e geçmek istiyor musun?`,
+                      `${t(plan.nameKey as any)} Plan`,
+                      t("market.confirmPlan", { plan: t(plan.nameKey as any), price: plan.price, period: t(plan.periodKey as any) }),
                       [
-                        { text: "İptal", style: "cancel" },
+                        { text: t("common.cancel"), style: "cancel" },
                         {
-                          text: "Aktifleştir",
+                          text: t("market.activate"),
                           onPress: async () => {
                             await activateVip(planId);
                             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            Alert.alert("VIP Aktif!", "Tüm premium özelliklerin açıldı. İyi eğlenceler!");
+                            Alert.alert(t("market.vipActivated"), t("market.vipActivatedMessage"));
                           },
                         },
                       ]
@@ -210,40 +214,40 @@ export default function MarketScreen() {
                   <LinearGradient colors={plan.gradient} style={styles.planGradient}>
                     {plan.badge ? (
                       <View style={styles.badgeChip}>
-                        <Text style={styles.badgeText}>{plan.badge}</Text>
+                        <Text style={styles.badgeText}>{t(plan.badge as any)}</Text>
                       </View>
                     ) : null}
                     {plan.isPopular ? (
                       <View style={styles.popularChip}>
-                        <Text style={styles.popularText}>En Popüler</Text>
+                        <Text style={styles.popularText}>{t("market.mostPopular")}</Text>
                       </View>
                     ) : null}
                     <View style={styles.planHeader}>
                       <View>
-                        <Text style={[styles.planName, { color: plan.textColor }]}>{plan.name}</Text>
+                        <Text style={[styles.planName, { color: plan.textColor }]}>{t(plan.nameKey as any)}</Text>
                         <View style={styles.priceRow}>
                           <Text style={[styles.planPrice, { color: plan.textColor }]}>{plan.price}</Text>
-                          <Text style={[styles.planPeriod, { color: plan.textColor, opacity: 0.7 }]}>{plan.period}</Text>
+                          <Text style={[styles.planPeriod, { color: plan.textColor, opacity: 0.7 }]}>{t(plan.periodKey as any)}</Text>
                         </View>
                       </View>
                     </View>
                     <View style={styles.featuresList}>
-                      {plan.features.map((feat) => (
-                        <View key={feat} style={styles.featRow}>
+                      {plan.featKeys.map((featKey) => (
+                        <View key={featKey} style={styles.featRow}>
                           <Feather
                             name="check"
                             size={13}
                             color={plan.textColor === "#FFFFFF" ? "rgba(255,255,255,0.9)" : Colors.accent}
                           />
                           <Text style={[styles.featRowText, { color: plan.textColor, opacity: plan.textColor === "#FFFFFF" ? 0.9 : 0.8 }]}>
-                            {feat}
+                            {t(featKey as any)}
                           </Text>
                         </View>
                       ))}
                     </View>
                     <View style={[styles.selectButton, { backgroundColor: plan.textColor === "#FFFFFF" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.06)" }]}>
                       <Text style={[styles.selectButtonText, { color: plan.textColor }]}>
-                        {plan.id === "monthly" ? "Hemen Başla" : "Seç"}
+                        {plan.id === "monthly" ? t("market.start") : t("market.select")}
                       </Text>
                     </View>
                   </LinearGradient>
@@ -252,7 +256,7 @@ export default function MarketScreen() {
             ))}
 
             <Text style={styles.legalText}>
-              Abonelik otomatik yenilenir. İstediğiniz zaman iptal edebilirsiniz.
+              {t("market.cancelAnytime")}
             </Text>
           </>
         )}
@@ -263,17 +267,17 @@ export default function MarketScreen() {
               <LinearGradient colors={["#FFD700", "#FF9500"]} style={styles.crownIcon}>
                 <Feather name="circle" size={22} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>Coin Satın Al</Text>
+              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>{t("market.buyCoins")}</Text>
               <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
-                Coinlerini harcayarak karakterlerine{"\n"}özel hediyeler gönder
+                {t("market.buyCoinsSubtitle")}
               </Text>
               <View style={styles.currentCoinBadge}>
                 <Feather name="circle" size={14} color="#FFD700" />
-                <Text style={styles.currentCoinText}>{coins} coin mevcut</Text>
+                <Text style={styles.currentCoinText}>{t("market.currentCoins", { count: coins })}</Text>
               </View>
             </Animated.View>
 
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Paketler</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>{t("market.packages")}</Text>
 
             {COIN_PACKAGES.map((pkg, i) => (
               <Animated.View
@@ -290,7 +294,7 @@ export default function MarketScreen() {
                   >
                     {pkg.isPopular && (
                       <View style={styles.popularCoinChip}>
-                        <Text style={styles.popularCoinText}>En Popüler</Text>
+                        <Text style={styles.popularCoinText}>{t("market.popular")}</Text>
                       </View>
                     )}
                     <View style={styles.coinCardContent}>
@@ -313,7 +317,7 @@ export default function MarketScreen() {
                     </View>
                     <View style={[styles.coinBuyBtn, { backgroundColor: pkg.isPopular ? "rgba(255,255,255,0.25)" : isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)" }]}>
                       <Text style={[styles.coinBuyBtnText, { color: pkg.isPopular ? "#fff" : colors.text.primary }]}>
-                        Satın Al
+                        {t("market.buyNow")}
                       </Text>
                     </View>
                   </LinearGradient>
@@ -329,9 +333,9 @@ export default function MarketScreen() {
               <LinearGradient colors={["#FF6B6B", "#FF1744"]} style={styles.crownIcon}>
                 <Feather name="gift" size={22} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>Hediye Mağazası</Text>
+              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>{t("market.giftStore")}</Text>
               <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
-                Karakterlerine özel hediyeler al,{"\n"}sohbetten gönder
+                {t("market.giftStoreSubtitle")}
               </Text>
               <Pressable
                 onPress={() => setActiveTab("coins")}
@@ -373,7 +377,7 @@ export default function MarketScreen() {
             <View style={styles.inventoryNote}>
               <Feather name="info" size={14} color={Colors.text.tertiary} />
               <Text style={styles.inventoryNoteText}>
-                Satın aldığın hediyeler envanterinde bekler. Sohbet sırasında hediye ikonuna basarak gönderebilirsin.
+                {t("market.inventoryNote")}
               </Text>
             </View>
           </>

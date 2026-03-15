@@ -17,16 +17,18 @@ import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
+import { useI18n } from "@/hooks/useI18n";
 
 const FEEDBACK_KEY = "soulie_feedback_v1";
 const ACCENT = Colors.accent;
 
-const CATEGORIES = [
-  { id: "bug", label: "Hata Bildirimi", icon: "alert-circle" as const },
-  { id: "suggestion", label: "Öneri", icon: "zap" as const },
-  { id: "praise", label: "Beğeni", icon: "heart" as const },
-  { id: "other", label: "Diğer", icon: "message-circle" as const },
-];
+const CATEGORY_IDS = ["bug", "suggestion", "praise", "other"] as const;
+const CATEGORY_ICONS: Record<string, any> = {
+  bug: "alert-circle",
+  suggestion: "zap",
+  praise: "heart",
+  other: "message-circle",
+};
 
 const RATINGS = [1, 2, 3, 4, 5];
 
@@ -49,6 +51,7 @@ async function saveFeedback(entry: FeedbackEntry) {
 
 export default function FeedbackScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -60,7 +63,7 @@ export default function FeedbackScreen() {
 
   const handleSubmit = async () => {
     if (!text.trim()) {
-      Alert.alert("Hata", "Lütfen geri bildiriminizi yazın.");
+      Alert.alert(t("common.error"), t("feedback.writeFirst"));
       return;
     }
     setSubmitting(true);
@@ -84,7 +87,7 @@ export default function FeedbackScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
             <Feather name="chevron-left" size={24} color={Colors.text.primary} />
           </Pressable>
-          <Text style={styles.navTitle}>Geri Bildirim</Text>
+          <Text style={styles.navTitle}>{t("feedback.title")}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -93,11 +96,11 @@ export default function FeedbackScreen() {
             <LinearGradient colors={["rgba(52,199,89,0.12)", "rgba(52,199,89,0.04)"]} style={styles.successIcon}>
               <Feather name="check-circle" size={48} color="#34C759" />
             </LinearGradient>
-            <Text style={styles.successTitle}>Teşekkürler!</Text>
-            <Text style={styles.successDesc}>Geri bildiriminiz alındı. Soulie'yi daha iyi hale getirmemize yardımcı olduğun için teşekkür ederiz.</Text>
+            <Text style={styles.successTitle}>{t("feedback.thankYou")}</Text>
+            <Text style={styles.successDesc}>{t("feedback.receivedDesc")}</Text>
             <Pressable style={styles.doneBtn} onPress={() => router.back()}>
               <LinearGradient colors={[Colors.userBubble.from, Colors.userBubble.to]} style={styles.doneBtnGrad}>
-                <Text style={styles.doneBtnText}>Geri Dön</Text>
+                <Text style={styles.doneBtnText}>{t("common.goBack")}</Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -107,29 +110,29 @@ export default function FeedbackScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.intro}>Soulie'yi daha iyi hale getirmemize yardımcı ol. Her türlü görüş ve önerin bizim için değerli.</Text>
+            <Text style={styles.intro}>{t("feedback.intro")}</Text>
 
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Kategori</Text>
+              <Text style={styles.sectionLabel}>{t("feedback.category")}</Text>
               <View style={styles.categoriesGrid}>
-                {CATEGORIES.map((cat) => (
+                {CATEGORY_IDS.map((id) => (
                   <Pressable
-                    key={cat.id}
+                    key={id}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setCategory(cat.id);
+                      setCategory(id);
                     }}
-                    style={[styles.categoryChip, category === cat.id && styles.categoryChipActive]}
+                    style={[styles.categoryChip, category === id && styles.categoryChipActive]}
                   >
-                    <Feather name={cat.icon} size={14} color={category === cat.id ? "#fff" : Colors.text.secondary} />
-                    <Text style={[styles.categoryLabel, category === cat.id && styles.categoryLabelActive]}>{cat.label}</Text>
+                    <Feather name={CATEGORY_ICONS[id]} size={14} color={category === id ? "#fff" : Colors.text.secondary} />
+                    <Text style={[styles.categoryLabel, category === id && styles.categoryLabelActive]}>{t(`feedback.cat_${id}` as any)}</Text>
                   </Pressable>
                 ))}
               </View>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Deneyimin nasıldı?</Text>
+              <Text style={styles.sectionLabel}>{t("feedback.ratingLabel")}</Text>
               <View style={styles.starsRow}>
                 {RATINGS.map((r) => (
                   <Pressable key={r} onPress={() => {
@@ -141,17 +144,17 @@ export default function FeedbackScreen() {
                 ))}
               </View>
               <Text style={styles.ratingLabel}>
-                {rating === 1 ? "Çok kötü" : rating === 2 ? "Kötü" : rating === 3 ? "Orta" : rating === 4 ? "İyi" : "Mükemmel"}
+                {rating === 1 ? t("feedback.rating1") : rating === 2 ? t("feedback.rating2") : rating === 3 ? t("feedback.rating3") : rating === 4 ? t("feedback.rating4") : t("feedback.rating5")}
               </Text>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Mesajın</Text>
+              <Text style={styles.sectionLabel}>{t("feedback.message")}</Text>
               <TextInput
                 style={styles.textInput}
                 value={text}
                 onChangeText={setText}
-                placeholder="Düşüncelerini buraya yaz..."
+                placeholder={t("feedback.messagePlaceholder")}
                 placeholderTextColor="rgba(0,0,0,0.3)"
                 multiline
                 numberOfLines={5}
@@ -171,7 +174,7 @@ export default function FeedbackScreen() {
                 style={[styles.submitBtnGrad, submitting && { opacity: 0.7 }]}
               >
                 <Feather name="send" size={16} color="#fff" />
-                <Text style={styles.submitBtnText}>{submitting ? "Gönderiliyor..." : "Gönder"}</Text>
+                <Text style={styles.submitBtnText}>{submitting ? t("feedback.sending") : t("feedback.send")}</Text>
               </LinearGradient>
             </Pressable>
           </ScrollView>

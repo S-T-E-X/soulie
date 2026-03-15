@@ -25,8 +25,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getAllStreaks } from "@/hooks/useStreak";
 import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useI18n } from "@/hooks/useI18n";
 
-const CATEGORIES = ["Tümü", "Falcı", "Sevgili", "Arkadaş", "Mentor"];
+type CategoryKey = "all" | "fortune" | "lover" | "friend" | "mentor";
+const CATEGORY_KEYS: CategoryKey[] = ["all", "fortune", "lover", "friend", "mentor"];
 
 const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
 
@@ -76,6 +78,7 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
 
 function TarotBtn() {
   const glowAnim = useRef(new Animated.Value(0)).current;
+  const { t } = useI18n();
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -106,13 +109,13 @@ function TarotBtn() {
     >
       <Animated.View style={[styles.tarotBtn, { backgroundColor: bgColor, borderColor }]}>
         <Feather name="eye" size={14} color="#C084FC" />
-        <Text style={styles.tarotBtnText}>Tarot Falı</Text>
+        <Text style={styles.tarotBtnText}>{t("explore.tarot")}</Text>
       </Animated.View>
     </Pressable>
   );
 }
 
-function FalciCategoryBtn({ active, onPress }: { active: boolean; onPress: () => void }) {
+function FalciCategoryBtn({ active, onPress, label }: { active: boolean; onPress: () => void; label: string }) {
   const glowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -147,7 +150,7 @@ function FalciCategoryBtn({ active, onPress }: { active: boolean; onPress: () =>
     >
       <Animated.View style={[styles.falciBtn, { backgroundColor: bgColor, borderColor }]}>
         <Feather name="eye" size={13} color={active ? "#fff" : "#16A34A"} />
-        <Text style={[styles.falciText, active && styles.falciTextActive]}>Falcı</Text>
+        <Text style={[styles.falciText, active && styles.falciTextActive]}>{label}</Text>
       </Animated.View>
     </Pressable>
   );
@@ -158,7 +161,8 @@ export default function ExploreScreen() {
   const { user } = useAuth();
   const { loadConversations, conversations, getConversationByCharacter } = useChatContext();
   const { isDark, colors } = useTheme();
-  const [activeCategory, setActiveCategory] = React.useState("Tümü");
+  const { t } = useI18n();
+  const [activeCategory, setActiveCategory] = React.useState<CategoryKey>("all");
   const [streaks, setStreaks] = React.useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -175,12 +179,14 @@ export default function ExploreScreen() {
   const totalMessages = conversations.reduce((acc, c) => acc + c.messages.length, 0);
   const xp = totalMessages * 10 + conversations.length * 5;
 
-  const filtered = activeCategory === "Tümü"
+  const filtered = activeCategory === "all"
     ? CHARACTERS
     : CHARACTERS.filter((c) => {
-        if (activeCategory === "Mentor") return c.role === "Yaşam Koçu" || c.role === "Çalışma Arkadaşı";
-        if (activeCategory === "Falcı") return c.role === "Falcı";
-        return c.role === activeCategory;
+        if (activeCategory === "mentor") return c.role === "Yaşam Koçu" || c.role === "Çalışma Arkadaşı";
+        if (activeCategory === "fortune") return c.role === "Falcı";
+        if (activeCategory === "lover") return c.role === "Sevgili";
+        if (activeCategory === "friend") return c.role === "Arkadaş";
+        return false;
       });
 
   const handleCharacterPress = useCallback((characterId: string) => {
@@ -212,9 +218,9 @@ export default function ExploreScreen() {
         <View style={styles.headerTop}>
           <View>
             <Text style={[styles.greeting, { color: colors.text.secondary }]}>
-              Merhaba{user?.name ? `, ${user.name}` : ""}
+              {t("explore.greeting", { name: user?.name ?? "" })}
             </Text>
-            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Karakterleri Keşfet</Text>
+            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>{t("explore.title")}</Text>
           </View>
           <UserAvatarBadge xp={xp} name={user?.name} profilePhoto={user?.profilePhoto} />
         </View>
@@ -225,27 +231,29 @@ export default function ExploreScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoriesScroll}
           >
-            {CATEGORIES.map((cat) => {
-              if (cat === "Falcı") {
+            {CATEGORY_KEYS.map((key) => {
+              const label = t(`explore.cat_${key}` as any);
+              if (key === "fortune") {
                 return (
                   <FalciCategoryBtn
-                    key={cat}
-                    active={activeCategory === cat}
-                    onPress={() => setActiveCategory(cat)}
+                    key={key}
+                    active={activeCategory === key}
+                    onPress={() => setActiveCategory(key)}
+                    label={label}
                   />
                 );
               }
               return (
                 <Pressable
-                  key={cat}
+                  key={key}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setActiveCategory(cat);
+                    setActiveCategory(key);
                   }}
-                  style={[styles.catBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }, activeCategory === cat && styles.catBtnActive]}
+                  style={[styles.catBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }, activeCategory === key && styles.catBtnActive]}
                 >
-                  <Text style={[styles.catText, { color: colors.text.secondary }, activeCategory === cat && styles.catTextActive]}>
-                    {cat}
+                  <Text style={[styles.catText, { color: colors.text.secondary }, activeCategory === key && styles.catTextActive]}>
+                    {label}
                   </Text>
                 </Pressable>
               );

@@ -32,7 +32,7 @@ import { useChatContext } from "@/contexts/ChatContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { CharacterCustomizeSheet } from "@/components/chat/CharacterCustomizeSheet";
-import { t } from "@/lib/i18n";
+import { useI18n } from "@/hooks/useI18n";
 import Colors from "@/constants/colors";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -46,7 +46,7 @@ export default function CharacterProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { isDark, colors } = useTheme();
-  const lang = user?.language ?? "tr";
+  const { t } = useI18n();
   const scrollY = useSharedValue(0);
   const [showCustomize, setShowCustomize] = useState(false);
   const { settings, isLoaded: settingsLoaded, updateSettings, removeMemory } = useCharacterSettings(characterId ?? "");
@@ -216,7 +216,7 @@ export default function CharacterProfileScreen() {
           <Animated.View entering={FadeInDown.delay(80).springify().damping(18)} style={[styles.infoSection, { backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF" }]}>
             <View style={styles.infoHeader}>
               <Feather name="user" size={16} color={Colors.accent} />
-              <Text style={[styles.infoTitle, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("char_about", lang)}</Text>
+              <Text style={[styles.infoTitle, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("character.about")}</Text>
             </View>
             <Text style={[styles.descText, { color: isDark ? "rgba(255,255,255,0.65)" : Colors.text.secondary }]}>{character.description}</Text>
           </Animated.View>
@@ -226,7 +226,7 @@ export default function CharacterProfileScreen() {
           <Animated.View entering={FadeInDown.delay(120).springify().damping(18)} style={[styles.infoSection, { backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF" }]}>
             <View style={styles.infoHeader}>
               <Feather name="heart" size={16} color={Colors.accent} />
-              <Text style={[styles.infoTitle, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("char_interests", lang)}</Text>
+              <Text style={[styles.infoTitle, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("character.interests")}</Text>
             </View>
             <View style={styles.interestGrid}>
               {character.tags.map((tag) => (
@@ -242,22 +242,22 @@ export default function CharacterProfileScreen() {
           <Animated.View entering={FadeInDown.delay(160).springify().damping(18)} style={[styles.infoSection, { backgroundColor: isDark ? "#1C1C2E" : "#FFFFFF" }]}>
             <View style={styles.infoHeader}>
               <Feather name="info" size={16} color={Colors.accent} />
-              <Text style={[styles.infoTitle, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("char_profile", lang)}</Text>
+              <Text style={[styles.infoTitle, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("character.profile")}</Text>
             </View>
             <View style={[styles.statsGrid, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#F8F9FA" }]}>
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{character.age}</Text>
-                <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.45)" : Colors.text.tertiary }]}>{t("char_age", lang)}</Text>
+                <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.45)" : Colors.text.tertiary }]}>{t("character.age")}</Text>
               </View>
               <View style={[styles.statDivider, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)" }]} />
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{character.gender === "female" ? t("char_female", lang) : t("char_male", lang)}</Text>
-                <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.45)" : Colors.text.tertiary }]}>{t("char_gender_label", lang)}</Text>
+                <Text style={[styles.statValue, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{character.gender === "female" ? t("character.female") : t("character.male")}</Text>
+                <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.45)" : Colors.text.tertiary }]}>{t("character.gender")}</Text>
               </View>
               <View style={[styles.statDivider, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)" }]} />
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("char_ai_type", lang)}</Text>
-                <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.45)" : Colors.text.tertiary }]}>{t("char_type", lang)}</Text>
+                <Text style={[styles.statValue, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("character.aiType")}</Text>
+                <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.45)" : Colors.text.tertiary }]}>{t("character.type")}</Text>
               </View>
             </View>
           </Animated.View>
@@ -275,7 +275,7 @@ export default function CharacterProfileScreen() {
               >
                 <Feather name={character.isPremium ? "star" : "message-circle"} size={18} color="#fff" />
                 <Text style={styles.ctaText}>
-                  {character.isPremium ? t("char_premium_required", lang) : t("char_start_chat", lang)}
+                  {character.isPremium ? t("character.premiumRequired") : t("character.chat")}
                 </Text>
               </LinearGradient>
             </Pressable>

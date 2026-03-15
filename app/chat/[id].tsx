@@ -43,6 +43,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { GIFTS } from "@/contexts/GiftContext";
+import { useI18n } from "@/hooks/useI18n";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const FORTUNE_KEY = "soulie_fortune_v2";
@@ -145,16 +146,15 @@ function QuotaPopup({
   onGoMarket,
   onWatchAd,
   resetCountdown,
-  language,
 }: {
   visible: boolean;
   onClose: () => void;
   onGoMarket: () => void;
   onWatchAd: () => void;
   resetCountdown: string;
-  language: string;
 }) {
   const { isDark, colors } = useTheme();
+  const { t } = useI18n();
   const [isWatching, setIsWatching] = React.useState(false);
   const [adCountdown, setAdCountdown] = React.useState(5);
 
@@ -190,12 +190,10 @@ function QuotaPopup({
             </LinearGradient>
           </View>
           <Text style={[styles.quotaTitle, { color: colors.text.primary }]} pointerEvents="none">
-            {language === "en" ? "Daily limit reached" : "Günlük limit doldu"}
+            {t("chat.limitTitle")}
           </Text>
           <Text style={[styles.quotaDesc, { color: colors.text.secondary }]} pointerEvents="none">
-            {language === "en"
-              ? `Free users can send 15 messages per 6 hours. Resets in ${resetCountdown}.`
-              : `Ücretsiz kullanıcılar 6 saatte 15 mesaj gönderebilir. ${resetCountdown} içinde sıfırlanır.`}
+            {t("chat.limitDesc", { time: resetCountdown })}
           </Text>
           <Pressable
             onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onGoMarket(); }}
@@ -204,7 +202,7 @@ function QuotaPopup({
             <LinearGradient colors={[colors.userBubble.from, colors.userBubble.to]} style={styles.quotaUpgradeBtnGrad}>
               <Feather name="star" size={15} color="#fff" />
               <Text style={styles.quotaUpgradeText}>
-                {language === "en" ? "Upgrade to VIP" : "VIP'e Yükselt"}
+                {t("chat.upgradeVip")}
               </Text>
             </LinearGradient>
           </Pressable>
@@ -216,20 +214,20 @@ function QuotaPopup({
             {isWatching ? (
               <View style={styles.quotaWatchAdInner}>
                 <Feather name="film" size={14} color={colors.accent} />
-                <Text style={[styles.quotaWatchAdText, { color: colors.accent }]}>Reklam izleniyor... {adCountdown}s</Text>
+                <Text style={[styles.quotaWatchAdText, { color: colors.accent }]}>{t("market.watchingAd", { count: adCountdown })}</Text>
               </View>
             ) : (
               <View style={styles.quotaWatchAdInner}>
                 <Feather name="play-circle" size={14} color={colors.accent} />
                 <Text style={[styles.quotaWatchAdText, { color: colors.accent }]}>
-                  {language === "en" ? "Watch ad (+5 messages)" : "Video izle (+5 mesaj kazan)"}
+                  {t("chat.watchAd")}
                 </Text>
               </View>
             )}
           </Pressable>
           <Pressable onPress={onClose} style={styles.quotaCloseBtn} hitSlop={8}>
             <Text style={[styles.quotaCloseText, { color: colors.text.tertiary }]}>
-              {language === "en" ? "Later" : "Daha Sonra"}
+              {t("chat.later")}
             </Text>
           </Pressable>
         </View>
@@ -250,6 +248,7 @@ function FortuneSheet({
   characterName: string;
 }) {
   const { colors, isDark } = useTheme();
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [images, setImages] = useState<(string | null)[]>([null, null, null]);
   const [loading, setLoading] = useState(false);
@@ -265,7 +264,7 @@ function FortuneSheet({
     if (Platform.OS !== "web") {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("İzin gerekli", "Fotoğraf seçmek için galeri izni vermelisin.");
+        Alert.alert(t("chat.photoPermission"), t("chat.photoPermissionMsg"));
         return;
       }
     }
@@ -346,7 +345,7 @@ function FortuneSheet({
                 <View style={fortuneStyles.imageEmpty}>
                   <Feather name="camera" size={22} color={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)"} />
                   <Text style={[fortuneStyles.imageSlotLabel, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.3)" }]}>
-                    {i === 0 ? "Fincan üstü" : i === 1 ? "Fincan içi" : "Fincan altı"}
+                    {i === 0 ? t("chat.topCup") : i === 1 ? t("chat.middleCup") : t("chat.bottomCup")}
                   </Text>
                 </View>
               )}
@@ -369,7 +368,7 @@ function FortuneSheet({
         </View>
 
         <Text style={[fortuneStyles.hint, { color: colors.text.tertiary }]}>
-          {allSelected ? "Tüm fotoğraflar hazır — fala bakılmaya hazır!" : `${images.filter(Boolean).length}/3 fotoğraf yüklendi`}
+          {allSelected ? t("chat.fortunePhotosReady") : t("chat.fortunePhotosLoaded", { count: images.filter(Boolean).length })}
         </Text>
 
         <Pressable
@@ -385,7 +384,7 @@ function FortuneSheet({
           ) : (
             <>
               <Text style={[fortuneStyles.submitBtnText, { color: allSelected ? "#fff" : colors.text.tertiary }]}>
-                {allSelected ? "Falıma Bak ✨" : "Fotoğrafları seç"}
+                {allSelected ? t("chat.fortuneReadBtn") : t("chat.fortuneSelectPhotos")}
               </Text>
             </>
           )}
@@ -421,6 +420,7 @@ export default function ChatScreen() {
   const { settings, isLoaded: settingsLoaded, updateSettings, addMemory, removeMemory } = useCharacterSettings(characterId ?? "");
   const { user, isVipActive } = useAuth();
   const { isDark, colors } = useTheme();
+  const { t } = useI18n();
   const streak = useStreak(characterId ?? "");
   const quota = useDailyQuota(isVipActive);
 
@@ -663,7 +663,7 @@ export default function ChatScreen() {
         setShowTyping(false);
         setMessages((prev) => [
           ...prev,
-          { id: generateId(), role: "assistant", content: "Bir hata oluştu, tekrar dener misin?", timestamp: Date.now() },
+          { id: generateId(), role: "assistant", content: t("chat.error"), timestamp: Date.now() },
         ]);
       } finally {
         setIsStreaming(false);
@@ -795,7 +795,7 @@ export default function ChatScreen() {
       });
 
       const data = await response.json();
-      const fullText: string = data.content || "Falınıza bakılamadı, tekrar deneyin.";
+      const fullText: string = data.content || t("chat.fortuneError");
 
       setShowTyping(false);
 
@@ -815,7 +815,7 @@ export default function ChatScreen() {
       await createConversationWithMessages(character.id, settings.customName || character.name, newMessages);
     } catch {
       setShowTyping(false);
-      setMessages((prev) => [...prev, { id: generateId(), role: "assistant", content: "Falınıza bakarken bir hata oluştu. Tekrar deneyin.", timestamp: Date.now() }]);
+      setMessages((prev) => [...prev, { id: generateId(), role: "assistant", content: t("chat.fortuneError"), timestamp: Date.now() }]);
     } finally {
       setIsStreaming(false);
       setShowTyping(false);
@@ -877,7 +877,7 @@ export default function ChatScreen() {
                 <Feather name="chevron-right" size={13} color={colors.text.tertiary} />
               </View>
               <Text style={[styles.headerStatus, { color: colors.text.secondary }]}>
-                {isStreaming ? "yazıyor..." : character.shortRole}
+                {isStreaming ? t("chat.typing") : character.shortRole}
               </Text>
             </View>
           </Pressable>
@@ -889,9 +889,9 @@ export default function ChatScreen() {
                 const { canUse } = await getFortuneQuota(isVipActive);
                 if (!canUse) {
                   const msg = isVipActive
-                    ? `6 saatlik fal hakkın doldu. (${FORTUNE_VIP_LIMIT} fal / 6 saat)`
-                    : "Günlük fal hakkın doldu. Yarın tekrar gel ✨";
-                  Alert.alert("Fal Hakkı Doldu", msg);
+                    ? t("chat.fortuneUsedVip", { limit: FORTUNE_VIP_LIMIT })
+                    : t("chat.fortuneUsedFree");
+                  Alert.alert(t("chat.fortuneUsed"), msg);
                   return;
                 }
                 setShowFortuneSheet(true);
@@ -945,11 +945,11 @@ export default function ChatScreen() {
               onDelete={(msg) => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
                 Alert.alert(
-                  "Mesajı Sil",
-                  "Bu mesajı silmek istediğine emin misin?",
+                  t("chat.deleteMessage"),
+                  t("chat.deleteMessageConfirm"),
                   [
-                    { text: "İptal", style: "cancel" },
-                    { text: "Sil", style: "destructive", onPress: () => handleDeleteMessage(msg.id) },
+                    { text: t("common.cancel"), style: "cancel" },
+                    { text: t("common.delete"), style: "destructive", onPress: () => handleDeleteMessage(msg.id) },
                   ]
                 );
               }}
@@ -1036,10 +1036,8 @@ export default function ChatScreen() {
           await quota.addBonusMessages(5);
           setShowQuotaPopup(false);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          Alert.alert("Harika!", "+5 mesaj hakkı kazandın! 🎉", [{ text: "Tamam" }]);
         }}
         resetCountdown={resetCountdown}
-        language={user?.language ?? "tr"}
       />
 
     </BackgroundGradient>

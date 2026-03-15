@@ -21,6 +21,7 @@ import { Audio } from "expo-av";
 import { getCharacter } from "@/constants/characters";
 import { getApiUrl } from "@/lib/query-client";
 import { useGifts } from "@/contexts/GiftContext";
+import { useI18n } from "@/hooks/useI18n";
 
 const { width: W, height: H } = Dimensions.get("window");
 
@@ -178,6 +179,7 @@ export default function VideoChatScreen() {
   const character = getCharacter(characterId ?? "");
   const insets = useSafeAreaInsets();
   const { spendCoins } = useGifts();
+  const { t } = useI18n();
 
   const [callState, setCallState] = useState<CallState>("idle");
   const [callDuration, setCallDuration] = useState(0);
@@ -215,9 +217,9 @@ export default function VideoChatScreen() {
       spendCoins(COINS_PER_MINUTE).then((ok) => {
         if (!ok) {
           Alert.alert(
-            "Coin Yetersiz",
-            "Sesli sohbet için yeterli coin yok. Görüşme sonlandırılıyor.",
-            [{ text: "Tamam", onPress: () => handleEndCall() }]
+            t("videoChat.noCoins"),
+            t("videoChat.noCoinsMessage"),
+            [{ text: t("common.ok"), onPress: () => handleEndCall() }]
           );
         }
       });
@@ -289,9 +291,9 @@ export default function VideoChatScreen() {
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Mikrofon İzni Gerekli",
-          "Sesli konuşma için mikrofon erişimi vermelisiniz.",
-          [{ text: "Tamam", onPress: () => handleEndCall() }]
+          t("videoChat.micPermission"),
+          t("videoChat.micPermissionMessage"),
+          [{ text: t("common.ok"), onPress: () => handleEndCall() }]
         );
         return;
       }
@@ -608,14 +610,14 @@ export default function VideoChatScreen() {
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   const statusLabel = isListening
-    ? "Seni dinliyorum..."
+    ? t("videoChat.listening")
     : isProcessing
-    ? "Düşünüyorum..."
+    ? t("videoChat.thinking")
     : isSpeaking
-    ? "Konuşuyor..."
+    ? t("videoChat.speaking")
     : isMuted
-    ? "Sessiz modda"
-    : "Başlıyorum...";
+    ? t("videoChat.muted")
+    : t("videoChat.starting");
 
   const statusColor = isListening
     ? "#34C759"

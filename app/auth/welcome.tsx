@@ -14,6 +14,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { getTranslation } from "@/constants/i18n";
+
+const DEFAULT_LANG = "en";
 
 const { width, height } = Dimensions.get("window");
 
@@ -122,7 +125,7 @@ export default function WelcomeScreen() {
         >
           <Text style={styles.appTitle}>Soulie</Text>
           <Text style={styles.appSubtitle}>
-            Seninle her zaman yanında olan{"\n"}AI arkadaşın
+            {getTranslation(DEFAULT_LANG, "welcome.subtitle")}
           </Text>
         </Animated.View>
       </View>
@@ -130,7 +133,7 @@ export default function WelcomeScreen() {
       <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 16 }]}>
         <AuthButton
           icon={<Ionicons name="logo-apple" size={20} color="#000" />}
-          label="Apple ile Giriş Yap"
+          label={getTranslation(DEFAULT_LANG, "welcome.loginWithApple")}
           onPress={() => navigateToOnboarding("apple")}
           delay={400}
         />
@@ -140,22 +143,21 @@ export default function WelcomeScreen() {
               <Text style={styles.googleIconText}>G</Text>
             </View>
           }
-          label="Google ile Giriş Yap"
+          label={getTranslation(DEFAULT_LANG, "welcome.loginWithGoogle")}
           onPress={() => navigateToOnboarding("google")}
           delay={500}
         />
         <AuthButton
           icon={<Feather name="mail" size={18} color="#000" />}
-          label="Email ile Giriş Yap"
+          label={getTranslation(DEFAULT_LANG, "welcome.loginWithEmail")}
           onPress={() => navigateToOnboarding("email")}
           delay={600}
         />
         <Text style={styles.termsText}>
-          Devam ederek{" "}
+          {getTranslation(DEFAULT_LANG, "welcome.terms")}{" "}
           <Text style={styles.termsLink} onPress={() => router.push("/privacy")}>
-            Gizlilik Politikamızı
-          </Text>{" "}
-          kabul etmiş olursunuz.
+            {getTranslation(DEFAULT_LANG, "welcome.termsLink")}
+          </Text>
         </Text>
       </View>
     </View>
