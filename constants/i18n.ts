@@ -365,6 +365,8 @@ const t: LangMap = {
     "explore.cat_lover": "Lover",
     "explore.cat_friend": "Friend",
     "explore.cat_mentor": "Mentor",
+    "explore.cat_female": "Women",
+    "explore.cat_male": "Men",
     "explore.tarot": "Tarot",
     "explore.tarotSubtitle": "Reveal your cards, read your fate",
 
@@ -761,6 +763,8 @@ const t: LangMap = {
     "explore.cat_lover": "Sevgili",
     "explore.cat_friend": "Arkadaş",
     "explore.cat_mentor": "Mentor",
+    "explore.cat_female": "Kadın",
+    "explore.cat_male": "Erkek",
     "explore.tarot": "Tarot Falı",
     "explore.tarotSubtitle": "Kartlarını aç, kaderini oku",
 
@@ -1154,6 +1158,8 @@ const t: LangMap = {
     "explore.cat_lover": "Liebhaber",
     "explore.cat_friend": "Freund",
     "explore.cat_mentor": "Mentor",
+    "explore.cat_female": "Frauen",
+    "explore.cat_male": "Männer",
     "explore.tarot": "Tarot",
     "explore.tarotSubtitle": "Karten aufdecken, Schicksal lesen",
 
@@ -1547,6 +1553,8 @@ const t: LangMap = {
     "explore.cat_lover": "恋人",
     "explore.cat_friend": "朋友",
     "explore.cat_mentor": "导师",
+    "explore.cat_female": "女性",
+    "explore.cat_male": "男性",
     "explore.tarot": "塔罗牌",
     "explore.tarotSubtitle": "翻开你的牌，读懂命运",
 
@@ -1940,6 +1948,8 @@ const t: LangMap = {
     "explore.cat_lover": "연인",
     "explore.cat_friend": "친구",
     "explore.cat_mentor": "멘토",
+    "explore.cat_female": "여성",
+    "explore.cat_male": "남성",
     "explore.tarot": "타로",
     "explore.tarotSubtitle": "카드를 펼쳐 운명을 읽다",
 
@@ -2333,6 +2343,8 @@ const t: LangMap = {
     "explore.cat_lover": "Amante",
     "explore.cat_friend": "Amigo",
     "explore.cat_mentor": "Mentor",
+    "explore.cat_female": "Mujeres",
+    "explore.cat_male": "Hombres",
     "explore.tarot": "Tarot",
     "explore.tarotSubtitle": "Revela tus cartas, lee tu destino",
 
@@ -2726,6 +2738,8 @@ const t: LangMap = {
     "explore.cat_lover": "Возлюбленный",
     "explore.cat_friend": "Друг",
     "explore.cat_mentor": "Ментор",
+    "explore.cat_female": "Женщины",
+    "explore.cat_male": "Мужчины",
     "explore.tarot": "Таро",
     "explore.tarotSubtitle": "Открой карты, прочти судьбу",
 

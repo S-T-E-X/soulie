@@ -33,8 +33,7 @@ import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useI18n } from "@/hooks/useI18n";
 
-type CategoryKey = "all" | "fortune" | "lover" | "friend" | "mentor";
-const CATEGORY_KEYS: CategoryKey[] = ["all", "fortune", "lover", "friend", "mentor"];
+type CategoryKey = "all" | "female" | "male";
 
 const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
 
@@ -314,11 +313,9 @@ export default function ExploreScreen() {
   const allChars = activeCategory === "all"
     ? [...CHARACTERS, ...myCustomChars]
     : CHARACTERS.filter((c) => {
-        if (activeCategory === "mentor") return c.role === "Yaşam Koçu" || c.role === "Çalışma Arkadaşı" || c.role === "Psikolog" || c.role === "Fitness Koçu";
-        if (activeCategory === "fortune") return c.role === "Falcı";
-        if (activeCategory === "lover") return c.role === "Sevgili";
-        if (activeCategory === "friend") return c.role === "Arkadaş" || c.role === "Sanatçı";
-        return false;
+        if (activeCategory === "female") return c.gender === "female";
+        if (activeCategory === "male") return c.gender === "male";
+        return true;
       });
 
   const handleCharacterPress = useCallback((characterId: string) => {
@@ -420,23 +417,10 @@ export default function ExploreScreen() {
         </View>
 
         <View style={styles.filtersRow}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesScroll}
-          >
-            {CATEGORY_KEYS.map((key) => {
-              const label = t(`explore.cat_${key}` as any);
-              if (key === "fortune") {
-                return (
-                  <FalciCategoryBtn
-                    key={key}
-                    active={activeCategory === key}
-                    onPress={() => setActiveCategory(key)}
-                    label={label}
-                  />
-                );
-              }
+          <View style={styles.genderFilterRow}>
+            {(["all", "female", "male"] as CategoryKey[]).map((key) => {
+              const label = key === "all" ? t("explore.cat_all" as any) : key === "female" ? t("explore.cat_female" as any) : t("explore.cat_male" as any);
+              const isActive = activeCategory === key;
               return (
                 <Pressable
                   key={key}
@@ -444,15 +428,16 @@ export default function ExploreScreen() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActiveCategory(key);
                   }}
-                  style={[styles.catBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }, activeCategory === key && styles.catBtnActive]}
+                  style={[styles.genderBtn, isActive && styles.genderBtnActive]}
                 >
-                  <Text style={[styles.catText, { color: colors.text.secondary }, activeCategory === key && styles.catTextActive]}>
-                    {label}
-                  </Text>
+                  {isActive ? (
+                    <LinearGradient colors={["#7C3AED", "#A855F7"]} style={StyleSheet.absoluteFill} />
+                  ) : null}
+                  <Text style={[styles.genderBtnText, isActive && styles.genderBtnTextActive]}>{label}</Text>
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </View>
         </View>
       </View>
 
@@ -598,21 +583,27 @@ const styles = StyleSheet.create({
   avatarInitial: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff" },
   levelBadge: { position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: Colors.accent, justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#fff" },
   levelBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
-  filtersRow: {},
-  categoriesScroll: {
+  filtersRow: { paddingHorizontal: 14, marginTop: 10 },
+  genderFilterRow: {
     flexDirection: "row",
     gap: 8,
-    paddingRight: 20,
   },
-  catBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.06)",
+  genderBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: "rgba(124,58,237,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(124,58,237,0.2)",
   },
-  catBtnActive: { backgroundColor: Colors.accent },
-  catText: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.text.secondary },
-  catTextActive: { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" },
+  genderBtnActive: {
+    borderColor: "transparent",
+  },
+  genderBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "rgba(124,58,237,0.8)" },
+  genderBtnTextActive: { color: "#FFFFFF" },
   falciBtn: {
     flexDirection: "row",
     alignItems: "center",
