@@ -17,7 +17,8 @@ import * as Haptics from "expo-haptics";
 import { useLocalSearchParams } from "expo-router";
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import Colors from "@/constants/colors";
-import { useGifts, GIFTS, COIN_PACKAGES } from "@/contexts/GiftContext";
+import { useGifts, GIFTS, GIFT_IMAGES, COIN_PACKAGES } from "@/contexts/GiftContext";
+import { Image } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -342,9 +343,8 @@ export default function MarketScreen() {
               </Pressable>
             </Animated.View>
 
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Temel Hediyeler</Text>
             <View style={styles.giftsGrid}>
-              {GIFTS.filter((g) => g.category === "basic").map((gift, i) => (
+              {GIFTS.map((gift, i) => (
                 <Animated.View
                   key={gift.id}
                   entering={FadeInDown.delay(60 + i * 40).springify().damping(18)}
@@ -354,48 +354,11 @@ export default function MarketScreen() {
                     onPress={() => handleGiftPurchase(gift.id)}
                     style={({ pressed }) => [styles.giftItem, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.75)" }, pressed && { opacity: 0.85 }]}
                   >
-                    <LinearGradient colors={[gift.colorFrom, gift.colorTo]} style={styles.giftItemIcon}>
-                      <Feather name={gift.icon as any} size={24} color="#fff" />
-                    </LinearGradient>
+                    <Image source={GIFT_IMAGES[gift.imageKey]} style={styles.giftItemImg} resizeMode="contain" />
                     <Text style={[styles.giftItemName, { color: colors.text.primary }]}>{gift.name}</Text>
                     <View style={styles.giftItemPrice}>
                       <Feather name="circle" size={10} color="#FFD700" />
-                      <Text style={[styles.giftItemPriceText, { color: colors.text.secondary }]}>{gift.price}</Text>
-                    </View>
-                    {getInventoryCount(gift.id) > 0 && (
-                      <View style={styles.ownedBadge}>
-                        <Text style={styles.ownedBadgeText}>{getInventoryCount(gift.id)}</Text>
-                      </View>
-                    )}
-                  </Pressable>
-                </Animated.View>
-              ))}
-            </View>
-
-            <Text style={[styles.sectionTitle, { marginTop: 8, color: colors.text.primary }]}>Premium Hediyeler</Text>
-            <View style={styles.giftsGrid}>
-              {GIFTS.filter((g) => g.category === "premium" || g.category === "rare").map((gift, i) => (
-                <Animated.View
-                  key={gift.id}
-                  entering={FadeInDown.delay(100 + i * 40).springify().damping(18)}
-                  style={styles.giftItemWrapper}
-                >
-                  <Pressable
-                    onPress={() => handleGiftPurchase(gift.id)}
-                    style={({ pressed }) => [styles.giftItem, gift.category === "rare" && styles.giftItemRare, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.75)" }, pressed && { opacity: 0.85 }]}
-                  >
-                    {gift.category === "rare" && (
-                      <View style={styles.rareBadge}>
-                        <Text style={styles.rareBadgeText}>Nadir</Text>
-                      </View>
-                    )}
-                    <LinearGradient colors={[gift.colorFrom, gift.colorTo]} style={styles.giftItemIcon}>
-                      <Feather name={gift.icon as any} size={24} color="#fff" />
-                    </LinearGradient>
-                    <Text style={[styles.giftItemName, { color: colors.text.primary }]}>{gift.name}</Text>
-                    <View style={styles.giftItemPrice}>
-                      <Feather name="circle" size={10} color="#FFD700" />
-                      <Text style={[styles.giftItemPriceText, { color: colors.text.secondary }]}>{gift.price}</Text>
+                      <Text style={[styles.giftItemPriceText, { color: isDark ? "#FFFFFF" : colors.text.secondary }]}>{gift.price}</Text>
                     </View>
                     {getInventoryCount(gift.id) > 0 && (
                       <View style={styles.ownedBadge}>
@@ -708,12 +671,9 @@ const styles = StyleSheet.create({
     borderColor: "rgba(79,195,247,0.4)",
     backgroundColor: "rgba(79,195,247,0.06)",
   },
-  giftItemIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
+  giftItemImg: {
+    width: 52,
+    height: 52,
   },
   giftItemName: {
     fontSize: 12,

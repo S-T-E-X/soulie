@@ -16,7 +16,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
-import { GIFTS } from "@/contexts/GiftContext";
+import { GIFTS, GIFT_IMAGES } from "@/contexts/GiftContext";
 
 export type Message = {
   id: string;
@@ -40,14 +40,11 @@ function GiftBubble({ giftId, isUser }: { giftId: string; isUser: boolean }) {
   const gift = GIFTS.find((g) => g.id === giftId);
   if (!gift) return null;
   return (
-    <LinearGradient
-      colors={[gift.colorFrom, gift.colorTo]}
-      style={[styles.giftBubble, isUser ? styles.giftBubbleUser : styles.giftBubbleAI]}
-    >
-      <Feather name={gift.icon as any} size={28} color="#fff" />
+    <View style={[styles.giftBubble, isUser ? styles.giftBubbleUser : styles.giftBubbleAI]}>
+      <Image source={GIFT_IMAGES[gift.imageKey]} style={styles.giftBubbleImg} resizeMode="contain" />
       <Text style={styles.giftName}>{gift.name}</Text>
       <Text style={styles.giftSent}>{isUser ? "hediye gönderdin" : "sana hediye gönderdi"}</Text>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -249,23 +246,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     minWidth: 120,
+    backgroundColor: "rgba(255,255,255,0.15)",
   },
   giftBubbleUser: {
     borderBottomRightRadius: 6,
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
   giftBubbleAI: {
     borderBottomLeftRadius: 6,
+    backgroundColor: "rgba(0,0,0,0.08)",
+  },
+  giftBubbleImg: {
+    width: 56,
+    height: 56,
   },
   giftName: {
     fontSize: 16,
     fontFamily: "Inter_700Bold",
-    color: "#fff",
+    color: Colors.text.primary,
     letterSpacing: -0.3,
   },
   giftSent: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.8)",
+    color: Colors.text.secondary,
     letterSpacing: -0.1,
   },
 });

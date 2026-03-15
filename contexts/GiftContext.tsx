@@ -12,11 +12,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export type GiftItem = {
   id: string;
   name: string;
-  icon: string;
-  colorFrom: string;
-  colorTo: string;
+  imageKey: string;
   price: number;
-  category: "basic" | "premium" | "rare";
+};
+
+export const GIFT_IMAGES: Record<string, any> = {
+  bear: require("../assets/gifts/bear.png"),
+  cat: require("../assets/gifts/cat.png"),
+  crown: require("../assets/gifts/crown.png"),
+  diamond: require("../assets/gifts/diamond.png"),
+  heart: require("../assets/gifts/heart.png"),
+  ring: require("../assets/gifts/ring.png"),
+  rose: require("../assets/gifts/rose.png"),
+  star: require("../assets/gifts/star.png"),
+  suprizebox: require("../assets/gifts/suprizebox.png"),
 };
 
 export type CoinPackage = {
@@ -33,14 +42,15 @@ export type InventoryItem = {
 };
 
 export const GIFTS: GiftItem[] = [
-  { id: "rose", name: "Gül", icon: "heart", colorFrom: "#FF6B6B", colorTo: "#FF1744", price: 50, category: "basic" },
-  { id: "heart", name: "Kalp", icon: "heart", colorFrom: "#FF80AB", colorTo: "#F50057", price: 100, category: "basic" },
-  { id: "star", name: "Yıldız", icon: "star", colorFrom: "#FFD700", colorTo: "#FF9500", price: 200, category: "premium" },
-  { id: "crown", name: "Taç", icon: "award", colorFrom: "#B8860B", colorTo: "#FFD700", price: 500, category: "premium" },
-  { id: "diamond", name: "Elmas", icon: "hexagon", colorFrom: "#4FC3F7", colorTo: "#0091EA", price: 1000, category: "rare" },
-  { id: "fire", name: "Ateş", icon: "zap", colorFrom: "#FF6D00", colorTo: "#FF3D00", price: 300, category: "premium" },
-  { id: "music", name: "Müzik", icon: "music", colorFrom: "#AB47BC", colorTo: "#6A1B9A", price: 150, category: "basic" },
-  { id: "sun", name: "Güneş", icon: "sun", colorFrom: "#FFCC00", colorTo: "#FF9900", price: 250, category: "premium" },
+  { id: "rose", name: "Gül", imageKey: "rose", price: 50 },
+  { id: "heart", name: "Kalp", imageKey: "heart", price: 100 },
+  { id: "bear", name: "Ayıcık", imageKey: "bear", price: 150 },
+  { id: "cat", name: "Kedi", imageKey: "cat", price: 150 },
+  { id: "star", name: "Yıldız", imageKey: "star", price: 200 },
+  { id: "suprizebox", name: "Sürpriz", imageKey: "suprizebox", price: 300 },
+  { id: "crown", name: "Taç", imageKey: "crown", price: 500 },
+  { id: "ring", name: "Yüzük", imageKey: "ring", price: 750 },
+  { id: "diamond", name: "Elmas", imageKey: "diamond", price: 1000 },
 ];
 
 export const COIN_PACKAGES: CoinPackage[] = [

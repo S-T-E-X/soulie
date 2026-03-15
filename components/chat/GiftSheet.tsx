@@ -10,13 +10,14 @@ import {
   Dimensions,
   Platform,
   Alert,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useGifts, GIFTS, type GiftItem } from "@/contexts/GiftContext";
+import { useGifts, GIFTS, GIFT_IMAGES, type GiftItem } from "@/contexts/GiftContext";
 import Colors from "@/constants/colors";
 
 const { height: SCREEN_H } = Dimensions.get("window");
@@ -58,12 +59,7 @@ function GiftCard({
         pressed && { opacity: 0.88 },
       ]}
     >
-      <LinearGradient
-        colors={[gift.colorFrom, gift.colorTo]}
-        style={styles.giftIconGrad}
-      >
-        <Feather name={gift.icon as any} size={22} color="#fff" />
-      </LinearGradient>
+      <Image source={GIFT_IMAGES[gift.imageKey]} style={styles.giftIconImg} resizeMode="contain" />
       <Text style={styles.giftCardName}>{gift.name}</Text>
       <View style={styles.giftPriceRow}>
         <Feather name="circle" size={10} color="#FFD700" />
@@ -421,12 +417,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.accent,
     backgroundColor: "rgba(0,122,255,0.06)",
   },
-  giftIconGrad: {
+  giftIconImg: {
     width: 46,
     height: 46,
-    borderRadius: 23,
-    justifyContent: "center",
-    alignItems: "center",
   },
   giftCardName: {
     fontSize: 11,
