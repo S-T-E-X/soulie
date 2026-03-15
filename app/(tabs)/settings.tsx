@@ -24,6 +24,41 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useChatContext } from "@/contexts/ChatContext";
 import { useTheme } from "@/contexts/ThemeContext";
 
+const LEVEL_IMAGES: Record<number, any> = {
+  1: require("@/assets/levels/lvl1.png"),
+  2: require("@/assets/levels/lvl2.png"),
+  3: require("@/assets/levels/lvl3.png"),
+  4: require("@/assets/levels/lvl4.png"),
+  5: require("@/assets/levels/lvl5.png"),
+  6: require("@/assets/levels/lvl6.png"),
+  7: require("@/assets/levels/lvl7.png"),
+  8: require("@/assets/levels/lvl8.png"),
+  9: require("@/assets/levels/lvl9.png"),
+  10: require("@/assets/levels/lvl10.png"),
+  11: require("@/assets/levels/lvl11.png"),
+  12: require("@/assets/levels/lvl12.png"),
+  13: require("@/assets/levels/lvl13.png"),
+  14: require("@/assets/levels/lvl14.png"),
+  15: require("@/assets/levels/lvl15.png"),
+  16: require("@/assets/levels/lvl16.png"),
+  17: require("@/assets/levels/lvl17.png"),
+  18: require("@/assets/levels/lvl18.png"),
+  19: require("@/assets/levels/lvl19.png"),
+  20: require("@/assets/levels/lvl20.png"),
+  21: require("@/assets/levels/lvl21.png"),
+  22: require("@/assets/levels/lvl22.png"),
+  23: require("@/assets/levels/lvl23.png"),
+  24: require("@/assets/levels/lvl24.png"),
+  25: require("@/assets/levels/lvl25.png"),
+  26: require("@/assets/levels/lvl26.png"),
+  27: require("@/assets/levels/lvl27.png"),
+  28: require("@/assets/levels/lvl28.png"),
+  29: require("@/assets/levels/lvl29.png"),
+  30: require("@/assets/levels/lvl30.png"),
+  31: require("@/assets/levels/lvl31.png"),
+  32: require("@/assets/levels/lvl32.png"),
+};
+
 const SETTINGS_KEY = "soulie_settings_v1";
 const LEVEL_XP_TABLE = [
   0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750, 3300, 3900, 4550, 5250, 6000,
@@ -73,7 +108,7 @@ function LevelCard({ xp, isDark }: { xp: number; isDark: boolean }) {
   const cardBg = isDark ? "rgba(28,28,48,0.9)" : "rgba(255,255,255,0.9)";
   const borderClr = isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.5)";
 
-  const levelImage = require(`@/assets/levels/lvl${level}.png`);
+  const levelImage = LEVEL_IMAGES[level] ?? LEVEL_IMAGES[1];
 
   return (
     <AnimatedRN.View entering={FadeInDown.delay(40).springify().damping(18)} style={[styles.levelCard, { borderColor: borderClr }]}>
