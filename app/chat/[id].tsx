@@ -408,7 +408,6 @@ export default function ChatScreen() {
   const [showFortuneSheet, setShowFortuneSheet] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
   const [showQuotaPopup, setShowQuotaPopup] = useState(false);
-  const [showVideoVIPModal, setShowVideoVIPModal] = useState(false);
   const [resetCountdown, setResetCountdown] = useState(quota.getResetCountdown());
 
   useEffect(() => {
@@ -877,16 +876,12 @@ export default function ChatScreen() {
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  if (!user?.isVip) {
-                    setShowVideoVIPModal(true);
-                  } else {
-                    router.push({ pathname: "/video-chat/[characterId]", params: { characterId: character.id } });
-                  }
+                  router.push({ pathname: "/video-chat/[characterId]", params: { characterId: character.id } });
                 }}
                 style={styles.headerSideBtn}
                 hitSlop={8}
               >
-                <Feather name="video" size={18} color={user?.isVip ? colors.text.secondary : "#FFD700"} />
+                <Feather name="video" size={18} color={colors.text.secondary} />
               </Pressable>
 
               <Pressable
@@ -1025,43 +1020,6 @@ export default function ChatScreen() {
         language={user?.language ?? "tr"}
       />
 
-      <Modal visible={showVideoVIPModal} transparent animationType="fade" onRequestClose={() => setShowVideoVIPModal(false)} statusBarTranslucent>
-        <View style={styles.quotaBackdrop} pointerEvents="box-none">
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowVideoVIPModal(false)} />
-          <View style={[styles.quotaCard, { borderColor: isDark ? colors.border : "rgba(0,0,0,0.06)" }]} pointerEvents="box-none">
-            {Platform.OS === "ios" ? (
-              <BlurView intensity={70} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} pointerEvents="none" />
-            ) : (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? colors.surfaceStrong : "#F8F8FF" }]} pointerEvents="none" />
-            )}
-            <View style={styles.quotaIconWrap} pointerEvents="none">
-              <LinearGradient colors={["#FFD700", "#FFB800"]} style={styles.quotaIconGrad}>
-                <Feather name="video" size={26} color="#fff" />
-              </LinearGradient>
-            </View>
-            <Text style={[styles.quotaTitle, { color: colors.text.primary }]} pointerEvents="none">Video Sohbet VIP'e Özel</Text>
-            <Text style={[styles.quotaDesc, { color: colors.text.secondary }]} pointerEvents="none">
-              {character?.name} ile görüntülü sohbet başlatmak için VIP üyeliğe geçmelisin.
-            </Text>
-            <Pressable
-              onPress={() => {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                setShowVideoVIPModal(false);
-                router.push("/(tabs)/market");
-              }}
-              style={styles.quotaUpgradeBtn}
-            >
-              <LinearGradient colors={["#FFD700", "#FFB800"]} style={styles.quotaUpgradeBtnGrad}>
-                <Feather name="star" size={15} color="#fff" />
-                <Text style={styles.quotaUpgradeText}>VIP'e Yükselt</Text>
-              </LinearGradient>
-            </Pressable>
-            <Pressable onPress={() => setShowVideoVIPModal(false)} style={styles.quotaCloseBtn} hitSlop={8}>
-              <Text style={[styles.quotaCloseText, { color: colors.text.tertiary }]}>Daha Sonra</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </BackgroundGradient>
   );
 }
