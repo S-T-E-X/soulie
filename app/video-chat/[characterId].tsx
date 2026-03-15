@@ -20,6 +20,7 @@ import * as Haptics from "expo-haptics";
 import { Audio } from "expo-av";
 import { getCharacter } from "@/constants/characters";
 import { getApiUrl } from "@/lib/query-client";
+import { useGifts } from "@/contexts/GiftContext";
 
 const { width: W, height: H } = Dimensions.get("window");
 
@@ -169,10 +170,14 @@ function LipSyncOverlay({ speaking, color }: { speaking: boolean; color: string 
   );
 }
 
+const FREE_CALL_SECONDS = 5 * 60;
+const COINS_PER_MINUTE = 100;
+
 export default function VideoChatScreen() {
   const { characterId } = useLocalSearchParams<{ characterId: string }>();
   const character = getCharacter(characterId ?? "");
   const insets = useSafeAreaInsets();
+  const { spendCoins } = useGifts();
 
   const [callState, setCallState] = useState<CallState>("idle");
   const [callDuration, setCallDuration] = useState(0);
@@ -203,6 +208,21 @@ export default function VideoChatScreen() {
     conversationHistoryRef.current = conversationHistory;
   }, [conversationHistory]);
 
+  useEffect(() => {
+    if (callDuration <= FREE_CALL_SECONDS) return;
+    const extra = callDuration - FREE_CALL_SECONDS;
+    if (extra > 0 && extra % 60 === 0) {
+      spendCoins(COINS_PER_MINUTE).then((ok) => {
+        if (!ok) {
+          Alert.alert(
+            "Coin Yetersiz",
+            "Sesli sohbet için yeterli coin yok. Görüşme sonlandırılıyor.",
+            [{ text: "Tamam", onPress: () => handleEndCall() }]
+          );
+        }
+      });
+    }
+  }, [callDuration]);
 
   useEffect(() => {
     mountedRef.current = true;

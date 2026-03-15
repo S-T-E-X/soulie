@@ -58,6 +58,7 @@ interface GiftContextValue {
   inventory: InventoryItem[];
   isLoaded: boolean;
   addCoins: (amount: number) => Promise<void>;
+  spendCoins: (amount: number) => Promise<boolean>;
   purchaseGift: (giftId: string) => Promise<boolean>;
   getInventoryCount: (giftId: string) => number;
   sendGift: (giftId: string) => Promise<boolean>;
@@ -100,6 +101,14 @@ export function GiftProvider({ children }: { children: ReactNode }) {
     const newTotal = coins + amount;
     setCoins(newTotal);
     await saveCoins(newTotal);
+  }, [coins, saveCoins]);
+
+  const spendCoins = useCallback(async (amount: number): Promise<boolean> => {
+    if (coins < amount) return false;
+    const newTotal = coins - amount;
+    setCoins(newTotal);
+    await saveCoins(newTotal);
+    return true;
   }, [coins, saveCoins]);
 
   const purchaseGift = useCallback(async (giftId: string): Promise<boolean> => {
@@ -147,10 +156,11 @@ export function GiftProvider({ children }: { children: ReactNode }) {
     inventory,
     isLoaded,
     addCoins,
+    spendCoins,
     purchaseGift,
     getInventoryCount,
     sendGift,
-  }), [coins, inventory, isLoaded, addCoins, purchaseGift, getInventoryCount, sendGift]);
+  }), [coins, inventory, isLoaded, addCoins, spendCoins, purchaseGift, getInventoryCount, sendGift]);
 
   return <GiftContext.Provider value={value}>{children}</GiftContext.Provider>;
 }

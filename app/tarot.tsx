@@ -11,6 +11,7 @@ import {
   StatusBar,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
@@ -292,7 +293,7 @@ export default function TarotScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
-  const { user } = useAuth();
+  const { user, isVipActive } = useAuth();
 
   const [phase, setPhase] = useState<"loading" | "select" | "picking" | "deck" | "reading" | "done">("loading");
   const [spread, setSpread] = useState<SpreadType>("three");
@@ -320,6 +321,17 @@ export default function TarotScreen() {
   }, []);
 
   const startReading = useCallback((type: SpreadType) => {
+    const today = getTodayKey();
+    if (isVipActive) {
+      const usedToday: string[] = (tarotData?.lastRead === today ? tarotData?.vipUsedSpreads : null) ?? [];
+      if (usedToday.includes(type)) {
+        Alert.alert("Yayılım Kullanıldı", "Bu yayılım türünü bugün zaten kullandın. Yarın tekrar dene.");
+        return;
+      }
+    } else if (alreadyRead) {
+      setShowVIPModal(true);
+      return;
+    }
     setSpread(type);
     const count = SPREAD_OPTIONS.find(s => s.type === type)!.count;
     setRequiredCount(count);
@@ -331,7 +343,7 @@ export default function TarotScreen() {
     setDisplayDeck(shuffled);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setPhase("picking");
-  }, []);
+  }, [alreadyRead, tarotData, isVipActive]);
 
   const pickCard = useCallback((idx: number) => {
     setSelectedIndices(prev => {
@@ -385,7 +397,11 @@ export default function TarotScreen() {
     yesterday.setDate(yesterday.getDate() - 1);
     const yKey = yesterday.toISOString().split("T")[0];
     const newStreak = data.lastRead === yKey ? (data.streak ?? 0) + 1 : 1;
-    const updated = { lastRead: today, streak: newStreak, totalReadings: (data.totalReadings ?? 0) + 1, luckyCardId: luckyCard.id };
+    const prevUsed: string[] = (data.lastRead === today ? data.vipUsedSpreads : null) ?? [];
+    const vipUsedSpreads = isVipActive
+      ? prevUsed.includes(spread) ? prevUsed : [...prevUsed, spread]
+      : data.vipUsedSpreads;
+    const updated: any = { lastRead: today, streak: newStreak, totalReadings: (data.totalReadings ?? 0) + 1, luckyCardId: luckyCard.id, vipUsedSpreads };
     await saveTarotData(updated);
     setTarotData(updated);
     setAlreadyRead(true);

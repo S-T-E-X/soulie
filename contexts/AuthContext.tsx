@@ -30,17 +30,21 @@ export type User = {
   onboardingComplete: boolean;
   isAdmin?: boolean;
   isVip?: boolean;
+  vipExpiry?: number;
+  vipPlan?: "weekly" | "monthly" | "yearly";
 };
 
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isVipActive: boolean;
   login: (partial: Partial<User> & { name: string }) => Promise<void>;
   updateProfile: (partial: Partial<User>) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   grantAdminAccess: () => Promise<void>;
+  activateVip: (plan: "weekly" | "monthly" | "yearly") => Promise<void>;
 }
 
 const AUTH_STORAGE_KEY = "lumina_auth_user";
@@ -153,9 +157,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const activateVip = useCallback(async (plan: "weekly" | "monthly" | "yearly") => {
+    const durations: Record<string, number> = { weekly: 7, monthly: 30, yearly: 365 };
+    const days = durations[plan] ?? 30;
+    const expiry = Date.now() + days * 24 * 60 * 60 * 1000;
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, isVip: true, vipExpiry: expiry, vipPlan: plan };
+      AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated)).catch(console.error);
+      AsyncStorage.getItem(USERS_DB_KEY).then((existing) => {
+        const users: User[] = existing ? JSON.parse(existing) : [];
+        const idx = users.findIndex((u) => u.id === updated.id);
+        if (idx >= 0) users[idx] = updated; else users.push(updated);
+        AsyncStorage.setItem(USERS_DB_KEY, JSON.stringify(users)).catch(() => {});
+      }).catch(() => {});
+      return updated;
+    });
+  }, []);
+
+  const isVipActive = !!user && !!user.isAdmin
+    ? true
+    : !!user && !!user.isVip && (!user.vipExpiry || user.vipExpiry > Date.now());
+
   const value = useMemo(
-    () => ({ user, isAuthenticated: !!user, isLoading, login, updateProfile, logout, deleteAccount, grantAdminAccess }),
-    [user, isLoading, login, updateProfile, logout, deleteAccount, grantAdminAccess]
+    () => ({ user, isAuthenticated: !!user, isLoading, isVipActive, login, updateProfile, logout, deleteAccount, grantAdminAccess, activateVip }),
+    [user, isLoading, isVipActive, login, updateProfile, logout, deleteAccount, grantAdminAccess, activateVip]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

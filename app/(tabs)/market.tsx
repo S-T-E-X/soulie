@@ -19,6 +19,7 @@ import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import Colors from "@/constants/colors";
 import { useGifts, GIFTS, COIN_PACKAGES } from "@/contexts/GiftContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const PLANS = [
   {
@@ -60,6 +61,7 @@ export default function MarketScreen() {
   const { tab: initialTab } = useLocalSearchParams<{ tab?: string }>();
   const { coins, purchaseGift, getInventoryCount, addCoins } = useGifts();
   const { isDark, colors } = useTheme();
+  const { user, isVipActive, activateVip } = useAuth();
   const validTabs = ["premium", "gifts", "coins"] as const;
   const [activeTab, setActiveTab] = useState<"premium" | "gifts" | "coins">(
     validTabs.includes(initialTab as any) ? (initialTab as any) : "premium"
@@ -178,7 +180,30 @@ export default function MarketScreen() {
                 entering={FadeInDown.delay(80 + i * 60).springify().damping(18)}
               >
                 <Pressable
-                  onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    if (isVipActive) {
+                      Alert.alert("Zaten VIP'sin!", "VIP üyeliğin aktif. Teşekkürler!");
+                      return;
+                    }
+                    const planId = plan.id as "weekly" | "monthly" | "yearly";
+                    const planNames: Record<string, string> = { weekly: "Haftalık", monthly: "Aylık", yearly: "Yıllık" };
+                    Alert.alert(
+                      `${planNames[planId] ?? plan.id} Plan`,
+                      `${plan.price} ${plan.period} ile VIP'e geçmek istiyor musun?`,
+                      [
+                        { text: "İptal", style: "cancel" },
+                        {
+                          text: "Aktifleştir",
+                          onPress: async () => {
+                            await activateVip(planId);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            Alert.alert("VIP Aktif!", "Tüm premium özelliklerin açıldı. İyi eğlenceler!");
+                          },
+                        },
+                      ]
+                    );
+                  }}
                   style={({ pressed }) => [styles.planCard, pressed && { opacity: 0.85 }]}
                 >
                   <LinearGradient colors={plan.gradient} style={styles.planGradient}>

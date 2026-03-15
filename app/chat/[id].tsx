@@ -45,20 +45,47 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { GIFTS } from "@/contexts/GiftContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const FORTUNE_DATE_KEY = "soulie_fortune_date_v1";
+const FORTUNE_KEY = "soulie_fortune_v2";
+const FORTUNE_VIP_LIMIT = 3;
+const FORTUNE_VIP_WINDOW = 6 * 60 * 60 * 1000;
 
-async function getTodayFortuneUsed(): Promise<boolean> {
+async function getFortuneQuota(isVip: boolean): Promise<{ canUse: boolean; remaining: number }> {
   try {
-    const stored = await AsyncStorage.getItem(FORTUNE_DATE_KEY);
-    if (!stored) return false;
-    const today = new Date().toISOString().slice(0, 10);
-    return stored === today;
-  } catch { return false; }
+    const raw = await AsyncStorage.getItem(FORTUNE_KEY);
+    const data = raw ? JSON.parse(raw) : {};
+    if (isVip) {
+      const windowStart = data.vipWindowStart ?? 0;
+      const count = data.vipCount ?? 0;
+      const expired = Date.now() >= windowStart + FORTUNE_VIP_WINDOW;
+      if (expired) return { canUse: true, remaining: FORTUNE_VIP_LIMIT };
+      const remaining = Math.max(0, FORTUNE_VIP_LIMIT - count);
+      return { canUse: remaining > 0, remaining };
+    } else {
+      const today = new Date().toISOString().slice(0, 10);
+      return { canUse: data.freeDate !== today, remaining: data.freeDate === today ? 0 : 1 };
+    }
+  } catch {
+    return { canUse: true, remaining: isVip ? FORTUNE_VIP_LIMIT : 1 };
+  }
 }
 
-async function markFortuneUsed(): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
-  await AsyncStorage.setItem(FORTUNE_DATE_KEY, today);
+async function markFortuneUsed(isVip: boolean): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(FORTUNE_KEY);
+    const data = raw ? JSON.parse(raw) : {};
+    if (isVip) {
+      const windowStart = data.vipWindowStart ?? 0;
+      const expired = Date.now() >= windowStart + FORTUNE_VIP_WINDOW;
+      await AsyncStorage.setItem(FORTUNE_KEY, JSON.stringify({
+        ...data,
+        vipWindowStart: expired ? Date.now() : windowStart,
+        vipCount: expired ? 1 : (data.vipCount ?? 0) + 1,
+      }));
+    } else {
+      const today = new Date().toISOString().slice(0, 10);
+      await AsyncStorage.setItem(FORTUNE_KEY, JSON.stringify({ ...data, freeDate: today }));
+    }
+  } catch {}
 }
 
 function CharacterAvatar({ character, size = 38 }: { character: Character; size?: number }) {
@@ -167,8 +194,8 @@ function QuotaPopup({
           </Text>
           <Text style={[styles.quotaDesc, { color: colors.text.secondary }]} pointerEvents="none">
             {language === "en"
-              ? `Free users can send 15 messages per day. Resets in ${resetCountdown}.`
-              : `Ücretsiz kullanıcılar günde 15 mesaj gönderebilir. ${resetCountdown} içinde sıfırlanır.`}
+              ? `Free users can send 15 messages per 6 hours. Resets in ${resetCountdown}.`
+              : `Ücretsiz kullanıcılar 6 saatte 15 mesaj gönderebilir. ${resetCountdown} içinde sıfırlanır.`}
           </Text>
           <Pressable
             onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onGoMarket(); }}
@@ -392,10 +419,10 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { getConversationByCharacter, createConversationWithMessages, loadConversations, isLoaded } = useChatContext();
   const { settings, isLoaded: settingsLoaded, updateSettings, addMemory, removeMemory } = useCharacterSettings(characterId ?? "");
-  const { user } = useAuth();
+  const { user, isVipActive } = useAuth();
   const { isDark, colors } = useTheme();
   const streak = useStreak(characterId ?? "");
-  const quota = useDailyQuota(!!user?.isVip);
+  const quota = useDailyQuota(isVipActive);
 
   const character = characterId ? getCharacter(characterId) : undefined;
 
@@ -478,7 +505,7 @@ export default function ChatScreen() {
     async (text: string, imageUri?: string) => {
       if (isStreaming || !character || !settingsLoaded) return;
 
-      if (!user?.isVip && !quota.canSend) {
+      if (!isVipActive && !quota.canSend) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         setShowQuotaPopup(true);
         return;
@@ -744,7 +771,7 @@ export default function ChatScreen() {
     setShowTyping(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    await markFortuneUsed();
+    await markFortuneUsed(isVipActive);
 
     const userMsg: Message = {
       id: generateId(),
@@ -859,9 +886,12 @@ export default function ChatScreen() {
             <Pressable
               onPress={async () => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                const used = await getTodayFortuneUsed();
-                if (used) {
-                  Alert.alert("Günlük Hakkın Doldu", "Günde 1 kez fal baktırabilirsin. Yarın tekrar gel ✨");
+                const { canUse } = await getFortuneQuota(isVipActive);
+                if (!canUse) {
+                  const msg = isVipActive
+                    ? `6 saatlik fal hakkın doldu. (${FORTUNE_VIP_LIMIT} fal / 6 saat)`
+                    : "Günlük fal hakkın doldu. Yarın tekrar gel ✨";
+                  Alert.alert("Fal Hakkı Doldu", msg);
                   return;
                 }
                 setShowFortuneSheet(true);
@@ -939,23 +969,15 @@ export default function ChatScreen() {
         />
 
         <View style={styles.inputArea}>
-          {!user?.isVip && quota.loaded ? (
+          {!isVipActive && quota.loaded && quota.remaining === 0 ? (
             <View style={styles.quotaBar}>
-              <Feather
-                name={quota.remaining === 0 ? "zap-off" : "zap"}
-                size={11}
-                color={quota.remaining === 0 ? "#FF3B30" : quota.remaining <= 3 ? "#FF9500" : colors.text.tertiary}
-              />
-              <Text style={[styles.quotaBarText, quota.remaining === 0 && { color: "#FF3B30" }, quota.remaining <= 3 && quota.remaining > 0 && { color: "#FF9500" }]}>
-                {quota.remaining > 0
-                  ? `${quota.remaining}/${quota.DAILY_LIMIT} mesaj`
-                  : `Limit doldu · ${resetCountdown}`}
+              <Feather name="zap-off" size={11} color="#FF3B30" />
+              <Text style={[styles.quotaBarText, { color: "#FF3B30" }]}>
+                {`Limit doldu · ${resetCountdown}`}
               </Text>
-              {quota.remaining === 0 ? (
-                <Pressable onPress={() => setShowQuotaPopup(true)} hitSlop={4}>
-                  <Text style={[styles.quotaBarVipLink, { color: colors.accent }]}>VIP'e geç</Text>
-                </Pressable>
-              ) : null}
+              <Pressable onPress={() => setShowQuotaPopup(true)} hitSlop={4}>
+                <Text style={[styles.quotaBarVipLink, { color: colors.accent }]}>VIP'e geç</Text>
+              </Pressable>
             </View>
           ) : null}
           <View style={styles.giftButtonRow}>

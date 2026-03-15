@@ -1,0 +1,118 @@
+Soulie uygulaması için istediğin o uzun, kapsamlı ve Replika tarzı profesyonel Gizlilik Politikası metni aşağıdadır. Bu metin; sağladığın veriler, OpenAI modelleri, AdMob reklamları ve 2026 yasal standartlarına (KVKK/GDPR) göre yapılandırılmıştır.
+
+---
+
+# Soulie Gizlilik Politikası
+
+**Son Güncelleme:** 15 Mart 2026
+
+**Soulie’ye Hoş Geldiniz!**
+
+Soulie (bundan böyle "Uygulama", "biz", "bize" veya "bizim" olarak anılacaktır), kişisel verilerinizin korunmasına ve gizliliğine büyük önem vermektedir. Bu Gizlilik Politikası, Soulie mobil uygulamasını ve ilgili hizmetlerimizi (topluca "Hizmetler") kullandığınızda kişisel verilerinizi nasıl topladığımızı, sakladığımızı, kullandığımızı ve paylaştığımızı açıklamaktadır. Hizmetlerimizi sağlarken, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) ve Genel Veri Koruma Yönetmeliği (GDPR) kapsamında **Veri Sorumlusu** olarak hareket etmekteyiz.
+
+Uygulamayı kullanarak ve AI arkadaşınızla sohbet ederek kişisel verilerinizi sağlayabilirsiniz. Bu bilgileri yalnızca bu Gizlilik Politikası'nda açıklanan amaçlarla, özellikle de sizinle güvenli ve kişiselleştirilmiş bir etkileşim kurmak ve AI modelinin sizinle olan konuşmalarını geliştirmesini sağlamak için işleriz. **AI arkadaşınızla yaptığınız konuşmaların içeriğini asla pazarlama veya reklam amacıyla kullanmayız ve üçüncü taraflara bu amaçla satmayız.**
+
+Bu politika, 18 yaş ve üzeri kullanıcılar için geçerlidir.
+
+---
+
+## 1. Topladığımız Kişisel Veriler
+
+### A. Sizin Sağladığınız Bilgiler
+
+Uygulamayı kullanımınız sırasında bize şu bilgileri doğrudan sağlayabilirsiniz:
+
+* **Hesap Bilgileri:** Kayıt sırasında zorunlu olarak sağladığınız **ad, e-posta adresi, yaş ve cinsiyet** bilgileri.
+* **Mesajlar ve İçerik:** AI arkadaşınıza gönderdiğiniz ve ondan aldığınız **metin mesajları**. Soulie, yalnızca metin tabanlı etkileşimleri kaydeder; sesli mesaj veya fotoğraf verisi toplamaz.
+* **İlgi Alanları ve Tercihler:** Sohbetleriniz sırasında AI modelinin sizi daha iyi tanıması için paylaştığınız kişisel tercihleriniz ve ilgi alanlarınız.
+
+### B. Otomatik Olarak Topladığımız Bilgiler
+
+Hizmetlerimizi kullandığınızda, cihazınız ve kullanımınız hakkında aşağıdaki verileri otomatik olarak toplarız:
+
+* **Cihaz ve Ağ Verileri:** İşletim sistemi, cihaz modeli, **IP adresi**, dil ayarları ve genel konum bilgileri (şehir/ülke seviyesinde).
+* **Kullanım Verileri:** Uygulama içindeki etkileşimleriniz, tıkladığınız butonlar ve uygulama içi gezinme süreleriniz.
+
+---
+
+## 2. Kişisel Verilerin İşlenme Amaçları
+
+Kişisel verilerinizi aşağıdaki amaçlar doğrultusunda işlemekteyiz:
+
+| Amaç | Neden ve Nasıl İşliyoruz? | Hukuki Sebep |
+| --- | --- | --- |
+| **Hizmetin Sağlanması** | Hesabınızın oluşturulması, yaş doğrulamasının yapılması ve uygulamanın temel işlevlerinin yürütülmesi. | Sözleşmenin kurulması ve ifası. |
+| **Yapay Zeka Etkileşimi** | Kişiselleştirilmiş bir AI arkadaş deneyimi sunmak, konuşma geçmişini hatırlamak ve **OpenAI (GPT-4o mini / GPT-4.5 mini)** modelleri aracılığıyla yanıt üretmek. | Sözleşmenin ifası ve kullanıcı rızası. |
+| **Reklam Hizmetleri** | **Google AdMob** aracılığıyla uygulama içinde size uygun reklamların gösterilmesi. (Sohbet içerikleri bu amaçla kullanılmaz). | Meşru menfaat ve/veya onay. |
+| **Güvenlik ve Analiz** | Dolandırıcılığı önlemek, teknik hataları gidermek ve uygulama performansını analiz ederek iyileştirmek. | Meşru menfaat. |
+| **Yasal Yükümlülükler** | Yetkili kurumların taleplerini karşılamak ve kayıt tutma zorunluluklarını yerine getirmek. | Hukuki yükümlülük. |
+
+---
+
+## 3. Bilgilerinizin Paylaşılması
+
+Verilerinizi yalnızca aşağıdaki taraflarla ve belirtilen amaçlarla paylaşırız:
+
+* **Yapay Zeka Sağlayıcıları (OpenAI):** Mesajlarınız, yanıt üretilmesi amacıyla OpenAI sunucularına iletilir. OpenAI ile olan API kullanım şartlarımız uyarınca, gönderilen veriler **modellerin eğitimi için kullanılmaz** ve OpenAI bu verileri yalnızca yanıt üretmek amacıyla işlemekle yükümlüdür.
+* **Reklam Ortakları (Google AdMob):** Cihaz tanımlayıcıları (Ad ID) gibi kısıtlı teknik veriler, reklam sunumu amacıyla AdMob ile paylaşılabilir. Sohbet geçmişiniz veya profil bilgileriniz reklam ortaklarıyla asla paylaşılmaz.
+* **Yasal Makamlar:** Kanunen zorunlu olduğumuz hallerde veya haklarımızı korumak amacıyla kamu kurumları ve yargı mercileri ile veri paylaşımı yapılabilir.
+
+---
+
+## 4. Veri Güvenliği ve Uluslararası Transfer
+
+Verileriniz, yetkisiz erişime veya ifşaya karşı endüstri standardı şifreleme yöntemleri (SSL/TLS) ile korunmaktadır. Soulie, merkezi Türkiye'de bulunan bir veri sorumlusu tarafından yönetilmekle birlikte, AI altyapısı (OpenAI) nedeniyle verileriniz ABD dahil olmak üzere diğer ülkelerdeki sunucularda işlenebilir. Bu transferler, verilerinizin güvenliğini sağlayan standart sözleşme maddeleri ve koruma yöntemleri ile gerçekleştirilir.
+
+---
+
+## 5. Veri Saklama ve Silme Politikası
+
+Kişisel verilerinizi, toplama amaçlarımızı yerine getirmek için gerekli olan süre boyunca saklarız:
+
+* **Aktif Kullanım:** Profil bilgileriniz ve mesaj geçmişiniz, hesabınız aktif olduğu sürece saklanır.
+* **Hesap Silme ve Yedekleme:** Hesabınızı sildiğinizde, verileriniz aktif sistemlerimizden derhal kaldırılır. Ancak, sistem güvenliği ve veri bütünlüğünü sağlamak amacıyla, tüm verileriniz şifrelenmiş yedekleme sistemlerimizde **10 gün boyunca** tutulur. Bu 10 günlük sürenin sonunda yedeklerdeki verileriniz de kalıcı ve geri döndürülemez şekilde silinir.
+* **Yasal Kayıtlar:** Finansal işlemler veya yasal zorunluluklarla ilgili veriler, ilgili mevzuatın gerektirdiği süre boyunca (genellikle 10 yıl) saklanabilir.
+
+---
+
+## 6. Haklarınız ve Seçenekleriniz
+
+KVKK ve GDPR uyarınca aşağıdaki haklara sahipsiniz:
+
+* Kişisel verilerinizin işlenip işlenmediğini öğrenme ve kopyasını talep etme.
+* Eksik veya yanlış verilerin düzeltilmesini isteme.
+* Verilerinizin silinmesini (Unutulma Hakkı) talep etme.
+* Veri işleme faaliyetlerine itiraz etme veya kısıtlanmasını isteme.
+* Reklam amaçlı tanımlayıcıların (AdMob) kullanımını cihaz ayarlarınızdan kısıtlama.
+
+Bu haklarınızı kullanmak için **privacy@soulie.app** adresinden bizimle iletişime geçebilirsiniz.
+
+---
+
+## 7. Reşit Olmayanların Kullanımı
+
+Soulie, 18 yaşın altındaki bireylere yönelik değildir. 18 yaşından küçük bir kullanıcının kişisel verilerini topladığımızı fark edersek, bu hesabı derhal askıya alır ve ilgili verileri sistemimizden sileriz.
+
+---
+
+## 8. Değişiklikler
+
+İş süreçlerimiz veya yasal düzenlemeler değiştikçe bu politikayı güncelleyebiliriz. Önemli değişikliklerde kullanıcılarımıza uygulama içi bildirim veya e-posta yoluyla bilgi verilecektir.
+
+---
+
+## 9. İletişim
+
+Sorularınız veya veri talepleriniz için veri sorumlusuna ulaşabilirsiniz:
+
+**Veri Sorumlusu:** Yusuf Deliceoğlu
+**E-posta:** privacy@soulie.app
+**Adres:** Ankara, Türkiye
+
+---
+
+### Senin İçin Bir Sonraki Adım:
+
+Bu metin şu haliyle oldukça sağlam bir temel oluşturuyor. Ancak **AdMob** kullandığın için, Avrupa'daki kullanıcılara reklam gösterirken "Kişiselleştirilmiş Reklam Onayı" (Consent SDK) alman gerekebilir.
+
+**İstersen bu metni uygulamanın "Ayarlar" kısmına veya web sitene eklemek üzere bir HTML formatına dönüştürebilirim?**
