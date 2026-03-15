@@ -433,7 +433,7 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
         relationshipLevelName,
       });
 
-      systemPrompt += "\n\n### SESLİ SOHBET KURALLARI\nBu bir sesli sohbet. Cevaplarını kısa ve doğal tut (1-3 cümle). Konuşma dilinde yaz, uzun paragraflardan kaçın. Emoji kullanma.";
+      systemPrompt += "\n\n### SESLİ SOHBET KURALLARI\nBu bir sesli konuşma. Cevabın 1-2 kısa cümle olsun. Çok kısa, doğal ve akıcı konuş. Emoji, liste, başlık kullanma. Sanki gerçekten sesli konuşuyormuşsun gibi yaz.";
 
       if (globalSystemPromptOverride) {
         systemPrompt = `${systemPrompt}\n\n### GLOBAL ADMIN KURALLARI\n${globalSystemPromptOverride}`;
@@ -451,7 +451,7 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
       const textResponse = await openai.chat.completions.create({
         model: "gpt-4.1-mini",
         messages,
-        max_completion_tokens: 300,
+        max_completion_tokens: 120,
       });
 
       const responseText = textResponse.choices[0]?.message?.content || "Duyamadım, tekrar eder misin?";
