@@ -23,6 +23,7 @@ import { getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetch as expoFetch } from "expo/fetch";
 import { useI18n } from "@/hooks/useI18n";
+import { showRewardedAd } from "@/lib/admob";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const STORAGE_KEY = "soulie_tarot_v2";
@@ -355,22 +356,21 @@ export default function TarotScreen() {
     setPhase("picking");
   }, [alreadyRead, tarotData, isVipActive]);
 
-  const handleWatchAdForTarot = useCallback(() => {
+  const handleWatchAdForTarot = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsWatchingAd(true);
     setAdCountdown(5);
-    let count = 5;
-    const iv = setInterval(() => {
-      count -= 1;
-      setAdCountdown(count);
-      if (count <= 0) {
-        clearInterval(iv);
-        setIsWatchingAd(false);
-        setAlreadyRead(false);
-        setShowVIPModal(false);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+    const countdownIv = setInterval(() => {
+      setAdCountdown(prev => Math.max(0, prev - 1));
     }, 1000);
+    const result = await showRewardedAd();
+    clearInterval(countdownIv);
+    setIsWatchingAd(false);
+    if (result.rewarded) {
+      setAlreadyRead(false);
+      setShowVIPModal(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
   }, []);
 
   const pickCard = useCallback((idx: number) => {

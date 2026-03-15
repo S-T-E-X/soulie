@@ -23,6 +23,7 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { fetch } from "expo/fetch";
 import * as Haptics from "expo-haptics";
+import { showRewardedAd } from "@/lib/admob";
 
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import { MessageBubble, type Message as BubbleMessage } from "@/components/chat/MessageBubble";
@@ -159,20 +160,19 @@ function QuotaPopup({
   const [isWatching, setIsWatching] = React.useState(false);
   const [adCountdown, setAdCountdown] = React.useState(5);
 
-  const handleWatchAd = () => {
+  const handleWatchAd = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsWatching(true);
     setAdCountdown(5);
-    let count = 5;
-    const iv = setInterval(() => {
-      count -= 1;
-      setAdCountdown(count);
-      if (count <= 0) {
-        clearInterval(iv);
-        setIsWatching(false);
-        onWatchAd();
-      }
+    const countdownIv = setInterval(() => {
+      setAdCountdown(prev => Math.max(0, prev - 1));
     }, 1000);
+    const result = await showRewardedAd();
+    clearInterval(countdownIv);
+    setIsWatching(false);
+    if (result.rewarded) {
+      onWatchAd();
+    }
   };
 
   return (

@@ -79,7 +79,8 @@ Preferred communication style: Simple, everyday language.
 - Defined in `constants/characters.ts` as a static array of `Character` objects.
 - Each character has: id, name, role, system prompt, image asset, gradient colors, tags, age, gender, premium flag.
 - Server-side `CHARACTER_PROMPTS` record in `server/routes.ts` maps character IDs to system prompts for the OpenAI API call.
-- Available characters: Aylin (girlfriend), Cem (boyfriend), Lara (friend), Kaan (friend), Mert (life coach/mentor), Zeynep (study buddy).
+- Available characters: Aylin (girlfriend), Cem (boyfriend), Lara (friend), Kaan (friend), Mert (life coach/mentor), Zeynep (study buddy), Sibel/Falcı Abla (fortune teller), Dr. Elif (psychologist, premium), Burak (fitness coach, premium), Selin (artist).
+- Character images: assets/characters/{aylin,cem,kaan,lara,mert,zeynep,elif,burak,selin}.png
 
 ### Authentication
 
@@ -145,3 +146,13 @@ These modules are not all registered in the main `server/routes.ts` but are avai
 | `EXPO_PUBLIC_DOMAIN` | Frontend → backend API base URL |
 | `REPLIT_DEV_DOMAIN` | Replit dev tunnel domain for CORS and Expo |
 | `REPLIT_DOMAINS` | Comma-separated production domains for CORS |
+| `EXPO_PUBLIC_ADMOB_IOS_APP_ID` | Google AdMob iOS App ID |
+| `EXPO_PUBLIC_ADMOB_ANDROID_APP_ID` | Google AdMob Android App ID |
+| `EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID` | Google AdMob iOS Rewarded Ad Unit ID |
+| `EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID` | Google AdMob Android Rewarded Ad Unit ID |
+
+### AdMob Notes
+- `lib/admob.native.ts` — Native wrapper: Expo Go simulates a 5s countdown; production uses real rewarded ads via `react-native-google-mobile-ads`.
+- `lib/admob.web.ts` — Web stub: always resolves with `rewarded: true` after 5s (no real ad).
+- Real rewarded ads require a **production/development build** (EAS Build), not Expo Go.
+- App IDs configured in `app.json` under the `react-native-google-mobile-ads` plugin.

@@ -77,3 +77,11 @@ ensurePreviewReachable = "/status"
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 120000
+
+[userenv]
+
+[userenv.shared]
+EXPO_PUBLIC_ADMOB_IOS_APP_ID = "ca-app-pub-9292733128508168~8476999896"
+EXPO_PUBLIC_ADMOB_ANDROID_APP_ID = "ca-app-pub-9292733128508168~3953499207"
+EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID = "ca-app-pub-9292733128508168/2584577219"
+EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID = "ca-app-pub-9292733128508168/8958413878"
