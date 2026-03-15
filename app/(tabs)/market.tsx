@@ -23,37 +23,47 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/hooks/useI18n";
 
+const ALL_FEAT_KEYS = [
+  "market.featAllChars",
+  "market.featUnlimitedMessages",
+  "market.featPremiumFeatures",
+  "market.featPrioritySupport",
+  "market.featVoiceChat",
+  "market.featUnlimitedTarot",
+  "market.featCustomChar",
+];
+
 const PLAN_META = [
   {
     id: "weekly",
-    price: "₺29,99",
-    gradient: ["#E8EFF8", "#D8E8F8"] as [string, string],
-    textColor: Colors.text.primary,
+    price: "$4.99",
+    gradient: [Colors.userBubble.from, Colors.userBubble.to] as [string, string],
+    textColor: "#FFFFFF",
     isPopular: false,
     badge: null as string | null,
-    featKeys: ["market.feat3Chars", "market.featUnlimitedMessages", "market.featBasic"],
+    featKeys: ALL_FEAT_KEYS,
     periodKey: "market.perWeek",
     nameKey: "market.weekly",
   },
   {
     id: "monthly",
-    price: "₺79,99",
-    gradient: [Colors.userBubble.from, Colors.userBubble.to] as [string, string],
+    price: "$19.90",
+    gradient: ["#1D1D1F", "#3A3A3C"] as [string, string],
     textColor: "#FFFFFF",
     isPopular: true,
     badge: null as string | null,
-    featKeys: ["market.featAllChars", "market.featUnlimitedMessages", "market.featPremiumFeatures", "market.featPrioritySupport"],
+    featKeys: ALL_FEAT_KEYS,
     periodKey: "market.perMonth",
     nameKey: "market.monthly",
   },
   {
     id: "yearly",
-    price: "₺599,99",
-    gradient: ["#1D1D1F", "#3A3A3C"] as [string, string],
+    price: "$199.00",
+    gradient: ["#2D0654", "#6B21A8"] as [string, string],
     textColor: "#FFFFFF",
     isPopular: false,
     badge: "market.discount37" as string | null,
-    featKeys: ["market.featAllChars", "market.featUnlimitedAll", "market.featCustomChar", "market.featVoiceChat"],
+    featKeys: ALL_FEAT_KEYS,
     periodKey: "market.perYear",
     nameKey: "market.yearly",
   },

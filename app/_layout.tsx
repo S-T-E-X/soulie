@@ -17,6 +17,7 @@ import { ChatProvider } from "@/contexts/ChatContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GiftProvider } from "@/contexts/GiftContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { CustomCharProvider } from "@/contexts/CustomCharContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -61,11 +62,13 @@ export default function RootLayout() {
           <AuthProvider>
             <ChatProvider>
               <GiftProvider>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <KeyboardProvider>
-                    <RootLayoutNav />
-                  </KeyboardProvider>
-                </GestureHandlerRootView>
+                <CustomCharProvider>
+                  <GestureHandlerRootView style={{ flex: 1 }}>
+                    <KeyboardProvider>
+                      <RootLayoutNav />
+                    </KeyboardProvider>
+                  </GestureHandlerRootView>
+                </CustomCharProvider>
               </GiftProvider>
             </ChatProvider>
           </AuthProvider>

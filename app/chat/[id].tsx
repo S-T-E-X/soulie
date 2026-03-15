@@ -323,9 +323,9 @@ function FortuneSheet({
       <View style={[fortuneStyles.sheet, { backgroundColor: isDark ? "#1C1C1E" : "#F2F2F7", paddingBottom: insets.bottom + 24 }]}>
         <View style={fortuneStyles.handle} />
         <View style={fortuneStyles.sheetHeader}>
-          <Text style={[fortuneStyles.sheetTitle, { color: colors.text.primary }]}>☕ Kahve Falı</Text>
+          <Text style={[fortuneStyles.sheetTitle, { color: colors.text.primary }]}>☕ {t("chat.fortuneSheetTitle")}</Text>
           <Text style={[fortuneStyles.sheetSubtitle, { color: colors.text.secondary }]}>
-            Fincanının 3 farklı açıdan fotoğrafını yükle
+            {t("chat.fortuneSheetSubtitle")}
           </Text>
         </View>
 
@@ -900,10 +900,11 @@ export default function ChatScreen() {
                 }
                 setShowFortuneSheet(true);
               }}
-              style={[styles.headerSideBtn, { backgroundColor: "rgba(139,92,246,0.15)" }]}
+              style={[styles.coffeePill]}
               hitSlop={4}
             >
-              <Text style={{ fontSize: 19, lineHeight: 22 }}>☕</Text>
+              <Text style={styles.coffeePillEmoji}>☕</Text>
+              <Text style={styles.coffeePillText}>{t("chat.coffeeFortune")}</Text>
             </Pressable>
           ) : (
             <>
@@ -1067,6 +1068,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 19,
+  },
+  coffeePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(139,92,246,0.18)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(139,92,246,0.35)",
+  },
+  coffeePillEmoji: {
+    fontSize: 15,
+    lineHeight: 18,
+  },
+  coffeePillText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: "#C4B5FD",
+    letterSpacing: 0.1,
   },
   headerCenter: {
     flex: 1,

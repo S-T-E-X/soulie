@@ -46,7 +46,7 @@ export default function CharacterProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, isVipActive } = useAuth();
   const { isDark, colors } = useTheme();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const scrollY = useSharedValue(0);
   const [showCustomize, setShowCustomize] = useState(false);
   const { settings, isLoaded: settingsLoaded, updateSettings, removeMemory } = useCharacterSettings(characterId ?? "");
@@ -218,7 +218,9 @@ export default function CharacterProfileScreen() {
               <Feather name="user" size={16} color={Colors.accent} />
               <Text style={[styles.infoTitle, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("character.about")}</Text>
             </View>
-            <Text style={[styles.descText, { color: isDark ? "rgba(255,255,255,0.65)" : Colors.text.secondary }]}>{character.description}</Text>
+            <Text style={[styles.descText, { color: isDark ? "rgba(255,255,255,0.65)" : Colors.text.secondary }]}>
+              {character.descriptions?.[lang as keyof typeof character.descriptions] ?? character.description}
+            </Text>
           </Animated.View>
 
           <View style={[styles.divider, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }]} />

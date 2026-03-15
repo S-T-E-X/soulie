@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from "react";
+import React, { useEffect, useCallback, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,18 +10,24 @@ import {
   Image,
   Animated,
   ScrollView,
+  Modal,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
 } from "react-native";
 import AnimatedRN, { FadeInDown } from "react-native-reanimated";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { Feather } from "@expo/vector-icons";
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import { CharacterCard } from "@/components/explore/CharacterCard";
 import { CHARACTERS } from "@/constants/characters";
 import { useChatContext } from "@/contexts/ChatContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCustomChars } from "@/contexts/CustomCharContext";
 import { getAllStreaks } from "@/hooks/useStreak";
 import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -263,14 +269,31 @@ function FalciCategoryBtn({ active, onPress, label }: { active: boolean; onPress
   );
 }
 
+const CUSTOM_GRADIENTS: [string, string][] = [
+  ["#FF6B9D", "#C44BAB"],
+  ["#4FC3F7", "#1565C0"],
+  ["#81C784", "#388E3C"],
+  ["#FFB74D", "#E65100"],
+  ["#CE93D8", "#7B1FA2"],
+  ["#4DD0E1", "#00838F"],
+];
+
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, isVipActive } = useAuth();
   const { loadConversations, conversations, getConversationByCharacter } = useChatContext();
   const { isDark, colors } = useTheme();
   const { t } = useI18n();
+  const { customChars, addCustomChar, removeCustomChar } = useCustomChars();
   const [activeCategory, setActiveCategory] = React.useState<CategoryKey>("all");
   const [streaks, setStreaks] = React.useState<Record<string, number>>({});
+  const [showCreateSheet, setShowCreateSheet] = useState(false);
+
+  const [formName, setFormName] = useState("");
+  const [formAge, setFormAge] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [formPhoto, setFormPhoto] = useState<string | null>(null);
+  const [formCreating, setFormCreating] = useState(false);
 
   useEffect(() => {
     loadConversations();
@@ -283,16 +306,18 @@ export default function ExploreScreen() {
     });
   }, []);
 
+  const myCustomChars = user ? customChars.filter((c) => c.ownerId === user.id) : [];
+
   const totalMessages = conversations.reduce((acc, c) => acc + c.messages.length, 0);
   const xp = totalMessages * 10 + conversations.length * 5;
 
-  const filtered = activeCategory === "all"
-    ? CHARACTERS
+  const allChars = activeCategory === "all"
+    ? [...CHARACTERS, ...myCustomChars]
     : CHARACTERS.filter((c) => {
-        if (activeCategory === "mentor") return c.role === "Yaşam Koçu" || c.role === "Çalışma Arkadaşı";
+        if (activeCategory === "mentor") return c.role === "Yaşam Koçu" || c.role === "Çalışma Arkadaşı" || c.role === "Psikolog" || c.role === "Fitness Koçu";
         if (activeCategory === "fortune") return c.role === "Falcı";
         if (activeCategory === "lover") return c.role === "Sevgili";
-        if (activeCategory === "friend") return c.role === "Arkadaş";
+        if (activeCategory === "friend") return c.role === "Arkadaş" || c.role === "Sanatçı";
         return false;
       });
 
@@ -300,6 +325,68 @@ export default function ExploreScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push({ pathname: "/character/[characterId]", params: { characterId } });
   }, []);
+
+  const handleFabPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!isVipActive) {
+      Alert.alert(t("explore.vipRequiredTitle"), t("explore.vipRequiredMsg"), [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: "VIP", onPress: () => router.push({ pathname: "/(tabs)/market", params: { tab: "premium" } } as any) },
+      ]);
+      return;
+    }
+    setFormName("");
+    setFormAge("");
+    setFormDesc("");
+    setFormPhoto(null);
+    setShowCreateSheet(true);
+  };
+
+  const handlePickPhoto = async () => {
+    if (Platform.OS !== "web") {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      setFormPhoto(result.assets[0].uri);
+    }
+  };
+
+  const handleCreateChar = async () => {
+    if (!formName.trim() || !formDesc.trim()) {
+      Alert.alert(t("explore.customError"));
+      return;
+    }
+    if (!user) return;
+    setFormCreating(true);
+    const gradIdx = myCustomChars.length % CUSTOM_GRADIENTS.length;
+    await addCustomChar({
+      name: formName.trim(),
+      age: parseInt(formAge) || 25,
+      description: formDesc.trim(),
+      role: "Özel Karakter",
+      shortRole: formName.trim(),
+      shortRoleKey: "char.role.artist",
+      systemPrompt: `Sen ${formName.trim()}'sın. ${formDesc.trim()} Bu kişiliği yansıtarak kullanıcıyla samimi, gerçekçi ve ilgi çekici bir şekilde sohbet et.`,
+      image: formPhoto ? { uri: formPhoto } : null,
+      noImage: !formPhoto,
+      tags: [],
+      gender: "female",
+      isPremium: false,
+      gradientColors: CUSTOM_GRADIENTS[gradIdx],
+      isCustom: true,
+      ownerId: user.id,
+    });
+    setFormCreating(false);
+    setShowCreateSheet(false);
+    Alert.alert(t("explore.customSuccess"), t("explore.customSuccessMsg"));
+  };
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -370,15 +457,111 @@ export default function ExploreScreen() {
       </View>
 
       <FlatList
-        data={filtered}
+        data={allChars}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         numColumns={2}
         ListHeaderComponent={<TarotBanner />}
-        contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 120 }]}
         columnWrapperStyle={styles.row}
         showsVerticalScrollIndicator={false}
       />
+
+      <Pressable
+        onPress={handleFabPress}
+        style={[styles.fab, { bottom: insets.bottom + 90 }]}
+      >
+        <LinearGradient colors={["#7C3AED", "#A855F7"]} style={styles.fabGradient}>
+          <Feather name="plus" size={26} color="#fff" />
+        </LinearGradient>
+      </Pressable>
+
+      <Modal
+        visible={showCreateSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCreateSheet(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.sheetOverlayWrap}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <Pressable style={styles.sheetOverlay} onPress={() => setShowCreateSheet(false)} />
+          <View style={[styles.createSheet, { backgroundColor: isDark ? "#1C1C2E" : "#F2F2F7", paddingBottom: insets.bottom + 24 }]}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetTitleRow}>
+              <LinearGradient colors={["#7C3AED", "#A855F7"]} style={styles.sheetTitleIcon}>
+                <Feather name="user-plus" size={18} color="#fff" />
+              </LinearGradient>
+              <View>
+                <Text style={[styles.sheetTitle, { color: colors.text.primary }]}>{t("explore.createChar")}</Text>
+                <View style={styles.vipBadge}>
+                  <Feather name="star" size={10} color="#FFD700" />
+                  <Text style={styles.vipBadgeText}>VIP</Text>
+                </View>
+              </View>
+            </View>
+
+            <Pressable onPress={handlePickPhoto} style={[styles.photoPickerBtn, { borderColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" }]}>
+              {formPhoto ? (
+                <Image source={{ uri: formPhoto }} style={styles.photoPickerImg} />
+              ) : (
+                <View style={styles.photoPickerEmpty}>
+                  <Feather name="camera" size={24} color={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.3)"} />
+                  <Text style={[styles.photoPickerLabel, { color: colors.text.tertiary }]}>{t("explore.customPhoto")}</Text>
+                </View>
+              )}
+            </Pressable>
+
+            <View style={styles.formRow}>
+              <View style={[styles.formField, { flex: 2, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}>
+                <TextInput
+                  placeholder={t("explore.customName")}
+                  placeholderTextColor={colors.text.tertiary}
+                  value={formName}
+                  onChangeText={setFormName}
+                  style={[styles.formInput, { color: colors.text.primary }]}
+                  maxLength={30}
+                />
+              </View>
+              <View style={[styles.formField, { flex: 1, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}>
+                <TextInput
+                  placeholder={t("explore.customAge")}
+                  placeholderTextColor={colors.text.tertiary}
+                  value={formAge}
+                  onChangeText={(v) => setFormAge(v.replace(/[^0-9]/g, ""))}
+                  style={[styles.formInput, { color: colors.text.primary }]}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                />
+              </View>
+            </View>
+
+            <View style={[styles.formField, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)", minHeight: 80 }]}>
+              <TextInput
+                placeholder={t("explore.customDesc")}
+                placeholderTextColor={colors.text.tertiary}
+                value={formDesc}
+                onChangeText={setFormDesc}
+                style={[styles.formInput, { color: colors.text.primary }]}
+                multiline
+                maxLength={300}
+                textAlignVertical="top"
+              />
+            </View>
+
+            <Pressable
+              onPress={handleCreateChar}
+              disabled={formCreating}
+              style={({ pressed }) => [styles.createBtn, pressed && { opacity: 0.8 }]}
+            >
+              <LinearGradient colors={["#7C3AED", "#A855F7"]} style={styles.createBtnGrad}>
+                <Text style={styles.createBtnText}>{formCreating ? "..." : t("explore.customCreate")}</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </BackgroundGradient>
   );
 }
@@ -525,4 +708,129 @@ const styles = StyleSheet.create({
   grid: { paddingHorizontal: 14, paddingTop: 4 },
   row: { justifyContent: "space-between" },
   cardWrapper: { flex: 1, maxWidth: "50%" },
+
+  fab: {
+    position: "absolute",
+    right: 20,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  fabGradient: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  sheetOverlayWrap: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  sheetOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  createSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    gap: 14,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(128,128,128,0.4)",
+    alignSelf: "center",
+    marginBottom: 8,
+  },
+  sheetTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  sheetTitleIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.4,
+  },
+  vipBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginTop: 2,
+  },
+  vipBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: "#FFD700",
+  },
+  photoPickerBtn: {
+    alignSelf: "center",
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  photoPickerImg: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 42,
+  },
+  photoPickerEmpty: {
+    alignItems: "center",
+    gap: 4,
+  },
+  photoPickerLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    textAlign: "center",
+  },
+  formRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  formField: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  formInput: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+  },
+  createBtn: {
+    borderRadius: 14,
+    overflow: "hidden",
+    marginTop: 4,
+  },
+  createBtnGrad: {
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  createBtnText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    letterSpacing: -0.3,
+  },
 });
