@@ -75,7 +75,7 @@ export default function MarketScreen() {
   const { tab: initialTab } = useLocalSearchParams<{ tab?: string }>();
   const { coins, purchaseGift, getInventoryCount, addCoins } = useGifts();
   const { isDark, colors } = useTheme();
-  const { user, isVipActive, activateVip } = useAuth();
+  const { user, isVipActive } = useAuth();
   const { t } = useI18n();
   const validTabs = ["premium", "gifts", "coins"] as const;
   const [activeTab, setActiveTab] = useState<"premium" | "gifts" | "coins">(
@@ -202,22 +202,7 @@ export default function MarketScreen() {
                       Alert.alert(t("market.alreadyVip"), t("market.alreadyVipMessage"));
                       return;
                     }
-                    const planId = plan.id as "weekly" | "monthly" | "yearly";
-                    Alert.alert(
-                      `${t(plan.nameKey as any)} Plan`,
-                      t("market.confirmPlan", { plan: t(plan.nameKey as any), price: plan.price, period: t(plan.periodKey as any) }),
-                      [
-                        { text: t("common.cancel"), style: "cancel" },
-                        {
-                          text: t("market.activate"),
-                          onPress: async () => {
-                            await activateVip(planId);
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            Alert.alert(t("market.vipActivated"), t("market.vipActivatedMessage"));
-                          },
-                        },
-                      ]
-                    );
+                    Alert.alert(t("market.comingSoon"), t("market.comingSoonMessage"));
                   }}
                   style={({ pressed }) => [styles.planCard, pressed && { opacity: 0.85 }]}
                 >

@@ -26,6 +26,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { getCharacter } from "@/constants/characters";
+import { useCustomChars } from "@/contexts/CustomCharContext";
 import { useCharacterSettings } from "@/hooks/useCharacterSettings";
 import { useAutoMessages } from "@/hooks/useAutoMessages";
 import { useChatContext } from "@/contexts/ChatContext";
@@ -42,7 +43,9 @@ const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 export default function CharacterProfileScreen() {
   const { characterId } = useLocalSearchParams<{ characterId: string }>();
-  const character = getCharacter(characterId);
+  const { customChars } = useCustomChars();
+  const builtinChar = getCharacter(characterId);
+  const character = builtinChar ?? customChars.find(c => c.id === characterId);
   const insets = useSafeAreaInsets();
   const { user, isVipActive } = useAuth();
   const { isDark, colors } = useTheme();
@@ -80,10 +83,13 @@ export default function CharacterProfileScreen() {
 
   if (!character) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F2F2F7", justifyContent: "center", alignItems: "center" }]}>
         <Pressable onPress={() => router.back()} style={[styles.closeBtn, { top: topPad + 12 }]}>
-          <Feather name="x" size={18} color="#fff" />
+          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+          <Feather name="chevron-down" size={20} color="#fff" />
         </Pressable>
+        <Feather name="user-x" size={48} color={colors.text.tertiary} />
+        <Text style={{ color: colors.text.secondary, fontFamily: "Inter_500Medium", fontSize: 16, marginTop: 16 }}>Karakter bulunamadı</Text>
       </View>
     );
   }

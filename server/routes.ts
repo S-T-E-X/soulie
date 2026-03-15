@@ -6,6 +6,8 @@ import { speechToText, ensureCompatibleFormat, textToSpeech } from "./replit_int
 
 let globalSystemPromptOverride: string = "";
 
+const usersRegistry: Map<string, Record<string, unknown>> = new Map();
+
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -480,6 +482,20 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
       console.error("Voice chat error:", error);
       res.status(500).json({ error: "Voice chat failed" });
     }
+  });
+
+  app.post("/api/users/sync", (req, res) => {
+    const user = req.body;
+    if (!user || typeof user !== "object" || !user.id) {
+      return res.status(400).json({ error: "user.id required" });
+    }
+    usersRegistry.set(user.id, { ...user, _syncedAt: Date.now() });
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/users", (req, res) => {
+    const users = Array.from(usersRegistry.values()).sort((a: any, b: any) => (b._syncedAt ?? 0) - (a._syncedAt ?? 0));
+    res.json({ users });
   });
 
   app.get("/api/admin/system-prompt", (req, res) => {

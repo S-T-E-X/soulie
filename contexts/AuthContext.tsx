@@ -8,6 +8,7 @@ import React, {
   ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApiUrl } from "@/lib/query-client";
 
 export type UserLanguage = "en" | "tr" | "de" | "zh" | "ko" | "es" | "ru";
 export type UserGender = "male" | "female" | "other" | "prefer_not_to_say";
@@ -49,6 +50,17 @@ interface AuthContextValue {
 
 const AUTH_STORAGE_KEY = "lumina_auth_user";
 const USERS_DB_KEY = "soulie_users_db_v1";
+
+async function syncUserToServer(user: User) {
+  try {
+    const url = new URL("/api/users/sync", getApiUrl());
+    await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(user),
+    });
+  } catch {}
+}
 
 const ALL_STORAGE_KEYS = [
   "lumina_auth_user",
@@ -118,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (idx >= 0) users[idx] = newUser; else users.push(newUser);
       await AsyncStorage.setItem(USERS_DB_KEY, JSON.stringify(users));
     } catch {}
+    syncUserToServer(newUser);
     setUser(newUser);
   }, []);
 
@@ -132,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (idx >= 0) users[idx] = updated; else users.push(updated);
         AsyncStorage.setItem(USERS_DB_KEY, JSON.stringify(users)).catch(() => {});
       }).catch(() => {});
+      syncUserToServer(updated);
       return updated;
     });
   }, []);

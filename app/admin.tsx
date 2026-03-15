@@ -157,10 +157,25 @@ export default function AdminScreen() {
       if (q) setQuota(JSON.parse(q));
       if (cs) setCharSettings(JSON.parse(cs));
       if (sk) setStreaks(JSON.parse(sk));
-      if (usersRaw) {
-        setUsersList(JSON.parse(usersRaw));
-      } else if (user) {
-        setUsersList([user]);
+
+      let localUsers: User[] = usersRaw ? JSON.parse(usersRaw) : (user ? [user] : []);
+
+      try {
+        const url = new URL("/api/admin/users", getApiUrl());
+        const res = await fetch(url.toString());
+        if (res.ok) {
+          const data = await res.json();
+          const serverUsers: User[] = data.users ?? [];
+          const merged = [...serverUsers];
+          localUsers.forEach(lu => {
+            if (!merged.find(su => su.id === lu.id)) merged.push(lu);
+          });
+          setUsersList(merged.length > 0 ? merged : (user ? [user] : []));
+        } else {
+          setUsersList(localUsers.length > 0 ? localUsers : (user ? [user] : []));
+        }
+      } catch {
+        setUsersList(localUsers.length > 0 ? localUsers : (user ? [user] : []));
       }
     } catch {}
     setLoaded(true);
