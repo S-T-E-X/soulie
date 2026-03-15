@@ -25,13 +25,17 @@ import { useChatContext } from "@/contexts/ChatContext";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const SETTINGS_KEY = "soulie_settings_v1";
-const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
+const LEVEL_XP_TABLE = [
+  0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750, 3300, 3900, 4550, 5250, 6000,
+  6800, 7650, 8550, 9500, 10500, 11550, 12650, 13800, 15000, 16250, 17550, 18900, 20300, 21750, 23250, 24800,
+];
 
 function getLevelInfo(xp: number) {
   let level = 1;
   for (let i = 0; i < LEVEL_XP_TABLE.length - 1; i++) {
     if (xp >= LEVEL_XP_TABLE[i + 1]) { level = i + 2; } else { break; }
   }
+  level = Math.min(level, 32);
   const currentLevelXp = LEVEL_XP_TABLE[level - 1];
   const nextLevelXp = LEVEL_XP_TABLE[level] ?? LEVEL_XP_TABLE[LEVEL_XP_TABLE.length - 1];
   const progress = Math.min((xp - currentLevelXp) / (nextLevelXp - currentLevelXp), 1);
@@ -41,6 +45,11 @@ function getLevelInfo(xp: number) {
 const LEVEL_NAMES: Record<number, string> = {
   1: "Yeni Ruh", 2: "Meraklı", 3: "Samimi", 4: "Bağlı", 5: "Güvenilir",
   6: "Yakın Dost", 7: "Sırdaş", 8: "Sadık", 9: "Ruh Eşi", 10: "Efsane",
+  11: "Tanrıça", 12: "Yıldız", 13: "Kraliçe", 14: "İlahi", 15: "Efsanevi",
+  16: "Mükemmel", 17: "Masalı", 18: "Kutsal", 19: "Sonsuz", 20: "Evrenim",
+  21: "Kozmik", 22: "Yankı", 23: "Açılış", 24: "Mabet", 25: "Diriliş",
+  26: "Fırtına", 27: "Bereket", 28: "Işık", 29: "Özgürlük", 30: "Nirvana",
+  31: "Ekstasi", 32: "Tanrı",
 };
 
 function LevelCard({ xp, isDark }: { xp: number; isDark: boolean }) {
@@ -64,14 +73,14 @@ function LevelCard({ xp, isDark }: { xp: number; isDark: boolean }) {
   const cardBg = isDark ? "rgba(28,28,48,0.9)" : "rgba(255,255,255,0.9)";
   const borderClr = isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.5)";
 
+  const levelImage = require(`@/assets/levels/lvl${level}.png`);
+
   return (
     <AnimatedRN.View entering={FadeInDown.delay(40).springify().damping(18)} style={[styles.levelCard, { borderColor: borderClr }]}>
       <LinearGradient colors={isDark ? ["rgba(35,35,58,0.95)", "rgba(28,28,48,0.9)"] : ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.75)"]} style={styles.levelGradient}>
         <View style={styles.levelTopRow}>
           <View style={styles.levelBadge}>
-            <LinearGradient colors={["#007AFF", "#0059C4"]} style={styles.levelBadgeGradient}>
-              <Text style={styles.levelBadgeNumber}>{level}</Text>
-            </LinearGradient>
+            <Image source={levelImage} style={styles.levelBadgeImage} />
           </View>
           <View style={styles.levelInfo}>
             <View style={styles.levelTitleRow}>
@@ -351,8 +360,7 @@ const styles = StyleSheet.create({
   levelGradient: { padding: 18, gap: 14 },
   levelTopRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   levelBadge: { width: 50, height: 50, borderRadius: 25, overflow: "hidden" },
-  levelBadgeGradient: { flex: 1, justifyContent: "center", alignItems: "center" },
-  levelBadgeNumber: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -0.5 },
+  levelBadgeImage: { width: 50, height: 50, borderRadius: 25 },
   levelInfo: { flex: 1, gap: 3 },
   levelTitleRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
   levelTitle: { fontSize: 16, fontFamily: "Inter_700Bold", letterSpacing: -0.4 },
