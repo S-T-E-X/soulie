@@ -386,7 +386,7 @@ export default function MarketScreen() {
 
             <View style={styles.inventoryNote}>
               <Feather name="info" size={14} color={Colors.text.tertiary} />
-              <Text style={styles.inventoryNoteText}>
+              <Text style={[styles.inventoryNoteText, { color: isDark ? "#FFFFFF" : Colors.text.secondary }]}>
                 {t("market.inventoryNote")}
               </Text>
             </View>
