@@ -315,6 +315,8 @@ export default function TarotScreen() {
   const [tarotData, setTarotData] = useState<any>(null);
   const [showVIPModal, setShowVIPModal] = useState(false);
   const [requiredCount, setRequiredCount] = useState(0);
+  const [isWatchingAd, setIsWatchingAd] = useState(false);
+  const [adCountdown, setAdCountdown] = useState(5);
 
   const luckyCard = getLuckyCard();
 
@@ -352,6 +354,24 @@ export default function TarotScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setPhase("picking");
   }, [alreadyRead, tarotData, isVipActive]);
+
+  const handleWatchAdForTarot = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsWatchingAd(true);
+    setAdCountdown(5);
+    let count = 5;
+    const iv = setInterval(() => {
+      count -= 1;
+      setAdCountdown(count);
+      if (count <= 0) {
+        clearInterval(iv);
+        setIsWatchingAd(false);
+        setAlreadyRead(false);
+        setShowVIPModal(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    }, 1000);
+  }, []);
 
   const pickCard = useCallback((idx: number) => {
     setSelectedIndices(prev => {
@@ -691,11 +711,23 @@ export default function TarotScreen() {
             <View style={styles.modalIcon}>
               <Feather name="eye" size={32} color="#C084FC" />
             </View>
-            <Text style={styles.modalTitle}>Günlük Falın Tamamlandı</Text>
-            <Text style={styles.modalDesc}>Her gün 1 ücretsiz tarot falı hakkın var. Yarın yeni kartlar seni bekliyor.</Text>
+            <Text style={styles.modalTitle}>{t("tarot.spreadUsed")}</Text>
+            <Text style={styles.modalDesc}>{t("tarot.alreadyRead")}</Text>
+            <Pressable
+              onPress={handleWatchAdForTarot}
+              disabled={isWatchingAd}
+              style={styles.modalWatchAdBtn}
+            >
+              <LinearGradient colors={["#1a1a2e", "#16213e"]} style={styles.modalWatchAdGrad}>
+                <Feather name="play-circle" size={16} color="#C084FC" />
+                <Text style={styles.modalWatchAdText}>
+                  {isWatchingAd ? `${adCountdown}s` : t("tarot.watchAd")}
+                </Text>
+              </LinearGradient>
+            </Pressable>
             <Pressable onPress={() => setShowVIPModal(false)} style={styles.modalBtn}>
               <LinearGradient colors={["#6B21A8", "#C084FC"]} style={styles.modalBtnGrad}>
-                <Text style={styles.modalBtnText}>Anladım</Text>
+                <Text style={styles.modalBtnText}>{t("tarot.done")}</Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -792,4 +824,7 @@ const styles = StyleSheet.create({
   modalBtn: { borderRadius: 16, overflow: "hidden", width: "100%", marginTop: 8 },
   modalBtnGrad: { alignItems: "center", justifyContent: "center", paddingVertical: 16 },
   modalBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  modalWatchAdBtn: { borderRadius: 16, overflow: "hidden", width: "100%", borderWidth: 1, borderColor: "rgba(192,132,252,0.3)" },
+  modalWatchAdGrad: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14 },
+  modalWatchAdText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#C084FC" },
 });
