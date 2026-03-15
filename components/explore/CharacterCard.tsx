@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   age: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.8)",
+    color: "#ffffff",
   },
   roleBadge: {
     alignSelf: "flex-start",
