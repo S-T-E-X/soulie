@@ -10,6 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "@/contexts/ThemeContext";
 
 function Dot({ delay }: { delay: number }) {
   const opacity = useSharedValue(0.3);
@@ -43,16 +44,20 @@ function Dot({ delay }: { delay: number }) {
 }
 
 export function TypingIndicator() {
+  const { isDark, colors } = useTheme();
   return (
     <View style={styles.row}>
       <View style={styles.avatarContainer}>
         <LinearGradient colors={["#4FC3F7", "#007AFF"]} style={styles.avatar} />
       </View>
-      <View style={styles.bubble}>
+      <View style={[styles.bubble, {
+        borderColor: isDark ? colors.border : "rgba(255, 255, 255, 0.5)",
+        backgroundColor: isDark ? colors.aiBubble : "rgba(255, 255, 255, 0.6)",
+      }]}>
         {Platform.OS === "ios" ? (
-          <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={40} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
         ) : (
-          <View style={[StyleSheet.absoluteFill, styles.fallback]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? colors.surfaceStrong : "rgba(255, 255, 255, 0.82)" }]} />
         )}
         <View style={styles.dotsContainer}>
           <Dot delay={0} />

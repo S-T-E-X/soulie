@@ -16,6 +16,7 @@ import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
+import { useTheme } from "@/contexts/ThemeContext";
 import { type Conversation } from "@/contexts/ChatContext";
 
 interface Props {
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export function ConversationCard({ conversation, onPress, onDelete }: Props) {
+  const { isDark, colors } = useTheme();
   const scale = useSharedValue(1);
   const deleteScale = useSharedValue(1);
 
@@ -61,34 +63,37 @@ export function ConversationCard({ conversation, onPress, onDelete }: Props) {
         onPressOut={handlePressOut}
         style={styles.pressable}
       >
-        <View style={styles.card}>
+        <View style={[styles.card, {
+          borderColor: isDark ? colors.border : "rgba(255,255,255,0.5)",
+          backgroundColor: isDark ? colors.surface : "rgba(255,255,255,0.58)",
+        }]}>
           {Platform.OS === "ios" ? (
-            <BlurView intensity={35} tint="light" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={35} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
           ) : (
-            <View style={[StyleSheet.absoluteFill, styles.fallback]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? colors.surfaceStrong : "rgba(255,255,255,0.85)" }]} />
           )}
           <View style={styles.content}>
-            <View style={styles.iconCircle}>
-              <Feather name="message-circle" size={16} color={Colors.accent} />
+            <View style={[styles.iconCircle, { backgroundColor: isDark ? "rgba(10,132,255,0.15)" : "rgba(0, 122, 255, 0.1)" }]}>
+              <Feather name="message-circle" size={16} color={colors.accent} />
             </View>
             <View style={styles.textContent}>
-              <Text style={styles.title} numberOfLines={1}>
+              <Text style={[styles.title, { color: colors.text.primary }]} numberOfLines={1}>
                 {conversation.title}
               </Text>
               {conversation.lastMessage ? (
-                <Text style={styles.preview} numberOfLines={1}>
+                <Text style={[styles.preview, { color: colors.text.secondary }]} numberOfLines={1}>
                   {conversation.lastMessage}
                 </Text>
               ) : null}
             </View>
             <View style={styles.right}>
-              <Text style={styles.date}>{formatted}</Text>
+              <Text style={[styles.date, { color: colors.text.tertiary }]}>{formatted}</Text>
               <Pressable
                 onPress={handleDelete}
                 hitSlop={12}
                 style={styles.deleteButton}
               >
-                <Feather name="trash-2" size={14} color={Colors.text.tertiary} />
+                <Feather name="trash-2" size={14} color={colors.text.tertiary} />
               </Pressable>
             </View>
           </View>

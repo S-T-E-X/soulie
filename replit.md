@@ -45,9 +45,13 @@ Preferred communication style: Simple, everyday language.
   - `/chat/[id]` — Individual chat screen (dynamic route)
   - `/privacy` — Privacy policy page (modal)
 - **State management:**
-  - `AuthContext` — Manages user session using `AsyncStorage` (no server-side sessions for auth; entirely client-local).
-  - `ChatContext` — Manages conversation list and messages using `AsyncStorage` (`lumina_conversations_v2` key). Conversations are stored locally on the device.
+  - `AuthContext` — Manages user session using `AsyncStorage` (no server-side sessions for auth; entirely client-local). Admin detection via `ADMIN_EMAILS`/`ADMIN_USERNAMES` lists + 7-tap secret on version text in settings.
+  - `ChatContext` — Manages conversation list and messages using `AsyncStorage` (`soulie_conversations_v2` key). Conversations are stored locally on the device.
+  - `GiftContext` — Coin economy + gift inventory using `AsyncStorage` (`soulie_coins_v1` as plain number string, `soulie_inventory_v1`).
+  - `ThemeContext` — Dark/light theme toggle. `useTheme()` provides `{ isDark, colors, toggleTheme }`. Settings stored in `soulie_settings_v1` (darkTheme field).
   - `@tanstack/react-query` — Used for server data fetching via `queryClient`.
+- **Daily Quota:** `useDailyQuota(isVip)` hook manages per-day message limits (15/day free, unlimited for VIP). VIP status read from `user?.isVip` in AuthContext.
+- **Dark Mode:** All chat components (MessageBubble, TypingIndicator, ChatInput, ConversationCard) use `useTheme()` for dynamic colors. Modals (QuotaPopup, VideoVIP) also theme-aware.
 - **UI libraries:** Expo Linear Gradient, Expo Blur, Expo Glass Effect, React Native Reanimated (animations), React Native Gesture Handler, Expo Haptics.
 - **Fonts:** Inter (via `@expo-google-fonts/inter`).
 - **Streaming chat:** The chat screen directly uses `fetch` with SSE (Server-Sent Events) from the Express backend to stream AI responses token-by-token.
@@ -117,7 +121,8 @@ These modules are not all registered in the main `server/routes.ts` but are avai
 - `expo-blur` — BlurView for glassmorphism UI on iOS.
 - `expo-linear-gradient` — Gradient backgrounds and character cards.
 - `expo-notifications` — Local scheduled notifications for auto-message feature.
-- `expo-image-picker` — (dependency present, not actively used in viewed code).
+- `expo-image-picker` — Photo selection in chat (image messages).
+- `expo-file-system` — Base64 image conversion for AI vision (native); web uses FileReader API.
 - `expo-location` — (dependency present, not actively used in viewed code).
 - `expo-splash-screen` — Splash screen management.
 - `expo-font` — Custom font loading.

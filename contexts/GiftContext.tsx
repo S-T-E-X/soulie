@@ -77,7 +77,11 @@ export function GiftProvider({ children }: { children: ReactNode }) {
           AsyncStorage.getItem(COINS_KEY),
           AsyncStorage.getItem(INVENTORY_KEY),
         ]);
-        setCoins(coinsRaw ? parseInt(coinsRaw, 10) : 0);
+        if (coinsRaw) {
+          const parsed = parseInt(coinsRaw, 10);
+          if (!isNaN(parsed)) { setCoins(parsed); }
+          else { try { const obj = JSON.parse(coinsRaw); setCoins(obj.coins ?? 0); } catch { setCoins(0); } }
+        }
         setInventory(invRaw ? JSON.parse(invRaw) : []);
       } catch {}
       setIsLoaded(true);

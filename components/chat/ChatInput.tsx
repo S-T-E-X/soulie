@@ -20,6 +20,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import Colors from "@/constants/colors";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface ReplyPreview {
   content: string;
@@ -33,6 +34,7 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ onSend, disabled, replyTo, onCancelReply }: ChatInputProps) {
+  const { isDark, colors } = useTheme();
   const [text, setText] = useState("");
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -77,12 +79,12 @@ export function ChatInput({ onSend, disabled, replyTo, onCancelReply }: ChatInpu
   return (
     <View style={styles.wrapper}>
       {replyTo ? (
-        <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={styles.replyPreview}>
-          <View style={styles.replyBar} />
-          <Text style={styles.replyLabel}>Yanıtla</Text>
-          <Text style={styles.replyContent} numberOfLines={1}>{replyTo.content}</Text>
+        <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={[styles.replyPreview, { backgroundColor: isDark ? "rgba(10,132,255,0.12)" : "rgba(0,122,255,0.08)" }]}>
+          <View style={[styles.replyBar, { backgroundColor: colors.accent }]} />
+          <Text style={[styles.replyLabel, { color: colors.accent }]}>Yanıtla</Text>
+          <Text style={[styles.replyContent, { color: colors.text.secondary }]} numberOfLines={1}>{replyTo.content}</Text>
           <Pressable onPress={onCancelReply} hitSlop={8}>
-            <Feather name="x" size={15} color={Colors.text.tertiary} />
+            <Feather name="x" size={15} color={colors.text.tertiary} />
           </Pressable>
         </Animated.View>
       ) : null}
@@ -102,33 +104,39 @@ export function ChatInput({ onSend, disabled, replyTo, onCancelReply }: ChatInpu
             <Pressable
               onPress={handlePickImage}
               disabled={disabled}
-              style={({ pressed }) => [styles.sidePhotoButton, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.sidePhotoButton, {
+                backgroundColor: isDark ? colors.surface : "rgba(255,255,255,0.75)",
+                borderColor: isDark ? colors.border : "rgba(255,255,255,0.55)",
+              }, pressed && { opacity: 0.7 }]}
               hitSlop={6}
             >
-              <Feather name="image" size={19} color={disabled ? Colors.text.tertiary : Colors.text.secondary} />
+              <Feather name="image" size={19} color={disabled ? colors.text.tertiary : colors.text.secondary} />
             </Pressable>
           </Animated.View>
         ) : null}
 
-        <View style={[styles.container, hasContent && styles.containerActive]}>
+        <View style={[styles.container, {
+          borderColor: isDark ? colors.border : "rgba(255, 255, 255, 0.3)",
+          backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(255, 255, 255, 0.1)",
+        }, hasContent && styles.containerActive]}>
           {Platform.OS === "ios" ? (
-            <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} pointerEvents="none" />
           ) : (
-            <View style={[StyleSheet.absoluteFill, styles.fallback]} pointerEvents="none" />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? colors.surface : "rgba(255, 255, 255, 0.08)" }]} pointerEvents="none" />
           )}
 
           <TextInput
             ref={inputRef}
-            style={styles.input}
+            style={[styles.input, { color: colors.text.primary }]}
             value={text}
             onChangeText={setText}
             placeholder="Bir şeyler söyle..."
-            placeholderTextColor={Colors.text.tertiary}
+            placeholderTextColor={colors.text.tertiary}
             multiline
             maxLength={2000}
             blurOnSubmit={false}
             returnKeyType="default"
-            keyboardAppearance="light"
+            keyboardAppearance={isDark ? "dark" : "light"}
           />
 
           {!hasContent ? (
@@ -139,7 +147,7 @@ export function ChatInput({ onSend, disabled, replyTo, onCancelReply }: ChatInpu
                 style={({ pressed }) => [styles.inlinePhotoButton, pressed && { opacity: 0.7 }]}
                 hitSlop={6}
               >
-                <Feather name="image" size={20} color={disabled ? Colors.text.tertiary : Colors.text.secondary} />
+                <Feather name="image" size={20} color={disabled ? colors.text.tertiary : colors.text.secondary} />
               </Pressable>
             </Animated.View>
           ) : null}
@@ -150,7 +158,7 @@ export function ChatInput({ onSend, disabled, replyTo, onCancelReply }: ChatInpu
             <Pressable
               onPress={handleSend}
               disabled={!canSend}
-              style={({ pressed }) => [styles.sendButton, pressed && { opacity: 0.8 }]}
+              style={({ pressed }) => [styles.sendButton, { backgroundColor: colors.accent }, pressed && { opacity: 0.8 }]}
               hitSlop={8}
             >
               <Feather name="send" size={17} color="#FFFFFF" />

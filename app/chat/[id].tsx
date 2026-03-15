@@ -39,8 +39,7 @@ import { getCharacter, type Character } from "@/constants/characters";
 import { getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
-
-const IS_VIP = false;
+import { useTheme } from "@/contexts/ThemeContext";
 
 function CharacterAvatar({ character, size = 38 }: { character: Character; size?: number }) {
   if (!character.image) {
@@ -57,6 +56,7 @@ function CharacterAvatar({ character, size = 38 }: { character: Character; size?
 }
 
 function WelcomeMessage({ character, customName }: { character: Character; customName?: string }) {
+  const { colors } = useTheme();
   const displayName = customName || character.name;
   return (
     <Animated.View entering={FadeInUp.springify().damping(18)} style={styles.welcomeContainer}>
@@ -76,15 +76,15 @@ function WelcomeMessage({ character, customName }: { character: Character; custo
           style={styles.welcomeAvatarBorder}
         />
       </View>
-      <Text style={styles.welcomeName}>{displayName}</Text>
+      <Text style={[styles.welcomeName, { color: colors.text.primary }]}>{displayName}</Text>
       <View style={styles.welcomeRoleBadge}>
         <Text style={styles.welcomeRoleText}>{character.shortRole}</Text>
       </View>
-      <Text style={styles.welcomeDesc}>{character.description}</Text>
+      <Text style={[styles.welcomeDesc, { color: colors.text.secondary }]}>{character.description}</Text>
       <View style={styles.tagsRow}>
         {character.tags.map((tag) => (
-          <View key={tag} style={styles.tag}>
-            <Text style={styles.tagText}>{tag}</Text>
+          <View key={tag} style={[styles.tag, { backgroundColor: colors.inputBg }]}>
+            <Text style={[styles.tagText, { color: colors.text.secondary }]}>{tag}</Text>
           </View>
         ))}
       </View>
@@ -107,6 +107,7 @@ function QuotaPopup({
   resetCountdown: string;
   language: string;
 }) {
+  const { isDark, colors } = useTheme();
   const [isWatching, setIsWatching] = React.useState(false);
   const [adCountdown, setAdCountdown] = React.useState(5);
 
@@ -130,21 +131,21 @@ function QuotaPopup({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.quotaBackdrop} pointerEvents="box-none">
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={styles.quotaCard} pointerEvents="box-none">
+        <View style={[styles.quotaCard, { borderColor: isDark ? colors.border : "rgba(0,0,0,0.06)" }]} pointerEvents="box-none">
           {Platform.OS === "ios" ? (
-            <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <BlurView intensity={70} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} pointerEvents="none" />
           ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F8F8FF" }]} pointerEvents="none" />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? colors.surfaceStrong : "#F8F8FF" }]} pointerEvents="none" />
           )}
           <View style={styles.quotaIconWrap} pointerEvents="none">
             <LinearGradient colors={["#FF9500", "#FF6B00"]} style={styles.quotaIconGrad}>
               <Feather name="zap-off" size={26} color="#fff" />
             </LinearGradient>
           </View>
-          <Text style={styles.quotaTitle} pointerEvents="none">
+          <Text style={[styles.quotaTitle, { color: colors.text.primary }]} pointerEvents="none">
             {language === "en" ? "Daily limit reached" : "Günlük limit doldu"}
           </Text>
-          <Text style={styles.quotaDesc} pointerEvents="none">
+          <Text style={[styles.quotaDesc, { color: colors.text.secondary }]} pointerEvents="none">
             {language === "en"
               ? `Free users can send 15 messages per day. Resets in ${resetCountdown}.`
               : `Ücretsiz kullanıcılar günde 15 mesaj gönderebilir. ${resetCountdown} içinde sıfırlanır.`}
@@ -153,7 +154,7 @@ function QuotaPopup({
             onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onGoMarket(); }}
             style={styles.quotaUpgradeBtn}
           >
-            <LinearGradient colors={[Colors.userBubble.from, Colors.userBubble.to]} style={styles.quotaUpgradeBtnGrad}>
+            <LinearGradient colors={[colors.userBubble.from, colors.userBubble.to]} style={styles.quotaUpgradeBtnGrad}>
               <Feather name="star" size={15} color="#fff" />
               <Text style={styles.quotaUpgradeText}>
                 {language === "en" ? "Upgrade to VIP" : "VIP'e Yükselt"}
@@ -163,24 +164,24 @@ function QuotaPopup({
           <Pressable
             onPress={handleWatchAd}
             disabled={isWatching}
-            style={styles.quotaWatchAdBtn}
+            style={[styles.quotaWatchAdBtn, { borderColor: colors.accent + "40", backgroundColor: colors.accent + "08" }]}
           >
             {isWatching ? (
               <View style={styles.quotaWatchAdInner}>
-                <Feather name="film" size={14} color={Colors.accent} />
-                <Text style={styles.quotaWatchAdText}>Reklam izleniyor... {adCountdown}s</Text>
+                <Feather name="film" size={14} color={colors.accent} />
+                <Text style={[styles.quotaWatchAdText, { color: colors.accent }]}>Reklam izleniyor... {adCountdown}s</Text>
               </View>
             ) : (
               <View style={styles.quotaWatchAdInner}>
-                <Feather name="play-circle" size={14} color={Colors.accent} />
-                <Text style={styles.quotaWatchAdText}>
+                <Feather name="play-circle" size={14} color={colors.accent} />
+                <Text style={[styles.quotaWatchAdText, { color: colors.accent }]}>
                   {language === "en" ? "Watch ad (+5 messages)" : "Video izle (+5 mesaj kazan)"}
                 </Text>
               </View>
             )}
           </Pressable>
           <Pressable onPress={onClose} style={styles.quotaCloseBtn} hitSlop={8}>
-            <Text style={styles.quotaCloseText}>
+            <Text style={[styles.quotaCloseText, { color: colors.text.tertiary }]}>
               {language === "en" ? "Later" : "Daha Sonra"}
             </Text>
           </Pressable>
@@ -197,8 +198,9 @@ export default function ChatScreen() {
   const { getConversationByCharacter, createConversationWithMessages, loadConversations, isLoaded } = useChatContext();
   const { settings, isLoaded: settingsLoaded, updateSettings, addMemory, removeMemory } = useCharacterSettings(characterId ?? "");
   const { user } = useAuth();
+  const { isDark, colors } = useTheme();
   const streak = useStreak(characterId ?? "");
-  const quota = useDailyQuota();
+  const quota = useDailyQuota(!!user?.isVip);
 
   const character = characterId ? getCharacter(characterId) : undefined;
 
@@ -274,7 +276,7 @@ export default function ChatScreen() {
     async (text: string, imageUri?: string) => {
       if (isStreaming || !character || !settingsLoaded) return;
 
-      if (!IS_VIP && !quota.canSend) {
+      if (!user?.isVip && !quota.canSend) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         setShowQuotaPopup(true);
         return;
@@ -310,19 +312,31 @@ export default function ChatScreen() {
 
         const convertedMessages = await Promise.all(
           newMessages.map(async (m) => {
-            if (m.imageUri && (m.imageUri.startsWith("file://") || m.imageUri.startsWith("content://"))) {
+            if (!m.imageUri || m.imageUri.startsWith("data:")) return m;
+            if (m.imageUri.startsWith("file://") || m.imageUri.startsWith("content://")) {
               try {
                 const base64 = await FileSystem.readAsStringAsync(m.imageUri, {
                   encoding: FileSystem.EncodingType.Base64,
                 });
-                if (!base64) {
-                  console.error("Base64 conversion failed: empty result");
-                  return { ...m, imageUri: undefined };
-                }
+                if (!base64) return { ...m, imageUri: undefined };
                 const mimeType = m.imageUri.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
                 return { ...m, imageUri: `data:${mimeType};base64,${base64}` };
-              } catch (err) {
-                console.error("Error converting image to base64:", err);
+              } catch {
+                return { ...m, imageUri: undefined };
+              }
+            }
+            if (Platform.OS === "web" && m.imageUri.startsWith("blob:")) {
+              try {
+                const resp = await globalThis.fetch(m.imageUri);
+                const blob = await resp.blob();
+                const reader = new FileReader();
+                const dataUrl: string = await new Promise((resolve, reject) => {
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.onerror = reject;
+                  reader.readAsDataURL(blob);
+                });
+                return { ...m, imageUri: dataUrl };
+              } catch {
                 return { ...m, imageUri: undefined };
               }
             }
@@ -450,7 +464,7 @@ export default function ChatScreen() {
     return (
       <BackgroundGradient>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <Text style={{ color: Colors.text.secondary, fontFamily: "Inter_400Regular" }}>
+          <Text style={{ color: "#6B6B6E", fontFamily: "Inter_400Regular" }}>
             Karakter bulunamadı
           </Text>
         </View>
@@ -460,15 +474,15 @@ export default function ChatScreen() {
 
   return (
     <BackgroundGradient>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={colors.statusBar} />
 
-      <View style={[styles.header, { paddingTop: topPad + 10 }]}>
+      <View style={[styles.header, { paddingTop: topPad + 10, borderBottomColor: isDark ? colors.borderSubtle : "rgba(0,0,0,0.05)" }]}>
         {Platform.OS === "ios" ? (
-          <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={50} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
         ) : null}
         <View style={styles.headerContent}>
           <Pressable onPress={() => router.back()} style={styles.headerSideBtn} hitSlop={8}>
-            <Feather name="chevron-left" size={22} color={Colors.text.primary} />
+            <Feather name="chevron-left" size={22} color={colors.text.primary} />
           </Pressable>
 
           <Pressable
@@ -485,16 +499,16 @@ export default function ChatScreen() {
             </View>
             <View>
               <View style={styles.headerNameRow}>
-                <Text style={styles.headerName}>{displayName}</Text>
+                <Text style={[styles.headerName, { color: colors.text.primary }]}>{displayName}</Text>
                 {streak.streak >= 2 ? (
                   <View style={styles.headerStreakBadge}>
                     <Feather name="zap" size={9} color="#FF9500" />
                     <Text style={styles.headerStreakText}>{streak.streak}</Text>
                   </View>
                 ) : null}
-                <Feather name="chevron-right" size={13} color={Colors.text.tertiary} />
+                <Feather name="chevron-right" size={13} color={colors.text.tertiary} />
               </View>
-              <Text style={styles.headerStatus}>
+              <Text style={[styles.headerStatus, { color: colors.text.secondary }]}>
                 {isStreaming ? "yazıyor..." : character.shortRole}
               </Text>
             </View>
@@ -503,7 +517,7 @@ export default function ChatScreen() {
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              if (!IS_VIP) {
+              if (!user?.isVip) {
                 setShowVideoVIPModal(true);
               } else {
                 router.push({ pathname: "/video-chat/[characterId]", params: { characterId: character.id } });
@@ -512,7 +526,7 @@ export default function ChatScreen() {
             style={styles.headerSideBtn}
             hitSlop={8}
           >
-            <Feather name="video" size={18} color={IS_VIP ? Colors.text.secondary : "#FFD700"} />
+            <Feather name="video" size={18} color={user?.isVip ? colors.text.secondary : "#FFD700"} />
           </Pressable>
 
           <Pressable
@@ -523,7 +537,7 @@ export default function ChatScreen() {
             style={styles.headerSideBtn}
             hitSlop={8}
           >
-            <Feather name="sliders" size={19} color={Colors.text.secondary} />
+            <Feather name="sliders" size={19} color={colors.text.secondary} />
           </Pressable>
         </View>
         <RelationshipBar xp={userMessageCount * 10} />
@@ -568,12 +582,12 @@ export default function ChatScreen() {
         />
 
         <View style={styles.inputArea}>
-          {!IS_VIP && quota.loaded ? (
+          {!user?.isVip && quota.loaded ? (
             <View style={styles.quotaBar}>
               <Feather
                 name={quota.remaining === 0 ? "zap-off" : "zap"}
                 size={11}
-                color={quota.remaining === 0 ? "#FF3B30" : quota.remaining <= 3 ? "#FF9500" : Colors.text.tertiary}
+                color={quota.remaining === 0 ? "#FF3B30" : quota.remaining <= 3 ? "#FF9500" : colors.text.tertiary}
               />
               <Text style={[styles.quotaBarText, quota.remaining === 0 && { color: "#FF3B30" }, quota.remaining <= 3 && quota.remaining > 0 && { color: "#FF9500" }]}>
                 {quota.remaining > 0
@@ -582,7 +596,7 @@ export default function ChatScreen() {
               </Text>
               {quota.remaining === 0 ? (
                 <Pressable onPress={() => setShowQuotaPopup(true)} hitSlop={4}>
-                  <Text style={styles.quotaBarVipLink}>VIP'e geç</Text>
+                  <Text style={[styles.quotaBarVipLink, { color: colors.accent }]}>VIP'e geç</Text>
                 </Pressable>
               ) : null}
             </View>
@@ -645,19 +659,19 @@ export default function ChatScreen() {
       <Modal visible={showVideoVIPModal} transparent animationType="fade" onRequestClose={() => setShowVideoVIPModal(false)} statusBarTranslucent>
         <View style={styles.quotaBackdrop} pointerEvents="box-none">
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowVideoVIPModal(false)} />
-          <View style={styles.quotaCard} pointerEvents="box-none">
+          <View style={[styles.quotaCard, { borderColor: isDark ? colors.border : "rgba(0,0,0,0.06)" }]} pointerEvents="box-none">
             {Platform.OS === "ios" ? (
-              <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
+              <BlurView intensity={70} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} pointerEvents="none" />
             ) : (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F8F8FF" }]} pointerEvents="none" />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? colors.surfaceStrong : "#F8F8FF" }]} pointerEvents="none" />
             )}
             <View style={styles.quotaIconWrap} pointerEvents="none">
               <LinearGradient colors={["#FFD700", "#FFB800"]} style={styles.quotaIconGrad}>
                 <Feather name="video" size={26} color="#fff" />
               </LinearGradient>
             </View>
-            <Text style={styles.quotaTitle} pointerEvents="none">Video Sohbet VIP'e Özel</Text>
-            <Text style={styles.quotaDesc} pointerEvents="none">
+            <Text style={[styles.quotaTitle, { color: colors.text.primary }]} pointerEvents="none">Video Sohbet VIP'e Özel</Text>
+            <Text style={[styles.quotaDesc, { color: colors.text.secondary }]} pointerEvents="none">
               {character?.name} ile görüntülü sohbet başlatmak için VIP üyeliğe geçmelisin.
             </Text>
             <Pressable
@@ -674,7 +688,7 @@ export default function ChatScreen() {
               </LinearGradient>
             </Pressable>
             <Pressable onPress={() => setShowVideoVIPModal(false)} style={styles.quotaCloseBtn} hitSlop={8}>
-              <Text style={styles.quotaCloseText}>Daha Sonra</Text>
+              <Text style={[styles.quotaCloseText, { color: colors.text.tertiary }]}>Daha Sonra</Text>
             </Pressable>
           </View>
         </View>
@@ -722,7 +736,7 @@ const styles = StyleSheet.create({
     borderRadius: 5.5,
     backgroundColor: "#34C759",
     borderWidth: 2,
-    borderColor: "#FFFFFF",
+    borderColor: "transparent",
   },
   headerNameRow: {
     flexDirection: "row",
@@ -732,7 +746,6 @@ const styles = StyleSheet.create({
   headerName: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
-    color: Colors.text.primary,
     letterSpacing: -0.2,
   },
   headerStreakBadge: {
@@ -832,7 +845,6 @@ const styles = StyleSheet.create({
   welcomeName: {
     fontSize: 22,
     fontFamily: "Inter_700Bold",
-    color: Colors.text.primary,
     letterSpacing: -0.6,
     textAlign: "center",
   },

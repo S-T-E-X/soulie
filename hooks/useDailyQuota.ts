@@ -3,7 +3,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STORAGE_KEY = "soulie_daily_quota_v1";
 const DAILY_LIMIT = 15;
-const IS_VIP = false;
 
 type QuotaData = {
   date: string;
@@ -34,7 +33,7 @@ async function loadQuota(): Promise<QuotaData> {
   }
 }
 
-export function useDailyQuota() {
+export function useDailyQuota(isVip: boolean = false) {
   const [quota, setQuota] = useState<QuotaData>({ date: getToday(), count: 0, bonusMessages: 0 });
   const [loaded, setLoaded] = useState(false);
 
@@ -52,9 +51,9 @@ export function useDailyQuota() {
   const today = getToday();
   const used = quota.date === today ? quota.count : 0;
   const bonus = quota.date === today ? (quota.bonusMessages ?? 0) : 0;
-  const totalLimit = IS_VIP ? 999 : DAILY_LIMIT + bonus;
-  const remaining = IS_VIP ? 999 : Math.max(0, totalLimit - used);
-  const canSend = IS_VIP || remaining > 0;
+  const totalLimit = isVip ? 999 : DAILY_LIMIT + bonus;
+  const remaining = isVip ? 999 : Math.max(0, totalLimit - used);
+  const canSend = isVip || remaining > 0;
   const resetTime = getResetTime();
 
   const markMessageSent = useCallback(async () => {
@@ -96,7 +95,7 @@ export function useDailyQuota() {
     DAILY_LIMIT,
     totalLimit,
     bonus,
-    isVip: IS_VIP,
+    isVip,
     loaded,
     markMessageSent,
     addBonusMessages,

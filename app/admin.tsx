@@ -147,7 +147,11 @@ export default function AdminScreen() {
         AsyncStorage.getItem(STREAKS_KEY),
       ]);
       if (fb) setFeedbackList(JSON.parse(fb));
-      if (c) setCoins(JSON.parse(c).coins ?? 0);
+      if (c) {
+        const parsed = parseInt(c, 10);
+        if (!isNaN(parsed)) { setCoins(parsed); }
+        else { try { const obj = JSON.parse(c); setCoins(obj.coins ?? 0); } catch { setCoins(0); } }
+      }
       if (inv) setInventory(JSON.parse(inv));
       if (q) setQuota(JSON.parse(q));
       if (cs) setCharSettings(JSON.parse(cs));
@@ -210,7 +214,7 @@ export default function AdminScreen() {
     const amount = parseInt(coinInput, 10);
     if (isNaN(amount) || amount <= 0) { Alert.alert("Geçersiz miktar"); return; }
     const newCoins = coins + amount;
-    await AsyncStorage.setItem(COINS_KEY, JSON.stringify({ coins: newCoins }));
+    await AsyncStorage.setItem(COINS_KEY, String(newCoins));
     setCoins(newCoins);
     setCoinInput("");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

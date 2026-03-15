@@ -15,6 +15,7 @@ import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
+import { useTheme } from "@/contexts/ThemeContext";
 import { GIFTS } from "@/contexts/GiftContext";
 
 export type Message = {
@@ -51,6 +52,7 @@ function GiftBubble({ giftId, isUser }: { giftId: string; isUser: boolean }) {
 }
 
 function SwipeableAIBubble({ message, avatarImage, onReply, onDelete }: Props) {
+  const { isDark, colors } = useTheme();
   const translateX = useRef(new Animated.Value(0)).current;
   const triggered = useRef(false);
 
@@ -114,13 +116,16 @@ function SwipeableAIBubble({ message, avatarImage, onReply, onDelete }: Props) {
         {message.giftId ? (
           <GiftBubble giftId={message.giftId} isUser={false} />
         ) : (
-          <View style={[styles.bubble, styles.bubbleAI]}>
+          <View style={[styles.bubble, styles.bubbleAI, {
+            borderColor: isDark ? colors.border : "rgba(255, 255, 255, 0.5)",
+            backgroundColor: isDark ? colors.aiBubble : "rgba(255, 255, 255, 0.6)",
+          }]}>
             {Platform.OS === "ios" ? (
-              <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
+              <BlurView intensity={40} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} pointerEvents="none" />
             ) : (
-              <View style={[StyleSheet.absoluteFill, styles.aiBlurFallback]} pointerEvents="none" />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? colors.surfaceStrong : "rgba(255, 255, 255, 0.82)" }]} pointerEvents="none" />
             )}
-            <Text style={styles.textAI}>{message.content}</Text>
+            <Text style={[styles.textAI, { color: colors.text.primary }]}>{message.content}</Text>
           </View>
         )}
       </Animated.View>
