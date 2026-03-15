@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import * as FileSystem from "expo-file-system/legacy";
+import * as ImagePicker from "expo-image-picker";
 import {
   View,
   Text,
@@ -11,6 +12,7 @@ import {
   Image,
   Modal,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
@@ -192,6 +194,181 @@ function QuotaPopup({
   );
 }
 
+function FortuneSheet({
+  visible,
+  onClose,
+  onSubmit,
+  characterName,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSubmit: (images: string[]) => void;
+  characterName: string;
+}) {
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [images, setImages] = useState<(string | null)[]>([null, null, null]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!visible) {
+      setImages([null, null, null]);
+      setLoading(false);
+    }
+  }, [visible]);
+
+  const pickImage = async (index: number) => {
+    if (Platform.OS !== "web") {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("İzin gerekli", "Fotoğraf seçmek için galeri izni vermelisin.");
+        return;
+      }
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      quality: 0.7,
+      base64: false,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      const updated = [...images];
+      updated[index] = result.assets[0].uri;
+      setImages(updated);
+    }
+  };
+
+  const allSelected = images.every((img) => img !== null);
+
+  const handleSubmit = async () => {
+    if (!allSelected || loading) return;
+    setLoading(true);
+    const base64Images: string[] = [];
+    for (const uri of images) {
+      if (!uri) continue;
+      try {
+        if (Platform.OS === "web" && uri.startsWith("blob:")) {
+          const resp = await globalThis.fetch(uri);
+          const blob = await resp.blob();
+          const reader = new FileReader();
+          const dataUrl: string = await new Promise((resolve, reject) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          base64Images.push(dataUrl);
+        } else if (uri.startsWith("file://") || uri.startsWith("content://")) {
+          const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+          const mimeType = uri.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
+          base64Images.push(`data:${mimeType};base64,${base64}`);
+        } else {
+          base64Images.push(uri);
+        }
+      } catch {
+        base64Images.push(uri);
+      }
+    }
+    setLoading(false);
+    onClose();
+    onSubmit(base64Images);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={fortuneStyles.overlay} onPress={onClose} />
+      <View style={[fortuneStyles.sheet, { backgroundColor: isDark ? "#1C1C1E" : "#F2F2F7", paddingBottom: insets.bottom + 24 }]}>
+        <View style={fortuneStyles.handle} />
+        <View style={fortuneStyles.sheetHeader}>
+          <Text style={[fortuneStyles.sheetTitle, { color: colors.text.primary }]}>☕ Kahve Falı</Text>
+          <Text style={[fortuneStyles.sheetSubtitle, { color: colors.text.secondary }]}>
+            Fincanının 3 farklı açıdan fotoğrafını yükle
+          </Text>
+        </View>
+
+        <View style={fortuneStyles.imageGrid}>
+          {images.map((img, i) => (
+            <Pressable
+              key={i}
+              onPress={() => pickImage(i)}
+              style={({ pressed }) => [
+                fortuneStyles.imageSlot,
+                { borderColor: img ? "#8B5CF6" : isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)", backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" },
+                pressed && { opacity: 0.75 },
+              ]}
+            >
+              {img ? (
+                <Image source={{ uri: img }} style={fortuneStyles.imagePreview} />
+              ) : (
+                <View style={fortuneStyles.imageEmpty}>
+                  <Feather name="camera" size={22} color={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)"} />
+                  <Text style={[fortuneStyles.imageSlotLabel, { color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.3)" }]}>
+                    {i === 0 ? "Fincan üstü" : i === 1 ? "Fincan içi" : "Fincan altı"}
+                  </Text>
+                </View>
+              )}
+              {img && (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    const updated = [...images];
+                    updated[i] = null;
+                    setImages(updated);
+                  }}
+                  style={fortuneStyles.removeBtn}
+                  hitSlop={8}
+                >
+                  <Feather name="x" size={12} color="#fff" />
+                </Pressable>
+              )}
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={[fortuneStyles.hint, { color: colors.text.tertiary }]}>
+          {allSelected ? "Tüm fotoğraflar hazır — fala bakılmaya hazır!" : `${images.filter(Boolean).length}/3 fotoğraf yüklendi`}
+        </Text>
+
+        <Pressable
+          onPress={handleSubmit}
+          disabled={!allSelected || loading}
+          style={({ pressed }) => [
+            fortuneStyles.submitBtn,
+            { backgroundColor: allSelected ? "#8B5CF6" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)", opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Text style={[fortuneStyles.submitBtnText, { color: allSelected ? "#fff" : colors.text.tertiary }]}>
+                {allSelected ? "Falıma Bak ✨" : "Fotoğrafları seç"}
+              </Text>
+            </>
+          )}
+        </Pressable>
+      </View>
+    </Modal>
+  );
+}
+
+const fortuneStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)" },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 20 },
+  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "rgba(120,120,128,0.3)", alignSelf: "center", marginBottom: 16 },
+  sheetHeader: { alignItems: "center", marginBottom: 24 },
+  sheetTitle: { fontSize: 20, fontFamily: "Inter_700Bold", marginBottom: 6 },
+  sheetSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
+  imageGrid: { flexDirection: "row", gap: 12, justifyContent: "space-between", marginBottom: 16 },
+  imageSlot: { flex: 1, aspectRatio: 0.9, borderRadius: 14, borderWidth: 1.5, borderStyle: "dashed", overflow: "hidden", position: "relative" },
+  imagePreview: { width: "100%", height: "100%", borderRadius: 12 },
+  imageEmpty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 6 },
+  imageSlotLabel: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", paddingHorizontal: 4 },
+  removeBtn: { position: "absolute", top: 6, right: 6, width: 20, height: 20, borderRadius: 10, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" },
+  hint: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 20 },
+  submitBtn: { borderRadius: 14, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 },
+  submitBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+});
+
 export default function ChatScreen() {
   const params = useLocalSearchParams<{ characterId: string; id?: string }>();
   const characterId = params.characterId || params.id;
@@ -211,6 +388,7 @@ export default function ChatScreen() {
   const [showTyping, setShowTyping] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [showGifts, setShowGifts] = useState(false);
+  const [showFortuneSheet, setShowFortuneSheet] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
   const [showQuotaPopup, setShowQuotaPopup] = useState(false);
   const [showVideoVIPModal, setShowVideoVIPModal] = useState(false);
@@ -544,6 +722,86 @@ export default function ChatScreen() {
     }
   }, [messages, character, settings, userMessageCount, createConversationWithMessages, updateSettings, user]);
 
+  const handleFortuneTell = useCallback(async (fortuneImages: string[]) => {
+    if (!character) return;
+    setIsStreaming(true);
+    setShowTyping(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const userMsg: Message = {
+      id: generateId(),
+      role: "user",
+      content: "☕ Kahve fincanımın falına bak lütfen.",
+      timestamp: Date.now(),
+    };
+    const withUser = [...messages, userMsg];
+    setMessages(withUser);
+
+    const baseUrl = getApiUrl();
+    try {
+      const response = await fetch(`${baseUrl}api/fortune`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({
+          images: fortuneImages,
+          customName: settings.customName,
+          userLanguage: user?.language ?? "tr",
+        }),
+      });
+
+      if (!response.body) throw new Error("No response body");
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullContent = "";
+      let assistantAdded = false;
+      const assistantId = generateId();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6);
+          if (data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) {
+              fullContent += parsed.content;
+              if (!assistantAdded) {
+                setShowTyping(false);
+                setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: fullContent, timestamp: Date.now() }]);
+                assistantAdded = true;
+              } else {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { ...updated[updated.length - 1], content: fullContent };
+                  return updated;
+                });
+              }
+            }
+          } catch {}
+        }
+      }
+
+      const finalMessages: Message[] = [
+        ...withUser,
+        { id: assistantId, role: "assistant", content: fullContent, timestamp: Date.now() },
+      ];
+      await createConversationWithMessages(character.id, settings.customName || character.name, finalMessages);
+    } catch {
+      setShowTyping(false);
+      setMessages((prev) => [...prev, { id: generateId(), role: "assistant", content: "Falınıza bakarken bir hata oluştu. Tekrar deneyebilirsiniz.", timestamp: Date.now() }]);
+    } finally {
+      setIsStreaming(false);
+      setShowTyping(false);
+    }
+  }, [character, messages, settings, user, createConversationWithMessages]);
+
+  const isSibel = character?.id === "sibel";
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
   const reversedMessages = [...messages].reverse() as BubbleMessage[];
@@ -603,33 +861,49 @@ export default function ChatScreen() {
             </View>
           </Pressable>
 
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              if (!user?.isVip) {
-                setShowVideoVIPModal(true);
-              } else {
-                router.push({ pathname: "/video-chat/[characterId]", params: { characterId: character.id } });
-              }
-            }}
-            style={styles.headerSideBtn}
-            hitSlop={8}
-          >
-            <Feather name="video" size={18} color={user?.isVip ? colors.text.secondary : "#FFD700"} />
-          </Pressable>
+          {isSibel ? (
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setShowFortuneSheet(true);
+              }}
+              style={[styles.headerSideBtn, { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, backgroundColor: "rgba(139,92,246,0.15)", borderRadius: 12 }]}
+              hitSlop={4}
+            >
+              <Text style={{ fontSize: 13 }}>☕</Text>
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#8B5CF6" }}>Fal Baktır</Text>
+            </Pressable>
+          ) : (
+            <>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  if (!user?.isVip) {
+                    setShowVideoVIPModal(true);
+                  } else {
+                    router.push({ pathname: "/video-chat/[characterId]", params: { characterId: character.id } });
+                  }
+                }}
+                style={styles.headerSideBtn}
+                hitSlop={8}
+              >
+                <Feather name="video" size={18} color={user?.isVip ? colors.text.secondary : "#FFD700"} />
+              </Pressable>
 
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowCustomize(true);
-            }}
-            style={styles.headerSideBtn}
-            hitSlop={8}
-          >
-            <Feather name="sliders" size={19} color={colors.text.secondary} />
-          </Pressable>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowCustomize(true);
+                }}
+                style={styles.headerSideBtn}
+                hitSlop={8}
+              >
+                <Feather name="sliders" size={19} color={colors.text.secondary} />
+              </Pressable>
+            </>
+          )}
         </View>
-        <RelationshipBar xp={charXp} />
+        {!isSibel && <RelationshipBar xp={charXp} />}
       </View>
 
       <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={0}>
@@ -726,6 +1000,13 @@ export default function ChatScreen() {
         visible={showGifts}
         onClose={() => setShowGifts(false)}
         onSendGift={handleSendGift}
+      />
+
+      <FortuneSheet
+        visible={showFortuneSheet}
+        onClose={() => setShowFortuneSheet(false)}
+        onSubmit={handleFortuneTell}
+        characterName={settings.customName || character.name}
       />
 
       <QuotaPopup

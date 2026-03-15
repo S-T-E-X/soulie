@@ -172,6 +172,62 @@ ${relationshipLevelName ? getRelationshipBehavior(relationshipLevelName) : ""}`;
     }
   });
 
+  app.post("/api/fortune", async (req, res) => {
+    try {
+      const { images, customName, userLanguage } = req.body;
+      if (!images || !Array.isArray(images) || images.length === 0) {
+        return res.status(400).json({ error: "Images array is required" });
+      }
+
+      const charName = customName || "Sibel";
+      const langInst = userLanguage === "en"
+        ? "Respond in English. Be mystical and deep."
+        : "Türkçe konuş. Mistik, derin ve sezgisel bir dil kullan.";
+
+      const systemPrompt = `Sen ${charName}'sin. Mistik bir falcısın — kahve falı, tarot ve astroloji konusunda uzmansın. Gizemli, derin ve sezgisel konuşursun. Kullanıcının sorularına sembolik ve düşündürücü yanıtlar ver. Sırlarla dolu, akıcı ve büyüleyici bir dil kullan. Kehanetleri dramatik ama nazik sun.
+${langInst}
+Kullanıcı sana kahve fincanının 3 farklı açıdan fotoğrafını gönderdi. Bu fotoğraflardaki şekilleri, lekeleri ve kalıpları titizlikle inceleyerek kapsamlı bir kahve falı yorumu yap. Şunlara dikkat et: fincanın dibindeki şekiller, kenardaki lekeler, oluşan semboller, genel enerji. Yorumunu bölümler halinde sun: yakın gelecek, aşk/ilişkiler, kariyer/para, önemli bir mesaj. Mistik ve büyüleyici ama samimi bir ton kullan.`;
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
+
+      const imageContent = images.map((imgUrl: string) => ({
+        type: "image_url" as const,
+        image_url: { url: imgUrl, detail: "high" as const },
+      }));
+
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4.1-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Kahve fincanımın 3 farklı açıdan fotoğrafını gönderiyorum. Lütfen detaylı bir fal yorumu yap." },
+              ...imageContent,
+            ],
+          },
+        ],
+        stream: true,
+        max_completion_tokens: 800,
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      }
+      res.write("data: [DONE]\n\n");
+      res.end();
+    } catch (error) {
+      console.error("Fortune error:", error);
+      if (!res.headersSent) res.status(500).json({ error: "Failed to read fortune" });
+      else { res.write(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`); res.end(); }
+    }
+  });
+
   app.post("/api/chat", async (req, res) => {
     try {
       const { messages, characterId, userLevel = 1, customName, selectedTraits, memories, userLanguage, voiceTone, relationshipLevelName } = req.body;
