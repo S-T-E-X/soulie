@@ -133,6 +133,7 @@ export default function AdminScreen() {
   const [notifBody, setNotifBody] = useState("");
   const [secretTaps, setSecretTaps] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
 
   const selectedUser = usersList.find(u => u.id === selectedUserId) ?? user;
 
@@ -595,15 +596,43 @@ export default function AdminScreen() {
           {section === "user" && selectedUserId === null && (
             <>
               <SectionTitle title={`Kayıtlı Kullanıcılar (${usersList.length})`} icon="users" />
-              {usersList.length === 0 ? (
-                <Card>
-                  <View style={{ alignItems: "center", padding: 20, gap: 8 }}>
-                    <Feather name="users" size={28} color={TEXT_TER} />
-                    <Text style={styles.subNote}>Henüz kayıtlı kullanıcı yok</Text>
-                  </View>
-                </Card>
-              ) : (
-                usersList.map((u) => (
+              <View style={styles.searchRow}>
+                <Feather name="search" size={15} color={TEXT_TER} />
+                <TextInput
+                  style={styles.searchInput}
+                  value={userSearch}
+                  onChangeText={setUserSearch}
+                  placeholder="İsim veya ID ile ara..."
+                  placeholderTextColor={TEXT_TER}
+                  autoCapitalize="none"
+                  clearButtonMode="while-editing"
+                />
+                {userSearch.length > 0 && (
+                  <Pressable onPress={() => setUserSearch("")} hitSlop={8}>
+                    <Feather name="x" size={14} color={TEXT_TER} />
+                  </Pressable>
+                )}
+              </View>
+              {(() => {
+                const filtered = userSearch.trim().length === 0
+                  ? usersList
+                  : usersList.filter(u =>
+                      u.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                      u.username?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                      u.userId?.includes(userSearch) ||
+                      u.id?.includes(userSearch)
+                    );
+                if (filtered.length === 0) {
+                  return (
+                    <Card>
+                      <View style={{ alignItems: "center", padding: 20, gap: 8 }}>
+                        <Feather name="users" size={28} color={TEXT_TER} />
+                        <Text style={styles.subNote}>{usersList.length === 0 ? "Henüz kayıtlı kullanıcı yok" : "Arama sonucu bulunamadı"}</Text>
+                      </View>
+                    </Card>
+                  );
+                }
+                return filtered.map((u) => (
                   <Pressable
                     key={u.id}
                     onPress={() => { setSelectedUserId(u.id); setUserTab("profil"); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
@@ -623,8 +652,8 @@ export default function AdminScreen() {
                     </View>
                     <Feather name="chevron-right" size={16} color={TEXT_TER} />
                   </Pressable>
-                ))
-              )}
+                ));
+              })()}
             </>
           )}
 
@@ -878,6 +907,8 @@ const styles = StyleSheet.create({
   memRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
   memDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: ACCENT, marginTop: 5 },
   memText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: TEXT_SEC, lineHeight: 18 },
+  searchRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER },
+  searchInput: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: TEXT_PRI, paddingVertical: 2 },
   userListCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: CARD, borderRadius: 16, padding: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER },
   userListAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: ACCENT + "30", justifyContent: "center", alignItems: "center" },
   userListAvatarText: { fontSize: 18, fontFamily: "Inter_700Bold", color: ACCENT },

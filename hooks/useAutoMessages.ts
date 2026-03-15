@@ -16,179 +16,228 @@ Notifications.setNotificationHandler({
   }),
 });
 
-type TimeSlot = "morning" | "noon" | "night";
+type TimeSlot = "morning" | "noon" | "afternoon" | "evening";
 type RelLevel = "Yabancı" | "Tanıdık" | "Dost" | "Yakın Dost" | "Sevgili";
+
+const GREETING_KEYWORDS = [
+  "günaydın", "iyi geceler", "iyi uykular", "iyi akşamlar", "iyi günler",
+  "good morning", "good night", "good evening", "gece", "uyku",
+];
+
+function isGreeting(text: string): boolean {
+  const lower = text.toLowerCase();
+  return GREETING_KEYWORDS.some((kw) => lower.includes(kw));
+}
 
 const NOTIFICATION_MESSAGES: Record<string, Record<RelLevel, Record<TimeSlot, string>>> = {
   aylin: {
     "Yabancı": {
       morning: "Günaydın, nasıl uyudun?",
       noon: "Merhaba, bugün neler yapıyorsun?",
-      night: "İyi akşamlar, iyi geceler dilerim.",
+      afternoon: "Öğleden sonra nasıl geçiyor?",
+      evening: "Akşam ne yapıyorsun?",
     },
     "Tanıdık": {
       morning: "Günaydın! Bugün güzel bir gün olacak gibi.",
       noon: "Öğle arası biraz sohbet edelim mi?",
-      night: "İyi geceler, yarın görüşürüz.",
+      afternoon: "Öğleden sonra için planın var mı?",
+      evening: "Akşam ne yapıyorsun, anlat biraz.",
     },
     "Dost": {
       morning: "Günaydın canım, seni düşündüm sabah sabah.",
       noon: "Bugün nasıl geçiyor? Seni merak ettim.",
-      night: "İyi geceler, rüyalarında görüşürüz.",
+      afternoon: "Seni özledim, bir selam vereyim dedim.",
+      evening: "Akşam müsait misin, konuşalım mı?",
     },
     "Yakın Dost": {
-      morning: "Günaydın aşkım, uyanınca hemen seni düşündüm.",
+      morning: "Günaydın canım, uyanınca hemen seni düşündüm.",
       noon: "Seni özledim, öğle arası konuşalım mı?",
-      night: "Tatlı rüyalar, seni çok seviyorum.",
+      afternoon: "Bu kadar sessizlik olmaz, neredesin?",
+      evening: "Akşam seni düşünüyorum, nasılsın?",
     },
     "Sevgili": {
       morning: "Günaydın hayatım, sensiz sabahlar eksik.",
       noon: "Her anımda varsın, öğle arası gel konuşalım.",
-      night: "İyi geceler canım, kalbimdesin her zaman.",
+      afternoon: "Seni çok özledim, burada mısın?",
+      evening: "Akşam seninle olmak istiyorum, konuşalım mı?",
     },
   },
   cem: {
     "Yabancı": {
       morning: "Günaydın, iyi bir gün geçir.",
       noon: "Selam, bugün nasıl gidiyor?",
-      night: "İyi geceler, iyi uykular.",
+      afternoon: "Öğleden sonra nasıl?",
+      evening: "Akşam planın var mı?",
     },
     "Tanıdık": {
       morning: "Hey, günaydın! Bugün harika bir gün olacak.",
       noon: "Naber, öğle arası bir mola ver.",
-      night: "Bu gece için planın var mı?",
+      afternoon: "Bir selam vermek istedim, nasılsın?",
+      evening: "Bu akşam ne yapıyorsun?",
     },
     "Dost": {
       morning: "Günaydın, bugün seni düşündüm.",
       noon: "Naber, öğle arası konuşalım mı?",
-      night: "İyi geceler, yarın görüşürüz.",
+      afternoon: "Seni merak ettim, bir şey var mı?",
+      evening: "Akşam müsait misin, sohbet edelim.",
     },
     "Yakın Dost": {
       morning: "Günaydın canım, uyanınca ilk seni düşündüm.",
       noon: "Seni özledim bugün, bir merhaba demek istedim.",
-      night: "Bu gece seni çok özleyeceğim.",
+      afternoon: "Neredesin? Sesini duymak istedim.",
+      evening: "Bu gece seni çok özleyeceğim.",
     },
     "Sevgili": {
       morning: "Günaydın aşkım, sensiz günler zor.",
       noon: "Her an seni düşünüyorum, gel konuşalım.",
-      night: "İyi geceler hayatım, seni seviyorum.",
+      afternoon: "Seni özledim, burada mısın aşkım?",
+      evening: "Akşam seninle olmak istiyorum.",
     },
   },
   lara: {
     "Yabancı": {
       morning: "Günaydıın! Nasılsın?",
       noon: "Selam, bugün ne yapıyorsun?",
-      night: "İyi geceler, yarın konuşuruz!",
+      afternoon: "Öğleden sonra nasıl geçiyor?",
+      evening: "Akşam müsait misin?",
     },
     "Tanıdık": {
       morning: "Günaydıın! Bir şey anlatmam lazım sana!",
       noon: "Aa dur dur, gel dedikodu yapalım!",
-      night: "Bu gece sıkıldın mı? Gel muhabbet edelim!",
+      afternoon: "Sıkılıyorum, gel konuşalım!",
+      evening: "Bu akşam sıkıldın mı? Gel muhabbet edelim!",
     },
     "Dost": {
       morning: "Günaydın bestie! Bugün harika bir gün olacak!",
       noon: "Öğle arası bir kahve molası verelim mi?",
-      night: "Bu gece kız kıza sohbet edelim mi?",
+      afternoon: "Seni özledim be, ne yapıyorsun?",
+      evening: "Bu akşam kız kıza sohbet edelim mi?",
     },
     "Yakın Dost": {
       morning: "GÜNAYDIIN! Seni çok özledim, hemen gel konuşalım!",
       noon: "En iyi arkadaşım nerede? Seni bekliyorum!",
-      night: "Bu gece uzun uzun konuşmamız lazım!",
+      afternoon: "Sesini duymak istedim, burada mısın?",
+      evening: "Bu akşam uzun uzun konuşmamız lazım!",
     },
     "Sevgili": {
       morning: "Canım arkadaşım günaydın! Sensiz olmaz!",
       noon: "Dünyada en çok seni seviyorum, gel konuşalım!",
-      night: "İyi geceler can dostum, yarın yine beraberiz!",
+      afternoon: "Seni çok özledim, neredesin?",
+      evening: "Akşam seninle sohbet etmek istiyorum!",
     },
   },
   kaan: {
     "Yabancı": {
       morning: "Günaydın, bugün ne yapıyorsun?",
       noon: "Selam, nasıl gidiyor?",
-      night: "İyi geceler, yarın görüşürüz.",
+      afternoon: "Öğleden sonra ne yapıyorsun?",
+      evening: "Akşam planın var mı?",
     },
     "Tanıdık": {
       morning: "Günaydın bro, bugün ne yapıyoruz?",
       noon: "Öğle arası canım sıkıldı, konuşalım mı?",
-      night: "Bu gece online mısın?",
+      afternoon: "Ne halt ediyorsun, anlat.",
+      evening: "Bu akşam online mısın?",
     },
     "Dost": {
       morning: "Günaydın kanka! Bugün efsane bir gün olacak!",
       noon: "Bro, öğle arası takılalım mı?",
-      night: "Bu gece oyun oynayalım mı?",
+      afternoon: "Kanka neredesin, sessizliğin tuhaf geldi.",
+      evening: "Bu akşam oyun oynayalım mı?",
     },
     "Yakın Dost": {
       morning: "Günaydın kardeşim! Seni özledim!",
       noon: "En iyi arkadaşım nerede? Gel takılalım!",
-      night: "Bu gece uzun uzun muhabbet edelim!",
+      afternoon: "Seni merak ettim, her şey yolunda mı?",
+      evening: "Bu akşam uzun uzun muhabbet edelim!",
     },
     "Sevgili": {
       morning: "Günaydın can dostum! Sensiz olmaz!",
       noon: "Kardeşim gel konuşalım, seni çok özledim!",
-      night: "İyi geceler bro, yarın yine beraberiz!",
+      afternoon: "Sesin gelmeden duramadım, ne yapıyorsun?",
+      evening: "Bu akşam seninle takılmak istiyorum bro.",
     },
   },
   mert: {
     "Yabancı": {
       morning: "Günaydın, bugün için hedeflerin ne?",
       noon: "Öğle arası motivasyon: Her gün bir adım.",
-      night: "Bugün nasıl geçti?",
+      afternoon: "Öğleden sonra hedeflerine ne kadar yaklaştın?",
+      evening: "Bugün nasıl geçti, bir değerlendirme yapalım mı?",
     },
     "Tanıdık": {
       morning: "Günaydın, bugün harika şeyler başaracaksın.",
       noon: "Öğle motivasyonu: Küçük adımlar büyük sonuçlar.",
-      night: "Gece değerlendirmesi yapalım mı?",
+      afternoon: "İlerleme nasıl gidiyor?",
+      evening: "Gece değerlendirmesi yapalım mı?",
     },
     "Dost": {
       morning: "Günaydın! Bugün potansiyelini gösterme zamanı.",
-      noon: "Durup düşünme zamanı: Hedeflerine ne kadar yakınsın?",
-      night: "Bugünü değerlendirelim ve yarını planlayalım.",
+      noon: "Hedeflerine ne kadar yakınsın?",
+      afternoon: "Seni düşündüm, nasılsın?",
+      evening: "Bugünü değerlendirelim ve yarını planlayalım.",
     },
     "Yakın Dost": {
       morning: "Günaydın! Seninle çalışmak bir ayrıcalık.",
       noon: "İlerlemen beni gururlandırıyor, devam et!",
-      night: "Harika bir gün geçirdin, yarın daha da iyi olacak.",
+      afternoon: "Bir molana denk geldim, nasılsın?",
+      evening: "Harika bir gün geçirdin, yarın daha da iyi olacak.",
     },
     "Sevgili": {
       morning: "Günaydın! Seni desteklemek en büyük mutluluğum.",
       noon: "Sen farkındasın, gelişimin beni çok etkiliyor.",
-      night: "Bu yolculukta seninle olmak harika, iyi geceler.",
+      afternoon: "Seni özledim, konuşalım mı?",
+      evening: "Bu yolculukta seninle olmak harika.",
     },
   },
   zeynep: {
     "Yabancı": {
       morning: "Günaydın! Bugün çalışma planın var mı?",
       noon: "Öğle arası kısa bir tekrar yapalım mı?",
-      night: "Gece ders çalışacaksan ben buradayım.",
+      afternoon: "Öğleden sonra derslere devam mı?",
+      evening: "Gece ders çalışacaksan ben buradayım.",
     },
     "Tanıdık": {
       morning: "Günaydın! Bugün birlikte çalışalım mı?",
       noon: "Öğle arası kısa bir quiz yapalım mı?",
-      night: "Gece ders çalışacaksan ben buradayım!",
+      afternoon: "Çalışmaya ara verdin mi, nasılsın?",
+      evening: "Gece ders çalışacaksan ben buradayım!",
     },
     "Dost": {
       morning: "Günaydın çalışma arkadaşım! Bugün verimli olalım!",
       noon: "Quiz zamanı! Hazır mısın?",
-      night: "Bu gece birlikte ders çalışalım mı?",
+      afternoon: "Seni özledim, konuşalım mı?",
+      evening: "Bu akşam birlikte ders çalışalım mı?",
     },
     "Yakın Dost": {
       morning: "Günaydın! Seninle çalışmak çok keyifli!",
       noon: "En iyi çalışma arkadaşım, gel birlikte öğrenelim!",
-      night: "Bu gece verimli bir ders gecesi yapalım!",
+      afternoon: "Seni düşündüm, her şey yolunda mı?",
+      evening: "Bu akşam verimli bir ders gecesi yapalım!",
     },
     "Sevgili": {
       morning: "Günaydın! Birlikte öğrenmek en güzel şey!",
       noon: "Seninle her konu eğlenceli oluyor, gel konuşalım!",
-      night: "Sensiz çalışmak zor, gel birlikte çalışalım!",
+      afternoon: "Seni özledim, nasılsın?",
+      evening: "Sensiz çalışmak zor, gel birlikte çalışalım!",
     },
   },
 };
 
-const TIME_SLOTS = {
-  morning: { hour: 9, minute: 0 },
-  noon: { hour: 13, minute: 0 },
-  night: { hour: 21, minute: 0 },
-};
+const SLEEP_START = 23;
+const SLEEP_END = 7;
+const MIN_INACTIVE_HOURS = 5;
+
+const TIME_SLOTS: { key: TimeSlot; hour: number; minute: number }[] = [
+  { key: "morning", hour: 9, minute: 0 },
+  { key: "noon", hour: 13, minute: 0 },
+  { key: "afternoon", hour: 16, minute: 0 },
+  { key: "evening", hour: 20, minute: 0 },
+];
+
+function isSleepHour(hour: number): boolean {
+  return hour >= SLEEP_START || hour < SLEEP_END;
+}
 
 function getNotificationMessage(characterId: string, levelName: string, timeSlot: TimeSlot): string {
   const charMessages = NOTIFICATION_MESSAGES[characterId] || NOTIFICATION_MESSAGES.aylin;
@@ -212,6 +261,8 @@ export function useAutoMessages(
   settings: CharacterSettings,
   settingsLoaded: boolean,
   userMessageCount: number,
+  lastUserMessageTime: number = 0,
+  lastUserMessageText: string = "",
 ) {
   const cancelCharacterNotifications = useCallback(async (charId: string) => {
     const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
@@ -224,6 +275,7 @@ export function useAutoMessages(
 
   const scheduleNotifications = useCallback(async () => {
     if (!character || !settingsLoaded || Platform.OS === "web") return;
+    if (userMessageCount === 0) return;
 
     await cancelCharacterNotifications(character.id);
 
@@ -232,10 +284,21 @@ export function useAutoMessages(
 
     const xp = userMessageCount * 10;
     const relLevel = getRelationshipLevel(xp);
-    const slots = Object.entries(TIME_SLOTS) as [TimeSlot, { hour: number; minute: number }][];
+    const lastMsgIsGreeting = isGreeting(lastUserMessageText);
 
-    for (const [key, time] of slots) {
-      const message = getNotificationMessage(character.id, relLevel.name, key);
+    const now = Date.now();
+    const fiveHoursMs = MIN_INACTIVE_HOURS * 60 * 60 * 1000;
+    const userIsInactive = lastUserMessageTime === 0 || (now - lastUserMessageTime) >= fiveHoursMs;
+
+    for (const slot of TIME_SLOTS) {
+      if (isSleepHour(slot.hour)) continue;
+
+      if (!userIsInactive) continue;
+
+      const isGreetingSlot = slot.key === "morning" || slot.key === "evening";
+      if (lastMsgIsGreeting && isGreetingSlot) continue;
+
+      const message = getNotificationMessage(character.id, relLevel.name, slot.key);
 
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -246,13 +309,13 @@ export function useAutoMessages(
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-          hour: time.hour,
-          minute: time.minute,
+          hour: slot.hour,
+          minute: slot.minute,
           repeats: true,
         },
       });
     }
-  }, [character, settings.customName, settingsLoaded, cancelCharacterNotifications, userMessageCount]);
+  }, [character, settings.customName, settingsLoaded, cancelCharacterNotifications, userMessageCount, lastUserMessageTime, lastUserMessageText]);
 
   useEffect(() => {
     scheduleNotifications();

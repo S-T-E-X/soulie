@@ -29,7 +29,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 
 import { CharacterCustomizeSheet } from "@/components/chat/CharacterCustomizeSheet";
 import { GiftSheet } from "@/components/chat/GiftSheet";
-import { RelationshipBar } from "@/components/chat/RelationshipBar";
+import { RelationshipBar, getRelationshipLevel } from "@/components/chat/RelationshipBar";
 import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
 import { useCharacterSettings } from "@/hooks/useCharacterSettings";
 import { useAutoMessages } from "@/hooks/useAutoMessages";
@@ -40,6 +40,7 @@ import { getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
+import { GIFTS } from "@/contexts/GiftContext";
 
 function CharacterAvatar({ character, size = 38 }: { character: Character; size?: number }) {
   if (!character.image) {
@@ -234,8 +235,15 @@ export default function ChatScreen() {
   }, [messages, character, settings.customName, createConversationWithMessages]);
 
   const userMessageCount = messages.filter(m => m.role === "user").length;
+  const charXp = userMessageCount * 10 + (settings.giftBonusXP || 0);
+  const relLevel = getRelationshipLevel(charXp);
 
-  useAutoMessages(character, settings, settingsLoaded, userMessageCount);
+  const userMessages = messages.filter(m => m.role === "user");
+  const lastUserMsg = userMessages[userMessages.length - 1];
+  const lastUserMessageTime = lastUserMsg?.timestamp ?? 0;
+  const lastUserMessageText = lastUserMsg?.content ?? "";
+
+  useAutoMessages(character, settings, settingsLoaded, userMessageCount, lastUserMessageTime, lastUserMessageText);
 
   useEffect(() => {
     loadConversations();
@@ -358,8 +366,9 @@ export default function ChatScreen() {
         });
 
         const userMsgCount = newMessages.filter(m => m.role === "user").length;
-        const charXp = userMsgCount * 10;
-        const charLevel = charXp < 50 ? 1 : charXp < 150 ? 5 : charXp < 300 ? 15 : charXp < 500 ? 25 : charXp < 750 ? 35 : charXp < 1050 ? 45 : 55;
+        const xp = userMsgCount * 10 + (settings.giftBonusXP || 0);
+        const charLevel = xp < 50 ? 1 : xp < 150 ? 5 : xp < 300 ? 15 : xp < 500 ? 25 : xp < 750 ? 35 : xp < 1050 ? 45 : 55;
+        const currentRelLevel = getRelationshipLevel(xp);
 
         const response = await fetch(`${baseUrl}api/chat`, {
           method: "POST",
@@ -372,6 +381,8 @@ export default function ChatScreen() {
             selectedTraits: settings.traits,
             memories: settings.memories,
             userLanguage: user?.language ?? "tr",
+            voiceTone: settings.voiceTone,
+            relationshipLevelName: currentRelLevel.name,
           }),
         });
 
@@ -443,6 +454,13 @@ export default function ChatScreen() {
 
   const handleSendGift = useCallback(async (giftId: string) => {
     if (!character) return;
+    const gift = GIFTS.find((g) => g.id === giftId);
+    if (!gift) return;
+
+    const giftXP = Math.floor(gift.price / 5);
+    const newGiftBonusXP = (settings.giftBonusXP || 0) + giftXP;
+    await updateSettings({ giftBonusXP: newGiftBonusXP });
+
     const giftMessage: Message = {
       id: generateId(),
       role: "user",
@@ -450,10 +468,81 @@ export default function ChatScreen() {
       giftId,
       timestamp: Date.now(),
     };
-    const newMessages = [...messages, giftMessage];
-    setMessages(newMessages);
-    await createConversationWithMessages(character.id, settings.customName || character.name, newMessages);
-  }, [messages, character, settings.customName, createConversationWithMessages]);
+    const withGift = [...messages, giftMessage];
+    setMessages(withGift);
+
+    const baseUrl = getApiUrl();
+    const xpForResp = (userMessageCount * 10) + newGiftBonusXP;
+    const levelForResp = getRelationshipLevel(xpForResp);
+
+    try {
+      const response = await fetch(`${baseUrl}api/gift-response`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({
+          characterId: character.id,
+          giftName: gift.name,
+          customName: settings.customName,
+          selectedTraits: settings.traits,
+          memories: settings.memories,
+          userLanguage: user?.language ?? "tr",
+          relationshipLevelName: levelForResp.name,
+        }),
+      });
+
+      if (!response.body) {
+        await createConversationWithMessages(character.id, settings.customName || character.name, withGift);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullContent = "";
+      let assistantAdded = false;
+      const assistantId = generateId();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6);
+          if (data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) {
+              fullContent += parsed.content;
+              if (!assistantAdded) {
+                setMessages((prev) => [
+                  ...prev,
+                  { id: assistantId, role: "assistant", content: fullContent, timestamp: Date.now() },
+                ]);
+                assistantAdded = true;
+              } else {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { ...updated[updated.length - 1], content: fullContent };
+                  return updated;
+                });
+              }
+            }
+          } catch {}
+        }
+      }
+
+      const finalMessages: Message[] = [
+        ...withGift,
+        { id: assistantId, role: "assistant", content: fullContent, timestamp: Date.now() },
+      ];
+      await createConversationWithMessages(character.id, settings.customName || character.name, finalMessages);
+    } catch {
+      await createConversationWithMessages(character.id, settings.customName || character.name, withGift);
+    }
+  }, [messages, character, settings, userMessageCount, createConversationWithMessages, updateSettings, user]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -540,7 +629,7 @@ export default function ChatScreen() {
             <Feather name="sliders" size={19} color={colors.text.secondary} />
           </Pressable>
         </View>
-        <RelationshipBar xp={userMessageCount * 10} />
+        <RelationshipBar xp={charXp} />
       </View>
 
       <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={0}>

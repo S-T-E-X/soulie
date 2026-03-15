@@ -19,6 +19,8 @@ export type CharacterSettings = {
   autoMessageTimes: AutoMessageTimes;
   voiceTone?: VoiceTone;
   isPremium: boolean;
+  giftBonusXP: number;
+  lastAutoMessageAt: number;
 };
 
 type AllSettings = Record<string, CharacterSettings>;
@@ -31,6 +33,8 @@ const defaultSettings = (): CharacterSettings => ({
   autoMessageTimes: { morning: true, noon: true, night: true },
   voiceTone: undefined,
   isPremium: false,
+  giftBonusXP: 0,
+  lastAutoMessageAt: 0,
 });
 
 async function loadAllSettings(): Promise<AllSettings> {

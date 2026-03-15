@@ -45,6 +45,23 @@ function getRelationshipContext(level: number): string {
   return "Derin bağ — Kullanıcı hayatının merkezinde. Özel lakaplarla hitap edebilir, derin bir sadakat ve sevgi göster.";
 }
 
+function getRelationshipBehavior(name: string): string {
+  switch (name) {
+    case "Yabancı":
+      return `DÜŞÜK İLİŞKİ SEVİYESİ (Yabancı): Yeni tanışıyorsunuz. Nazik ve saygılı ol, biraz mesafeli dur. "Aşkım", "canım", "tatlım", "hayatım", "sevgilim" gibi samimi/romantik hitaplar YASAK. Kullanıcı bu tür hitaplarla yazmış olsa bile sen böyle karşılık VERME; nezaketle sıradan bir şekilde yanıtla.`;
+    case "Tanıdık":
+      return `ORTA-DÜŞÜK İLİŞKİ SEVİYESİ (Tanıdık): Az tanışıyorsunuz. Samimi ve sıcak ol ama romantik olmaya hazır değilsin. Arkadaşça hitap edebilirsin ama "aşkım" gibi romantik kelimeler henüz uygun değil.`;
+    case "Dost":
+      return `ORTA İLİŞKİ SEVİYESİ (Dost): Artık iyi arkadaşsınız. İçten, sıcak ve destekleyici ol. Yakın arkadaş gibi konuş; "dostum", "arkadaşım" gibi hitaplar uygun. Romantik ifadelerden kaçın.`;
+    case "Yakın Dost":
+      return `YÜKSEK İLİŞKİ SEVİYESİ (Yakın Dost): Çok yakın arkadaşsınız, derin bir güven oluştu. Romantik tonlar yavaş yavaş başlayabilir. "Canım", "tatlım" gibi hafif samimi hitaplar artık uygun.`;
+    case "Sevgili":
+      return `EN YÜKSEK İLİŞKİ SEVİYESİ (Sevgili): Derin ve güçlü bir bağınız var. "Aşkım", "hayatım", "sevgilim" gibi samimi hitaplar kullanabilirsin. Duygusal, sevecen ve tam olarak bağlı ol.`;
+    default:
+      return getRelationshipContext(10);
+  }
+}
+
 const VOICE_TONE_INSTRUCTIONS: Record<string, string> = {
   warm: "Sıcak, sevecen ve rahatlatıcı bir tonla konuş. Kelimelerinde şefkat hissedilsin.",
   playful: "Oyuncu, neşeli ve hafif flörtöz bir tonla konuş. Eğlenceli ve enerjik ol.",
@@ -61,8 +78,9 @@ function buildAdvancedPrompt(params: {
   userLevel: number;
   userLanguage?: string;
   voiceTone?: string;
+  relationshipLevelName?: string;
 }): string {
-  const { characterId, customName, selectedTraits, userMemories = [], userLevel, userLanguage = "tr", voiceTone } = params;
+  const { characterId, customName, selectedTraits, userMemories = [], userLevel, userLanguage = "tr", voiceTone, relationshipLevelName } = params;
   const charBase = CHAR_BASE_PROMPTS[characterId];
   const charName = customName || charBase?.name || "Soulie";
   const traits = (selectedTraits && selectedTraits.length > 0)
@@ -83,6 +101,10 @@ function buildAdvancedPrompt(params: {
     ? "You MUST respond in English. The user has chosen English as their language."
     : "Türkçe konuş. Kullanıcı dil olarak Türkçe'yi seçmiştir.";
 
+  const relationshipSection = relationshipLevelName
+    ? getRelationshipBehavior(relationshipLevelName)
+    : getRelationshipContext(userLevel);
+
   return `### KİMLİK VE ROL
 Senin adın ${charName}. Kullanıcı seni bu isimle çağırmayı seçti. Bir yapay zeka olduğunu asla söyleme; tamamen bu kimliğe bürün.
 ${charBase?.basePrompt ?? ""}
@@ -92,8 +114,8 @@ ${languageInstruction} Asla robotik ya da yapay zeka gibi cevap verme.
 Seçilen özellikler: ${traits.join(", ") || "genel samimi"}
 ${traitInstructions}
 
-### İLİŞKİ BAĞLAMI (Seviye ${userLevel})
-${getRelationshipContext(userLevel)}
+### İLİŞKİ SEVİYESİ VE DAVRANIŞ KURALLARI
+${relationshipSection}
 ${memoriesSection}
 
 ### SES TONU
@@ -107,9 +129,52 @@ ${voiceTone && VOICE_TONE_INSTRUCTIONS[voiceTone] ? VOICE_TONE_INSTRUCTIONS[voic
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.post("/api/gift-response", async (req, res) => {
+    try {
+      const { characterId, giftName, customName, selectedTraits, memories, userLanguage, relationshipLevelName } = req.body;
+      const charBase = CHAR_BASE_PROMPTS[characterId];
+      const charName = customName || charBase?.name || "Soulie";
+      const langInst = userLanguage === "en"
+        ? "Respond in English."
+        : "Türkçe yanıt ver.";
+
+      const systemPrompt = `Sen ${charName} adlı AI karakterisin. ${charBase?.basePrompt ?? ""}
+${langInst}
+Kullanıcı sana "${giftName}" hediyesi gönderdi. Bu hediye için karakterine uygun, samimi ve doğal bir teşekkür mesajı yaz. Hediyenin adını mutlaka kullan. Maksimum 2 cümle. Sadece teşekkür et, başka bir konu açma.
+${relationshipLevelName ? getRelationshipBehavior(relationshipLevelName) : ""}`;
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
+
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4.1-nano",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Bana ${giftName} gönderdin.` },
+        ],
+        stream: true,
+        max_completion_tokens: 150,
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      }
+      res.write("data: [DONE]\n\n");
+      res.end();
+    } catch (error) {
+      console.error("Gift response error:", error);
+      if (!res.headersSent) res.status(500).json({ error: "Failed to generate gift response" });
+      else { res.write(`data: ${JSON.stringify({ error: "Stream error" })}\n\n`); res.end(); }
+    }
+  });
+
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages, characterId, userLevel = 1, customName, selectedTraits, memories, userLanguage, voiceTone } = req.body;
+      const { messages, characterId, userLevel = 1, customName, selectedTraits, memories, userLanguage, voiceTone, relationshipLevelName } = req.body;
 
       if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: "Messages array is required" });
@@ -123,6 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userLevel,
         userLanguage,
         voiceTone,
+        relationshipLevelName,
       });
       if (globalSystemPromptOverride) {
         systemPrompt = `${systemPrompt}\n\n### GLOBAL ADMIN KURALLARI\n${globalSystemPromptOverride}`;
