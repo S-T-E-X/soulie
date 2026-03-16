@@ -262,11 +262,6 @@ export default function CharacterProfileScreen() {
                 <Text style={[styles.statValue, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{character.gender === "female" ? t("character.female") : t("character.male")}</Text>
                 <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.45)" : Colors.text.tertiary }]}>{t("character.gender")}</Text>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)" }]} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("character.aiType")}</Text>
-                <Text style={[styles.statLabel, { color: isDark ? "rgba(255,255,255,0.45)" : Colors.text.tertiary }]}>{t("character.type")}</Text>
-              </View>
             </View>
           </Animated.View>
 

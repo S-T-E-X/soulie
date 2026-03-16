@@ -253,7 +253,7 @@ function RevealedCard({ card, position, reversed, size }: { card: TarotCard; pos
 
   useEffect(() => {
     Animated.spring(scaleAnim, { toValue: 1, friction: 6, useNativeDriver: true }).start();
-  }, []);
+  }, [scaleAnim]);
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -402,6 +402,7 @@ export default function TarotScreen() {
   }, [requiredCount, displayDeck]);
 
   const flipCard = useCallback((idx: number) => {
+    if (!flipped || flipped.length === 0) return;
     if (flipped[idx]) return;
     for (let i = 0; i < idx; i++) {
       if (!flipped[i]) return;
@@ -413,7 +414,9 @@ export default function TarotScreen() {
 
     if (newFlipped.every(f => f)) {
       setTimeout(() => {
-        fetchInterpretation();
+        if (drawnCards && drawnCards.length > 0) {
+          fetchInterpretation();
+        }
       }, 600);
     }
   }, [flipped, drawnCards]);
