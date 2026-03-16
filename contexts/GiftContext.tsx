@@ -54,10 +54,11 @@ export const GIFTS: GiftItem[] = [
 ];
 
 export const COIN_PACKAGES: CoinPackage[] = [
-  { id: "coins_100", coins: 100, price: "₺9,99" },
-  { id: "coins_500", coins: 500, price: "₺39,99", bonus: 50, isPopular: true },
-  { id: "coins_1200", coins: 1200, price: "₺79,99", bonus: 200 },
-  { id: "coins_3000", coins: 3000, price: "₺149,99", bonus: 750 },
+  { id: "coins_100", coins: 100, price: "$1.49" },
+  { id: "coins_550", coins: 550, price: "$3.99" },
+  { id: "coins_1400", coins: 1400, price: "$6.99" },
+  { id: "coins_3750", coins: 3750, price: "$12.99" },
+  { id: "coins_11000", coins: 11000, price: "$24.99", bonus: 1000, isPopular: true },
 ];
 
 const COINS_KEY = "soulie_coins_v1";

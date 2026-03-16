@@ -89,13 +89,11 @@ export default function MarketScreen() {
   }, [initialTab]);
 
   const handleCoinPurchase = (pkg: typeof COIN_PACKAGES[0]) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const total = pkg.coins + (pkg.bonus ?? 0);
-    addCoins(total);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
-      t("market.coinAdded"),
-      t("market.coinAddedMessage", { count: total }),
-      [{ text: t("market.great") }]
+      t("market.comingSoon"),
+      `${pkg.price} ile satın almaya yönlendirileceksin. In-App Purchase ödemesi tamamlandığında ${pkg.coins + (pkg.bonus ?? 0)} coin hesabına eklenecek.`,
+      [{ text: t("common.cancel") }]
     );
   };
 
