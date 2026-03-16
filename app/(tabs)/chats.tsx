@@ -403,11 +403,13 @@ export default function ChatsScreen() {
       setMutedChars((prev) => prev.filter((id) => id !== charId));
     } else {
       await muteChar(charId);
-      // Mevcut scheduled bildirimleri iptal et
-      const all = await Notifications.getAllScheduledNotificationsAsync();
-      for (const n of all) {
-        if (n.content.data?.characterId === charId && !n.content.data?.isContext) {
-          await Notifications.cancelScheduledNotificationAsync(n.identifier);
+      // Mevcut scheduled bildirimleri iptal et (sadece native'de çalışır)
+      if (Platform.OS !== "web") {
+        const all = await Notifications.getAllScheduledNotificationsAsync();
+        for (const n of all) {
+          if (n.content.data?.characterId === charId && !n.content.data?.isContext) {
+            await Notifications.cancelScheduledNotificationAsync(n.identifier);
+          }
         }
       }
       setMutedChars((prev) => [...prev, charId]);
