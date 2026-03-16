@@ -247,16 +247,26 @@ function MysticalCardBack({ onPress, isActive, size }: { onPress: () => void; is
 }
 
 function RevealedCard({ card, position, reversed, size }: { card: TarotCard; position: string; reversed: boolean; size: "sm" | "md" | "lg" }) {
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8));
+  const { t } = useI18n();
   const w = size === "lg" ? 140 : size === "md" ? 110 : 90;
   const h = size === "lg" ? 200 : size === "md" ? 165 : 135;
 
+  const catLabel: Record<LifeCategory, string> = {
+    love: t("tarot.love"),
+    career: t("tarot.career"),
+    destiny: t("tarot.destiny"),
+    warning: t("tarot.warning"),
+    growth: t("tarot.growth"),
+    spiritual: t("tarot.spiritual"),
+  };
+
   useEffect(() => {
-    Animated.spring(scaleAnim, { toValue: 1, friction: 6, useNativeDriver: true }).start();
-  }, [scaleAnim]);
+    Animated.spring(scaleAnim.current, { toValue: 1, friction: 6, useNativeDriver: true }).start();
+  }, []);
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+    <Animated.View style={{ transform: [{ scale: scaleAnim.current }] }}>
       <View style={{ alignItems: "center", gap: 6 }}>
         <LinearGradient colors={card.gradient} style={[styles.revealedCard, { width: w, height: h }, card.isRare && styles.rareCard]}>
           {card.isRare && <View style={styles.rareBadge}><Text style={styles.rareBadgeText}>RARE</Text></View>}
@@ -267,7 +277,7 @@ function RevealedCard({ card, position, reversed, size }: { card: TarotCard; pos
           <Text style={[styles.revealedNameEn, size === "sm" && { fontSize: 8 }]} numberOfLines={1}>{card.nameEn}</Text>
           {reversed && <Text style={styles.reversedLabel}>Ters</Text>}
           <View style={[styles.categoryBadge, { backgroundColor: CATEGORY_COLORS[card.category] + "40" }]}>
-            <Text style={[styles.categoryText, { color: CATEGORY_COLORS[card.category] }]}>{categoryLabels[card.category]}</Text>
+            <Text style={[styles.categoryText, { color: CATEGORY_COLORS[card.category] }]}>{catLabel[card.category]}</Text>
           </View>
         </LinearGradient>
         <Text style={styles.posLabel}>{position}</Text>
