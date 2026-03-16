@@ -431,7 +431,12 @@ export default function TarotScreen() {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yKey = yesterday.toISOString().split("T")[0];
-    const newStreak = data.lastRead === yKey ? (data.streak ?? 0) + 1 : 1;
+    // Bugün zaten okunduysa streak'i değiştirme (VIP tekrar okuma senaryosu)
+    const newStreak = data.lastRead === today
+      ? (data.streak ?? 1)
+      : data.lastRead === yKey
+        ? (data.streak ?? 0) + 1
+        : 1;
     const updated = { lastRead: today, streak: newStreak, totalReadings: (data.totalReadings ?? 0) + 1, luckyCardId: luckyCard.id };
     await saveTarotData(updated);
     setTarotData(updated);
@@ -483,6 +488,7 @@ export default function TarotScreen() {
       setInterpretation(t("tarot.error"));
     } finally {
       setIsInterpreting(false);
+      await markDone();
       setPhase("done");
     }
   };
