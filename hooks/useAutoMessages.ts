@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
-import { useChatContext } from "@/contexts/ChatContext";
+import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
 import { getRelationshipLevel } from "@/components/chat/RelationshipBar";
 import { getCharacter } from "@/constants/characters";
 
@@ -397,23 +397,43 @@ export async function scheduleContextFollowup(
 // ChatContext'ten son 7 günde aktif olan karakterleri okur ve
 // her gün uygun saatlerde SADECE bu karakterlerden bildirim schedule eder.
 export function useGlobalNotificationScheduler() {
-  const { conversations, isLoaded } = useChatContext();
+  const { conversations, isLoaded, getConversationByCharacter, updateConversation } = useChatContext();
   const lastScheduledRef = useRef<number>(0);
 
-  // Bildirime tıklandığında ilgili chat'e yönlendir
+  // Bildirime tıklandığında:
+  // 1. Bildirimin mesajını karakterin sohbetine ekle (AI mesajı gibi görünsün)
+  // 2. O karakterin chat sayfasına yönlendir
   useEffect(() => {
     if (Platform.OS === "web") return;
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+    const sub = Notifications.addNotificationResponseReceivedListener(async (response) => {
       const data = response.notification.request.content.data;
-      if (data?.characterId) {
-        router.push({
-          pathname: "/chat/[id]",
-          params: { characterId: data.characterId as string, id: data.characterId as string },
-        });
+      const body = response.notification.request.content.body;
+      const charId = data?.characterId as string | undefined;
+
+      if (!charId) return;
+
+      // Mesajı sohbete ekle
+      if (body) {
+        const conv = getConversationByCharacter(charId);
+        if (conv) {
+          const notifMsg: Message = {
+            id: generateId(),
+            role: "assistant",
+            content: body,
+            timestamp: Date.now(),
+          };
+          await updateConversation(conv.id, [...conv.messages, notifMsg]);
+        }
       }
+
+      // Chat sayfasına yönlendir
+      router.push({
+        pathname: "/chat/[id]",
+        params: { characterId: charId, id: charId },
+      });
     });
     return () => sub.remove();
-  }, []);
+  }, [getConversationByCharacter, updateConversation]);
 
   // Günlük bildirimleri schedule et - conversations değişince güncelle
   useEffect(() => {
