@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
 import { getRelationshipLevel } from "@/components/chat/RelationshipBar";
 import { getCharacter } from "@/constants/characters";
+import { getMutedChars } from "@/lib/mutedChars";
 
 // ─── Bildirim handler ───────────────────────────────────────────────────────
 Notifications.setNotificationHandler({
@@ -362,6 +363,10 @@ export async function scheduleContextFollowup(
   const topic = CONTEXT_TOPICS.find((t) => t.keywords.some((kw) => lower.includes(kw)));
   if (!topic) return;
 
+  // Sessize alınmış karaktere context bildirimi gönderme
+  const muted = await getMutedChars();
+  if (muted.includes(charId)) return;
+
   const hasPermission = await requestPermissions();
   if (!hasPermission) return;
 
@@ -466,8 +471,16 @@ export function useGlobalNotificationScheduler() {
         }
       }
 
-      // En son konuşulan karakterler önce gelsin
-      const sorted = [...activeConvs].sort((a, b) => b.updatedAt - a.updatedAt);
+      // Sessize alınan karakterleri filtrele
+      const mutedChars = await getMutedChars();
+
+      // En son konuşulan karakterler önce gelsin, muted olanları çıkar
+      const sorted = [...activeConvs]
+        .filter((c) => !mutedChars.includes(c.characterId))
+        .sort((a, b) => b.updatedAt - a.updatedAt);
+
+      // Tüm aktif karakterler sessize alınmışsa bildirim yok
+      if (sorted.length === 0) return;
 
       // Her time slot için farklı bir karakter seç (round-robin)
       // Böylece bir anda sadece 1 karakter bildirim gönderir

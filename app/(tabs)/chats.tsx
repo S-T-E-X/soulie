@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,14 +9,17 @@ import {
   StatusBar,
   Image,
   Animated,
+  Modal,
+  TouchableWithoutFeedback,
   Alert,
 } from "react-native";
-import AnimatedRN, { FadeInDown } from "react-native-reanimated";
+import AnimatedRN, { FadeInDown, FadeIn } from "react-native-reanimated";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as Notifications from "expo-notifications";
 
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import { WeeklyMissionsSheet } from "@/components/WeeklyMissionsSheet";
@@ -28,6 +31,7 @@ import { useWeeklyMissions } from "@/hooks/useWeeklyMissions";
 import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useI18n } from "@/hooks/useI18n";
+import { getMutedChars, muteChar, unmuteChar } from "@/lib/mutedChars";
 
 const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
 
@@ -53,7 +57,6 @@ const DEFAULT_AVATAR_CHATS = require("@/assets/default_pp/default-avatar-profile
 function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string; profilePhoto?: string }) {
   const level = getUserLevel(xp);
   const frameColors = getLevelFrameColors(level);
-  const initial = name?.charAt(0).toUpperCase() ?? "S";
   const avatarSource = profilePhoto ? { uri: profilePhoto } : DEFAULT_AVATAR_CHATS;
 
   return (
@@ -63,11 +66,7 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
       hitSlop={6}
     >
       <LinearGradient colors={frameColors} style={styles.avatarFrame}>
-        {profilePhoto ? (
-          <Image source={avatarSource} style={styles.avatarPhoto} />
-        ) : (
-          <Image source={DEFAULT_AVATAR_CHATS} style={styles.avatarPhoto} />
-        )}
+        <Image source={avatarSource} style={styles.avatarPhoto} />
       </LinearGradient>
       <View style={styles.levelBadge}>
         <Text style={styles.levelBadgeText}>{level}</Text>
@@ -76,7 +75,19 @@ function UserAvatarBadge({ xp, name, profilePhoto }: { xp: number; name?: string
   );
 }
 
-function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: Conversation; index: number; streak?: number; onDelete: () => void }) {
+function ChatRow({
+  conversation,
+  index,
+  streak = 0,
+  isMuted,
+  onLongPress,
+}: {
+  conversation: Conversation;
+  index: number;
+  streak?: number;
+  isMuted: boolean;
+  onLongPress: () => void;
+}) {
   const character = getCharacter(conversation.characterId);
   const { colors } = useTheme();
   const { t } = useI18n();
@@ -101,16 +112,9 @@ function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: 
         }}
         onLongPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-          Alert.alert(
-            t("chats.chatWith", { name: character.name }),
-            t("chats.deleteConfirm"),
-            [
-              { text: t("common.cancel"), style: "cancel" },
-              { text: t("common.delete"), style: "destructive", onPress: onDelete },
-            ]
-          );
+          onLongPress();
         }}
-        delayLongPress={450}
+        delayLongPress={400}
         style={({ pressed }) => [
           styles.chatRow,
           character.id === "sibel" && { backgroundColor: "rgba(107,33,168,0.07)", borderLeftWidth: 3, borderLeftColor: "#7C3AED" },
@@ -129,6 +133,11 @@ function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: 
             </LinearGradient>
           )}
           <View style={styles.onlineDot} />
+          {isMuted && (
+            <View style={styles.mutedBadge}>
+              <Feather name="bell-off" size={8} color="#fff" />
+            </View>
+          )}
         </View>
         <View style={styles.chatInfo}>
           <View style={styles.chatTop}>
@@ -140,11 +149,17 @@ function ChatRow({ conversation, index, streak = 0, onDelete }: { conversation: 
                   <Text style={styles.streakCount}>{streak}</Text>
                 </View>
               ) : null}
+              {isMuted && (
+                <View style={styles.mutedPill}>
+                  <Feather name="bell-off" size={9} color="#8E8E93" />
+                  <Text style={styles.mutedPillText}>Sessiz</Text>
+                </View>
+              )}
             </View>
             <Text style={[styles.time, { color: colors.text.tertiary }]}>{timeAgo()}</Text>
           </View>
           <View style={styles.chatBottom}>
-            <Text style={[styles.lastMsg, { color: colors.text.secondary }]} numberOfLines={1}>
+            <Text style={[styles.lastMsg, { color: isMuted ? colors.text.tertiary : colors.text.secondary }]} numberOfLines={1}>
               {conversation.lastMessage || t("chats.chatStarted", { name: character.name })}
             </Text>
             <View style={[styles.rolePill, { backgroundColor: character.id === "sibel" ? "rgba(107,33,168,0.15)" : colors.surface }]}>
@@ -262,14 +277,115 @@ function MissionsBanner({
   );
 }
 
+// ─── Dropdown Menu ────────────────────────────────────────────────────────────
+function ConversationMenu({
+  conv,
+  isMuted,
+  isDark,
+  colors,
+  onMuteToggle,
+  onDelete,
+  onClose,
+}: {
+  conv: Conversation;
+  isMuted: boolean;
+  isDark: boolean;
+  colors: any;
+  onMuteToggle: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const character = getCharacter(conv.characterId);
+
+  return (
+    <Modal transparent animationType="none" visible onRequestClose={onClose}>
+      <AnimatedRN.View entering={FadeIn.duration(150)} style={StyleSheet.absoluteFill}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={styles.menuOverlay} />
+        </TouchableWithoutFeedback>
+
+        <AnimatedRN.View
+          entering={FadeInDown.duration(220).springify().damping(20)}
+          style={[
+            styles.menuSheet,
+            {
+              backgroundColor: isDark ? "rgba(30,30,32,0.97)" : "rgba(255,255,255,0.97)",
+              borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+            },
+          ]}
+        >
+          {/* Karakter başlığı */}
+          <View style={styles.menuHeader}>
+            {character?.image ? (
+              <Image source={character.image} style={styles.menuAvatar} />
+            ) : (
+              <LinearGradient colors={character?.gradientColors ?? ["#555", "#333"]} style={styles.menuAvatar}>
+                <Feather name="eye" size={14} color="#fff" />
+              </LinearGradient>
+            )}
+            <Text style={[styles.menuTitle, { color: colors.text.primary }]}>{character?.name}</Text>
+          </View>
+
+          <View style={[styles.menuDivider, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }]} />
+
+          {/* Sessize Al / Sesi Aç */}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onMuteToggle();
+            }}
+            style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.6 }]}
+          >
+            <View style={[styles.menuIconBg, { backgroundColor: isDark ? "rgba(142,142,147,0.15)" : "rgba(142,142,147,0.1)" }]}>
+              <Feather name={isMuted ? "bell" : "bell-off"} size={18} color="#8E8E93" />
+            </View>
+            <View style={styles.menuItemText}>
+              <Text style={[styles.menuItemLabel, { color: colors.text.primary }]}>
+                {isMuted ? "Sesi Aç" : "Sessize Al"}
+              </Text>
+              <Text style={[styles.menuItemSub, { color: colors.text.tertiary }]}>
+                {isMuted ? "Bildirimler tekrar gelsin" : "Bu karakterden bildirim gelmesin"}
+              </Text>
+            </View>
+            {isMuted && (
+              <Feather name="check" size={16} color={Colors.accent} />
+            )}
+          </Pressable>
+
+          <View style={[styles.menuDivider, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }]} />
+
+          {/* Sohbeti Sil */}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onDelete();
+            }}
+            style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.6 }]}
+          >
+            <View style={[styles.menuIconBg, { backgroundColor: "rgba(255,59,48,0.1)" }]}>
+              <Feather name="trash-2" size={18} color="#FF3B30" />
+            </View>
+            <View style={styles.menuItemText}>
+              <Text style={[styles.menuItemLabel, { color: "#FF3B30" }]}>Sohbeti Sil</Text>
+              <Text style={[styles.menuItemSub, { color: colors.text.tertiary }]}>Tüm mesajlar silinir</Text>
+            </View>
+          </Pressable>
+        </AnimatedRN.View>
+      </AnimatedRN.View>
+    </Modal>
+  );
+}
+
 export default function ChatsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { conversations, isLoaded, loadConversations, deleteConversation } = useChatContext();
   const { isDark, colors } = useTheme();
   const { t } = useI18n();
-  const [showMissions, setShowMissions] = React.useState(false);
-  const [streaks, setStreaks] = React.useState<Record<string, number>>({});
+  const [showMissions, setShowMissions] = useState(false);
+  const [streaks, setStreaks] = useState<Record<string, number>>({});
+  const [menuConv, setMenuConv] = useState<Conversation | null>(null);
+  const [mutedChars, setMutedChars] = useState<string[]>([]);
 
   useEffect(() => {
     loadConversations();
@@ -278,7 +394,42 @@ export default function ChatsScreen() {
       for (const [id, data] of Object.entries(all)) map[id] = data.streak;
       setStreaks(map);
     });
+    getMutedChars().then(setMutedChars);
   }, []);
+
+  const handleMuteToggle = useCallback(async (charId: string) => {
+    if (mutedChars.includes(charId)) {
+      await unmuteChar(charId);
+      setMutedChars((prev) => prev.filter((id) => id !== charId));
+    } else {
+      await muteChar(charId);
+      // Mevcut scheduled bildirimleri iptal et
+      const all = await Notifications.getAllScheduledNotificationsAsync();
+      for (const n of all) {
+        if (n.content.data?.characterId === charId && !n.content.data?.isContext) {
+          await Notifications.cancelScheduledNotificationAsync(n.identifier);
+        }
+      }
+      setMutedChars((prev) => [...prev, charId]);
+    }
+    setMenuConv(null);
+  }, [mutedChars]);
+
+  const handleDelete = useCallback((conv: Conversation) => {
+    setMenuConv(null);
+    Alert.alert(
+      getCharacter(conv.characterId)?.name ?? "Sohbet",
+      "Bu sohbet kalıcı olarak silinecek. Emin misin?",
+      [
+        { text: "Vazgeç", style: "cancel" },
+        {
+          text: "Sil",
+          style: "destructive",
+          onPress: () => deleteConversation(conv.id),
+        },
+      ]
+    );
+  }, [deleteConversation]);
 
   const sorted = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
   const totalMessages = conversations.reduce((acc, c) => acc + c.messages.length, 0);
@@ -333,7 +484,8 @@ export default function ChatsScreen() {
             conversation={item}
             index={index}
             streak={streaks[item.characterId] ?? 0}
-            onDelete={() => deleteConversation(item.id)}
+            isMuted={mutedChars.includes(item.characterId)}
+            onLongPress={() => setMenuConv(item)}
           />
         )}
         ListEmptyComponent={isLoaded ? <EmptyState /> : null}
@@ -364,6 +516,19 @@ export default function ChatsScreen() {
         language={user?.language ?? "tr"}
         claimReward={claimReward}
       />
+
+      {/* Dropdown menu modal */}
+      {menuConv && (
+        <ConversationMenu
+          conv={menuConv}
+          isMuted={mutedChars.includes(menuConv.characterId)}
+          isDark={isDark}
+          colors={colors}
+          onMuteToggle={() => handleMuteToggle(menuConv.characterId)}
+          onDelete={() => handleDelete(menuConv)}
+          onClose={() => setMenuConv(null)}
+        />
+      )}
     </BackgroundGradient>
   );
 }
@@ -403,26 +568,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  avatarInner: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#fff",
-  },
   avatarPhoto: {
     width: "100%",
     height: "100%",
     borderRadius: 20,
     borderWidth: 1.5,
     borderColor: "#fff",
-  },
-  avatarInitial: {
-    fontSize: 17,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
   },
   levelBadge: {
     position: "absolute",
@@ -474,6 +625,19 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#FFFFFF",
   },
+  mutedBadge: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#8E8E93",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
   chatInfo: {
     flex: 1,
     gap: 5,
@@ -487,11 +651,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    flex: 1,
   },
   charName: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
-    color: "#fff",
     letterSpacing: -0.2,
   },
   streakPill: {
@@ -508,6 +672,20 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: "#FF9500",
   },
+  mutedPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(142,142,147,0.12)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  mutedPillText: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    color: "#8E8E93",
+  },
   time: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
@@ -523,7 +701,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    color: Colors.text.secondary,
     letterSpacing: -0.1,
   },
   rolePill: {
@@ -649,5 +826,75 @@ const styles = StyleSheet.create({
   },
   dotGold: {
     backgroundColor: "#FFD700",
+  },
+  // ─── Dropdown menu ───────────────────────────────────────────────────────────
+  menuOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  menuSheet: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    bottom: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 16,
+  },
+  menuHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+  },
+  menuAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#555",
+  },
+  menuTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: -0.3,
+  },
+  menuDivider: {
+    height: 1,
+    marginHorizontal: 0,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 15,
+  },
+  menuIconBg: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  menuItemText: {
+    flex: 1,
+    gap: 2,
+  },
+  menuItemLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    letterSpacing: -0.2,
+  },
+  menuItemSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
   },
 });
