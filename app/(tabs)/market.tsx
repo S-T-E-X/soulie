@@ -268,7 +268,7 @@ export default function MarketScreen() {
               </Text>
               <View style={styles.currentCoinBadge}>
                 <Feather name="circle" size={14} color="#FFD700" />
-                <Text style={styles.currentCoinText}>{t("market.currentCoins", { count: coins })}</Text>
+                <Text style={[styles.currentCoinText, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("market.currentCoins", { count: coins })}</Text>
               </View>
             </Animated.View>
 
@@ -337,7 +337,7 @@ export default function MarketScreen() {
                 style={styles.currentCoinBadge}
               >
                 <Feather name="circle" size={14} color="#FFD700" />
-                <Text style={styles.currentCoinText}>{coins} coin</Text>
+                <Text style={[styles.currentCoinText, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{coins} coin</Text>
                 <Feather name="plus-circle" size={13} color={Colors.accent} />
               </Pressable>
             </Animated.View>
