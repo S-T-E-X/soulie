@@ -6,10 +6,10 @@ import Colors from "@/constants/colors";
 
 export const RELATIONSHIP_LEVELS = [
   { xp: 0, name: "Yabancı", color: ["#8E8E93", "#636366"] as [string, string] },
-  { xp: 50, name: "Tanıdık", color: [Colors.userBubble.from, Colors.userBubble.to] as [string, string] },
-  { xp: 150, name: "Dost", color: ["#5856D6", "#AF52DE"] as [string, string] },
-  { xp: 300, name: "Yakın Dost", color: ["#FF9500", "#FF6B00"] as [string, string] },
-  { xp: 500, name: "Sevgili", color: ["#FF2D55", "#FF6B9D"] as [string, string] },
+  { xp: 50, name: "Tanışık", color: [Colors.userBubble.from, Colors.userBubble.to] as [string, string] },
+  { xp: 150, name: "Arkadaş", color: ["#5856D6", "#AF52DE"] as [string, string] },
+  { xp: 300, name: "Yakın Arkadaş", color: ["#FF9500", "#FF6B00"] as [string, string] },
+  { xp: 500, name: "Özel Biri", color: ["#FF2D55", "#FF6B9D"] as [string, string] },
 ];
 
 export function getRelationshipLevel(xp: number) {
