@@ -28,7 +28,6 @@ import * as Haptics from "expo-haptics";
 import { getCharacter } from "@/constants/characters";
 import { useCustomChars } from "@/contexts/CustomCharContext";
 import { useCharacterSettings } from "@/hooks/useCharacterSettings";
-import { useAutoMessages } from "@/hooks/useAutoMessages";
 import { useChatContext } from "@/contexts/ChatContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -56,8 +55,6 @@ export default function CharacterProfileScreen() {
   const { getConversationByCharacter } = useChatContext();
   const conversation = getConversationByCharacter(characterId ?? "");
   const userMessageCount = conversation?.messages.filter(m => m.role === "user").length ?? 0;
-
-  useAutoMessages(character, settings, settingsLoaded, userMessageCount);
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollY.value = event.contentOffset.y;

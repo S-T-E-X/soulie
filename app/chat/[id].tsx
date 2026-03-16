@@ -35,7 +35,7 @@ import { GiftSheet } from "@/components/chat/GiftSheet";
 import { RelationshipBar, getRelationshipLevel } from "@/components/chat/RelationshipBar";
 import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
 import { useCharacterSettings } from "@/hooks/useCharacterSettings";
-import { useAutoMessages } from "@/hooks/useAutoMessages";
+import { scheduleContextFollowup } from "@/hooks/useAutoMessages";
 import { useStreak } from "@/hooks/useStreak";
 import { useDailyQuota } from "@/hooks/useDailyQuota";
 import { getCharacter, type Character } from "@/constants/characters";
@@ -464,13 +464,6 @@ export default function ChatScreen() {
   const charXp = userMessageCount * 10 + (settings.giftBonusXP || 0);
   const relLevel = getRelationshipLevel(charXp);
 
-  const userMessages = messages.filter(m => m.role === "user");
-  const lastUserMsg = userMessages[userMessages.length - 1];
-  const lastUserMessageTime = lastUserMsg?.timestamp ?? 0;
-  const lastUserMessageText = lastUserMsg?.content ?? "";
-
-  useAutoMessages(character, settings, settingsLoaded, userMessageCount, lastUserMessageTime, lastUserMessageText);
-
   useEffect(() => {
     loadConversations();
   }, []);
@@ -540,6 +533,11 @@ export default function ChatScreen() {
 
       await quota.markMessageSent();
       streak.update(character.name, user?.language ?? "tr");
+
+      // Kullanıcı mesajında önemli bir konu varsa saatler sonra takip bildirimi gönder
+      if (finalText) {
+        scheduleContextFollowup(character.id, character.name, finalText).catch(() => {});
+      }
 
       try {
         const baseUrl = getApiUrl();
