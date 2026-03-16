@@ -342,14 +342,8 @@ export default function TarotScreen() {
   }, []);
 
   const startReading = useCallback((type: SpreadType) => {
-    const today = getTodayKey();
-    if (isVipActive) {
-      const usedToday: string[] = (tarotData?.lastRead === today ? tarotData?.vipUsedSpreads : null) ?? [];
-      if (usedToday.includes(type)) {
-        Alert.alert(t("tarot.spreadUsed"), t("tarot.spreadUsedMessage"));
-        return;
-      }
-    } else if (alreadyRead) {
+    // VIP kullanıcılar sınırsız fal bakabilir, non-VIP günde 1
+    if (!isVipActive && alreadyRead) {
       setShowVIPModal(true);
       return;
     }
@@ -364,7 +358,7 @@ export default function TarotScreen() {
     setDisplayDeck(shuffled);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setPhase("picking");
-  }, [alreadyRead, tarotData, isVipActive]);
+  }, [alreadyRead, isVipActive]);
 
   const handleWatchAdForTarot = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -438,14 +432,13 @@ export default function TarotScreen() {
     yesterday.setDate(yesterday.getDate() - 1);
     const yKey = yesterday.toISOString().split("T")[0];
     const newStreak = data.lastRead === yKey ? (data.streak ?? 0) + 1 : 1;
-    const prevUsed: string[] = (data.lastRead === today ? data.vipUsedSpreads : null) ?? [];
-    const vipUsedSpreads = isVipActive
-      ? prevUsed.includes(spread) ? prevUsed : [...prevUsed, spread]
-      : data.vipUsedSpreads;
-    const updated: any = { lastRead: today, streak: newStreak, totalReadings: (data.totalReadings ?? 0) + 1, luckyCardId: luckyCard.id, vipUsedSpreads };
+    const updated = { lastRead: today, streak: newStreak, totalReadings: (data.totalReadings ?? 0) + 1, luckyCardId: luckyCard.id };
     await saveTarotData(updated);
     setTarotData(updated);
-    setAlreadyRead(true);
+    // VIP kullanıcılar sınırsız fal bakabilir — alreadyRead false kalır
+    if (!isVipActive) {
+      setAlreadyRead(true);
+    }
   };
 
   const fetchInterpretation = async () => {
