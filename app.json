@@ -15,10 +15,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.luminaai"
+      "bundleIdentifier": "com.soulie"
     },
     "android": {
-      "package": "com.luminaai",
+      "package": "com.soulie",
       "adaptiveIcon": {
         "backgroundColor": "#0A0F1E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -49,6 +49,15 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "domain": "https://api.cszone.gg"
+      "router": {
+        "origin": "https://replit.com/"
+      },
+      "eas": {
+        "projectId": "8bbf5481-c67d-43b8-a63c-915a7effffa0"
+      }
     }
   }
 }
