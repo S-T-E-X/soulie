@@ -162,9 +162,6 @@ function ChatRow({
             <Text style={[styles.lastMsg, { color: isMuted ? colors.text.tertiary : colors.text.secondary }]} numberOfLines={1}>
               {conversation.lastMessage || t("chats.chatStarted", { name: character.name })}
             </Text>
-            <View style={[styles.rolePill, { backgroundColor: character.id === "sibel" ? "rgba(107,33,168,0.15)" : colors.surface }]}>
-              <Text style={[styles.roleLabel, { color: character.id === "sibel" ? "#A855F7" : colors.text.tertiary }]}>{t(character.shortRoleKey as any)}</Text>
-            </View>
           </View>
         </View>
       </Pressable>

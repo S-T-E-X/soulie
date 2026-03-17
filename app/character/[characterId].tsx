@@ -197,12 +197,6 @@ export default function CharacterProfileScreen() {
               <Text style={styles.ageText}>{character.age}</Text>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(200)} style={styles.roleRow}>
-              <View style={styles.roleBadge}>
-                <Text style={styles.roleText}>{t(character.shortRoleKey as any)}</Text>
-              </View>
-            </Animated.View>
-
             <Animated.View entering={FadeInDown.delay(250)} style={styles.tagsRow}>
               {character.tags.map((tag) => (
                 <View key={tag} style={styles.tag}>
