@@ -200,7 +200,7 @@ export default function CharacterProfileScreen() {
             <Animated.View entering={FadeInDown.delay(250)} style={styles.tagsRow}>
               {character.tags.map((tag) => (
                 <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
+                  <Text style={styles.tagText}>{t(tag as any)}</Text>
                 </View>
               ))}
             </Animated.View>
@@ -230,7 +230,7 @@ export default function CharacterProfileScreen() {
             <View style={styles.interestGrid}>
               {character.tags.map((tag) => (
                 <View key={tag} style={[styles.interestChip, { backgroundColor: isDark ? "rgba(124,92,252,0.15)" : "rgba(0,122,255,0.08)", borderColor: isDark ? "rgba(124,92,252,0.3)" : "rgba(0,122,255,0.15)" }]}>
-                  <Text style={[styles.interestChipText, { color: isDark ? "#A78BFA" : Colors.accent }]}>{tag}</Text>
+                  <Text style={[styles.interestChipText, { color: isDark ? "#A78BFA" : Colors.accent }]}>{t(tag as any)}</Text>
                 </View>
               ))}
             </View>

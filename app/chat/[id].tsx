@@ -132,7 +132,7 @@ function WelcomeMessage({ character, customName }: { character: Character; custo
       <View style={styles.tagsRow}>
         {character.tags.map((tag) => (
           <View key={tag} style={[styles.tag, { backgroundColor: colors.inputBg }]}>
-            <Text style={[styles.tagText, { color: colors.text.secondary }]}>{tag}</Text>
+            <Text style={[styles.tagText, { color: colors.text.secondary }]}>{t(tag as any)}</Text>
           </View>
         ))}
       </View>
