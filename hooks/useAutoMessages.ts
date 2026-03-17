@@ -8,7 +8,7 @@ import { getRelationshipLevel } from "@/components/chat/RelationshipBar";
 import { getCharacter } from "@/constants/characters";
 import { getMutedChars } from "@/lib/mutedChars";
 
-const SCHEDULE_DATE_KEY = "soulie_notif_date_v1";
+const SCHEDULE_DATE_KEY = "soulie_notif_date_v3";
 
 // ─── Bildirim handler ───────────────────────────────────────────────────────
 Notifications.setNotificationHandler({
@@ -475,24 +475,31 @@ export function useGlobalNotificationScheduler() {
             c.messages.some((m) => m.role === "user"),
         );
 
-        if (activeConvs.length === 0) {
-          // Aktif konuşma yok, tüm günlük bildirimleri iptal et
-          const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
-          for (const n of allScheduled) {
-            if (!n.content.data?.isContext) {
-              await Notifications.cancelScheduledNotificationAsync(n.identifier);
-            }
+        // Tüm günlük (tekrarlayan) bildirimleri iptal et — isContext:true olanları koru
+        const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
+        await Notifications.cancelAllScheduledNotificationsAsync();
+        // Context bildirimlerini geri ekle (yeniden schedule et)
+        for (const n of allScheduled) {
+          if (n.content.data?.isContext === true) {
+            const trig = n.trigger as any;
+            const secondsLeft = trig?.value
+              ? Math.max(60, Math.round((trig.value - Date.now()) / 1000))
+              : 60;
+            await Notifications.scheduleNotificationAsync({
+              identifier: n.identifier,
+              content: n.content as any,
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                seconds: secondsLeft,
+                repeats: false,
+              },
+            }).catch(() => {});
           }
-          await AsyncStorage.setItem(SCHEDULE_DATE_KEY, storeValue);
-          return;
         }
 
-        // Mevcut günlük (tekrarlayan) bildirimleri iptal et, context bildirimleri koru
-        const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
-        for (const n of allScheduled) {
-          if (!n.content.data?.isContext) {
-            await Notifications.cancelScheduledNotificationAsync(n.identifier);
-          }
+        if (activeConvs.length === 0) {
+          await AsyncStorage.setItem(SCHEDULE_DATE_KEY, storeValue);
+          return;
         }
 
         // Sessize alınan karakterleri filtrele
