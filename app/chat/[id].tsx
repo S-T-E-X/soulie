@@ -128,9 +128,6 @@ function WelcomeMessage({ character, customName }: { character: Character; custo
         />
       </View>
       <Text style={[styles.welcomeName, { color: colors.text.primary }]}>{displayName}</Text>
-      <View style={styles.welcomeRoleBadge}>
-        <Text style={styles.welcomeRoleText}>{t(character.shortRoleKey as any)}</Text>
-      </View>
       <Text style={[styles.welcomeDesc, { color: colors.text.secondary }]}>{character.description}</Text>
       <View style={styles.tagsRow}>
         {character.tags.map((tag) => (
@@ -883,9 +880,11 @@ export default function ChatScreen() {
                 ) : null}
                 <Feather name="chevron-right" size={13} color={isSibel ? "#A78BFA" : colors.text.tertiary} />
               </View>
-              <Text style={[styles.headerStatus, { color: isSibel ? "#C4B5FD" : colors.text.secondary }]}>
-                {isStreaming ? t("chat.typing") : t(character.shortRoleKey as any)}
-              </Text>
+              {isStreaming && (
+                <Text style={[styles.headerStatus, { color: isSibel ? "#C4B5FD" : colors.text.secondary }]}>
+                  {t("chat.typing")}
+                </Text>
+              )}
             </View>
           </Pressable>
 

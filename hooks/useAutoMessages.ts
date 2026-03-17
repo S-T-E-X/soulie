@@ -2,10 +2,13 @@ import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
 import { getRelationshipLevel } from "@/components/chat/RelationshipBar";
 import { getCharacter } from "@/constants/characters";
 import { getMutedChars } from "@/lib/mutedChars";
+
+const SCHEDULE_DATE_KEY = "soulie_notif_date_v1";
 
 // ─── Bildirim handler ───────────────────────────────────────────────────────
 Notifications.setNotificationHandler({
@@ -403,7 +406,7 @@ export async function scheduleContextFollowup(
 // her gün uygun saatlerde SADECE bu karakterlerden bildirim schedule eder.
 export function useGlobalNotificationScheduler() {
   const { conversations, isLoaded, getConversationByCharacter, updateConversation } = useChatContext();
-  const lastScheduledRef = useRef<number>(0);
+  const schedulingRef = useRef(false);
 
   // Bildirime tıklandığında:
   // 1. Bildirimin mesajını karakterin sohbetine ekle (AI mesajı gibi görünsün)
@@ -440,82 +443,113 @@ export function useGlobalNotificationScheduler() {
     return () => sub.remove();
   }, [getConversationByCharacter, updateConversation]);
 
-  // Günlük bildirimleri schedule et - conversations değişince güncelle
+  // Günlük bildirimleri schedule et — sadece gün değişince veya aktif karakter sayısı değişince
+  const convCount = conversations.filter(
+    (c) => c.messages.some((m) => m.role === "user")
+  ).length;
+
   useEffect(() => {
     if (!isLoaded || Platform.OS === "web") return;
-
-    // Aynı dakika içinde tekrar schedule etmeyi engelle
-    const now = Date.now();
-    if (now - lastScheduledRef.current < 60_000) return;
-    lastScheduledRef.current = now;
+    // Eş zamanlı çalışmayı engelle
+    if (schedulingRef.current) return;
 
     const schedule = async () => {
-      const hasPermission = await requestPermissions();
-      if (!hasPermission) return;
+      schedulingRef.current = true;
+      try {
+        const hasPermission = await requestPermissions();
+        if (!hasPermission) return;
 
-      // Son 7 günde kullanıcının mesaj gönderdiği konuşmaları bul
-      const sevenDaysAgo = now - 7 * 24 * 3600 * 1000;
-      const activeConvs = conversations.filter(
-        (c) =>
-          c.updatedAt >= sevenDaysAgo &&
-          c.messages.some((m) => m.role === "user"),
-      );
+        // Bugün + aktif konuşma sayısı kombinasyonunu kontrol et
+        // Aynı gün aynı sayıda konuşmayla zaten schedule edildiyse atla
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const storeValue = `${todayKey}_${convCount}`;
+        const stored = await AsyncStorage.getItem(SCHEDULE_DATE_KEY);
+        if (stored === storeValue) return;
 
-      if (activeConvs.length === 0) return;
+        const now = Date.now();
+        // Son 7 günde kullanıcının mesaj gönderdiği konuşmaları bul
+        const sevenDaysAgo = now - 7 * 24 * 3600 * 1000;
+        const activeConvs = conversations.filter(
+          (c) =>
+            c.updatedAt >= sevenDaysAgo &&
+            c.messages.some((m) => m.role === "user"),
+        );
 
-      // Sadece günlük (tekrarlayan) bildirimleri iptal et, context bildirimleri koru
-      const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
-      for (const n of allScheduled) {
-        if (!n.content.data?.isContext) {
-          await Notifications.cancelScheduledNotificationAsync(n.identifier);
+        if (activeConvs.length === 0) {
+          // Aktif konuşma yok, tüm günlük bildirimleri iptal et
+          const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
+          for (const n of allScheduled) {
+            if (!n.content.data?.isContext) {
+              await Notifications.cancelScheduledNotificationAsync(n.identifier);
+            }
+          }
+          await AsyncStorage.setItem(SCHEDULE_DATE_KEY, storeValue);
+          return;
         }
-      }
 
-      // Sessize alınan karakterleri filtrele
-      const mutedChars = await getMutedChars();
+        // Mevcut günlük (tekrarlayan) bildirimleri iptal et, context bildirimleri koru
+        const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
+        for (const n of allScheduled) {
+          if (!n.content.data?.isContext) {
+            await Notifications.cancelScheduledNotificationAsync(n.identifier);
+          }
+        }
 
-      // En son konuşulan karakterler önce gelsin, muted olanları çıkar
-      const sorted = [...activeConvs]
-        .filter((c) => !mutedChars.includes(c.characterId))
-        .sort((a, b) => b.updatedAt - a.updatedAt);
+        // Sessize alınan karakterleri filtrele
+        const mutedChars = await getMutedChars();
 
-      // Tüm aktif karakterler sessize alınmışsa bildirim yok
-      if (sorted.length === 0) return;
+        // En son konuşulan karakterler önce gelsin, muted olanları çıkar
+        const sorted = [...activeConvs]
+          .filter((c) => !mutedChars.includes(c.characterId))
+          .sort((a, b) => b.updatedAt - a.updatedAt);
 
-      // Her time slot için farklı bir karakter seç (round-robin)
-      // Böylece bir anda sadece 1 karakter bildirim gönderir
-      let slotIndex = 0;
-      for (const slot of TIME_SLOTS) {
-        if (isSleepHour(slot.hour)) continue;
+        if (sorted.length === 0) {
+          await AsyncStorage.setItem(SCHEDULE_DATE_KEY, storeValue);
+          return;
+        }
 
-        const conv = sorted[slotIndex % sorted.length];
-        slotIndex++;
+        // Her time slot için farklı bir karakter seç (round-robin)
+        // Böylece günde en fazla TIME_SLOTS.length kadar bildirim gider
+        let slotIndex = 0;
+        for (const slot of TIME_SLOTS) {
+          if (isSleepHour(slot.hour)) continue;
 
-        const char = getCharacter(conv.characterId);
-        if (!char) continue;
+          const conv = sorted[slotIndex % sorted.length];
+          slotIndex++;
 
-        const userMsgs = conv.messages.filter((m) => m.role === "user");
-        const xp = userMsgs.length * 10;
-        const level = getRelationshipLevel(xp);
-        const body = getDailyMessage(conv.characterId, level.name, slot.key);
+          const char = getCharacter(conv.characterId);
+          if (!char) continue;
 
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: char.name,
-            body,
-            data: { characterId: conv.characterId, isContext: false },
-            sound: true,
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-            hour: slot.hour,
-            minute: slot.minute,
-            repeats: true,
-          },
-        });
+          const userMsgs = conv.messages.filter((m) => m.role === "user");
+          const xp = userMsgs.length * 10;
+          const level = getRelationshipLevel(xp);
+          const body = getDailyMessage(conv.characterId, level.name, slot.key);
+
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: char.name,
+              body,
+              data: { characterId: conv.characterId, isContext: false },
+              sound: true,
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+              hour: slot.hour,
+              minute: slot.minute,
+              repeats: true,
+            },
+          });
+        }
+
+        // Schedule başarıyla tamamlandı, tarihi kaydet
+        await AsyncStorage.setItem(SCHEDULE_DATE_KEY, storeValue);
+      } catch (err) {
+        console.error("[Scheduler] error:", err);
+      } finally {
+        schedulingRef.current = false;
       }
     };
 
     schedule();
-  }, [isLoaded, conversations]);
+  }, [isLoaded, convCount]);
 }
