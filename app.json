@@ -16,12 +16,14 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.soulie",
+      "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.soulie",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0A0F1E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
