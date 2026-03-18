@@ -8,19 +8,19 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "api.cszone.gg"
+        "EXPO_PUBLIC_DOMAIN": "api.cszone.gg:5001"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "api.cszone.gg"
+        "EXPO_PUBLIC_DOMAIN": "api.cszone.gg:5001"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "api.cszone.gg"
+        "EXPO_PUBLIC_DOMAIN": "api.cszone.gg:5001"
       }
     }
   },
