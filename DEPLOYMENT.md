@@ -42,7 +42,17 @@ nano /path/to/soulie/.env
 # Sonra backend'i restart et
 pm2 restart soulie-backend
 ```
-
+# 1. Replit'te değişiklikler yaptın
+# Replit Shell'de:
+git add .
+git commit -m "v1.0.1: yeni özellikler"
+git push origin main
+# 2. VPS'de SSH açıp çek:
+ssh user@your-vps-ip
+cd /path/to/soulie
+git pull origin main
+npm install          # eğer package.json değiştiyse
+pm2 restart soulie-backend
 ---
 
 ## 2. Expo ile Yeni Build Alma
