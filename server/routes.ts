@@ -171,7 +171,7 @@ ${relationshipLevelName ? getRelationshipBehavior(relationshipLevelName) : ""}`;
       res.flushHeaders();
 
       const stream = await openai.chat.completions.create({
-        model: "gpt-4.1-nano",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Bana ${giftName} gönderdin.` },
@@ -283,7 +283,7 @@ KURALLAR:
       const hasImages = messages.some((m: any) =>
         Array.isArray(m.content) && m.content.some((c: any) => c.type === "image_url")
       );
-      const chatModel = hasImages ? "gpt-4.1-mini" : "gpt-5.2";
+      const chatModel = hasImages ? "gpt-4o" : "gpt-4o-mini";
 
       const stream = await openai.chat.completions.create({
         model: chatModel,
@@ -328,7 +328,7 @@ KURALLAR:
         .join("\n");
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -384,7 +384,7 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
       res.flushHeaders();
 
       const stream = await openai.chat.completions.create({
-        model: "gpt-4.1-nano",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: prompt },
           { role: "user", content: "Falıma bak ve mistik bir yorum yap." },
