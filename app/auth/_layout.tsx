@@ -7,6 +7,7 @@ export default function AuthLayout() {
       <Stack.Screen name="welcome" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="email-register" />
+      <Stack.Screen name="social-onboarding" />
     </Stack>
   );
 }

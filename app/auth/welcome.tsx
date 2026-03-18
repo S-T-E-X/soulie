@@ -100,7 +100,7 @@ export default function WelcomeScreen() {
     if (method === "email") {
       router.push({ pathname: "/auth/email-register" });
     } else {
-      router.push({ pathname: "/auth/onboarding", params: { method } });
+      router.push({ pathname: "/auth/social-onboarding", params: { method } });
     }
   };
 

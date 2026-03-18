@@ -87,7 +87,7 @@ export default function EmailRegisterScreen() {
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.push({
-        pathname: "/auth/onboarding",
+        pathname: "/auth/social-onboarding",
         params: { method: "email", email: trimmedEmail, registeredId: data.id, registeredUserId: data.userId },
       });
     } catch {

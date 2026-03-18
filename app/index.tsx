@@ -12,7 +12,7 @@ export default function SplashScreen() {
     if (!user) {
       router.replace("/auth/welcome");
     } else if (!user.onboardingComplete) {
-      router.replace("/auth/onboarding");
+      router.replace("/auth/welcome");
     } else {
       router.replace("/(tabs)/explore");
     }
