@@ -130,4 +130,94 @@ export async function getPasswordHash(id: string) {
   return res.rows[0]?.password_hash ?? null;
 }
 
+export async function findUserByAppleId(appleUserId: string) {
+  const res = await query(
+    `SELECT * FROM soulie_users WHERE apple_user_id = $1 AND deleted_at IS NULL`,
+    [appleUserId]
+  );
+  return res.rows[0] ?? null;
+}
+
+export async function saveAppleNotification(params: {
+  jti: string | null;
+  notificationType: string;
+  appleUserId: string | null;
+  email: string | null;
+  eventDatetime: Date | null;
+  rawJwt: string;
+  eventsPayload: Record<string, unknown>;
+  userDbId: string | null;
+  actionTaken: string;
+}) {
+  const res = await query(
+    `INSERT INTO soulie_apple_notifications
+       (jti, notification_type, apple_user_id, email, event_datetime, raw_jwt, events_payload, user_db_id, action_taken)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     ON CONFLICT (jti) DO UPDATE SET action_taken = EXCLUDED.action_taken
+     RETURNING id`,
+    [
+      params.jti,
+      params.notificationType,
+      params.appleUserId,
+      params.email,
+      params.eventDatetime,
+      params.rawJwt,
+      JSON.stringify(params.eventsPayload),
+      params.userDbId,
+      params.actionTaken,
+    ]
+  );
+  return res.rows[0]?.id ?? null;
+}
+
+export async function softDeleteUser(userId: string, reason: string) {
+  await query(
+    `UPDATE soulie_users SET deleted_at = NOW() WHERE id = $1`,
+    [userId]
+  );
+  await query(
+    `INSERT INTO soulie_events (user_id, event_type, action, metadata)
+     VALUES ($1, 'account_deleted', $2, $3)`,
+    [userId, reason, JSON.stringify({ reason, source: "apple_notification" })]
+  );
+}
+
+export async function softDeleteUserByAppleId(appleUserId: string, reason: string) {
+  const user = await findUserByAppleId(appleUserId);
+  if (user) await softDeleteUser(user.id, reason);
+  return user;
+}
+
+export async function revokeAppleConsent(appleUserId: string) {
+  const res = await query(
+    `UPDATE soulie_users SET consent_revoked_at = NOW()
+     WHERE apple_user_id = $1 AND deleted_at IS NULL
+     RETURNING id`,
+    [appleUserId]
+  );
+  return res.rows[0] ?? null;
+}
+
+export async function updateEmailRelayStatus(appleUserId: string, disabled: boolean) {
+  const res = await query(
+    `UPDATE soulie_users SET email_relay_disabled = $1
+     WHERE apple_user_id = $2 AND deleted_at IS NULL
+     RETURNING id`,
+    [disabled, appleUserId]
+  );
+  return res.rows[0] ?? null;
+}
+
+export async function getAppleNotifications(limit = 100) {
+  const res = await query(
+    `SELECT id, jti, notification_type, apple_user_id, email, event_datetime,
+            events_payload, user_db_id, action_taken, processed_at
+     FROM soulie_apple_notifications
+     ORDER BY processed_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+  return res.rows;
+}
+
 export default pool;

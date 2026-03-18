@@ -4,7 +4,11 @@ import express from "express";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { speechToText, ensureCompatibleFormat, textToSpeech } from "./replit_integrations/audio/client";
-import { upsertUser, getAllUsers, getUserEvents, logEvent, findUserByEmail, getEventStats } from "./db";
+import {
+  upsertUser, getAllUsers, getUserEvents, logEvent, findUserByEmail, getEventStats,
+  saveAppleNotification, softDeleteUser, softDeleteUserByAppleId, revokeAppleConsent,
+  updateEmailRelayStatus, findUserByAppleId, getAppleNotifications,
+} from "./db";
 
 let globalSystemPromptOverride: string = "";
 
@@ -596,61 +600,169 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
     }
   });
 
-  app.post("/api/notifications/apple", (req, res) => {
+  function decodeAppleJwt(token: string): { header: Record<string, unknown>; payload: Record<string, unknown> } {
+    const parts = token.split(".");
+    if (parts.length !== 3) throw new Error("Invalid JWT format: expected 3 parts");
+    const decodeB64 = (s: string) => Buffer.from(s.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+    return {
+      header: JSON.parse(decodeB64(parts[0])),
+      payload: JSON.parse(decodeB64(parts[1])),
+    };
+  }
+
+  function parseAppleEvents(payload: Record<string, unknown>): Record<string, unknown> {
+    const eventsRaw = payload.events;
+    if (!eventsRaw) return {};
+    if (typeof eventsRaw === "string") {
+      try { return JSON.parse(eventsRaw); } catch { return {}; }
+    }
+    if (typeof eventsRaw === "object") return eventsRaw as Record<string, unknown>;
+    return {};
+  }
+
+  app.post("/api/notifications/apple", async (req, res) => {
+    const rawJwt: string = req.body?.payload ?? req.body?.["payload"] ?? "";
+
+    if (!rawJwt) {
+      console.warn("[Apple] Empty notification payload received");
+      return res.status(400).json({ error: "Missing payload" });
+    }
+
+    let jwtPayload: Record<string, unknown>;
+    let jwtHeader: Record<string, unknown>;
     try {
-      const notificationType = req.headers["apple-notification-type"];
-      const notificationId = req.headers["apple-notification-id"];
-      const timestamp = req.headers["apple-notification-timestamp"];
-      const signature = req.headers["apple-notification-signature"];
+      const decoded = decodeAppleJwt(rawJwt);
+      jwtPayload = decoded.payload;
+      jwtHeader = decoded.header;
+    } catch (err) {
+      console.error("[Apple] JWT decode failed:", err);
+      return res.status(400).json({ error: "Invalid JWT payload" });
+    }
 
-      const { data } = req.body;
+    const events = parseAppleEvents(jwtPayload);
+    const notificationType = (events.type ?? jwtPayload.type ?? "unknown") as string;
+    const appleUserId = (events.sub ?? jwtPayload.sub ?? null) as string | null;
+    const email = (events.email ?? null) as string | null;
+    const jti = (jwtPayload.jti ?? null) as string | null;
+    const eventDatetimeMs = (events.event_datetime ?? null) as number | null;
+    const eventDatetime = eventDatetimeMs ? new Date(eventDatetimeMs) : null;
 
-      console.log("[Apple Notification]", {
-        type: notificationType,
-        id: notificationId,
-        timestamp,
-        signaturePresent: !!signature,
-        dataKeys: data ? Object.keys(data) : null,
-      });
+    console.log("[Apple Notification]", {
+      type: notificationType,
+      jti,
+      appleUserId,
+      email,
+      alg: jwtHeader.alg,
+      iss: jwtPayload.iss,
+      aud: jwtPayload.aud,
+    });
 
-      if (!notificationType) {
-        return res.status(400).json({ error: "Missing Apple notification type header" });
+    let actionTaken = "logged";
+    let matchedUser: Record<string, unknown> | null = null;
+
+    try {
+      if (appleUserId) {
+        matchedUser = await findUserByAppleId(appleUserId);
+      }
+      if (!matchedUser && email) {
+        matchedUser = await findUserByEmail(email);
       }
 
       switch (notificationType) {
-        case "email-disabled":
-          console.log("[Apple] User disabled private email relay:", data?.sub);
-          break;
-
-        case "email-enabled":
-          console.log("[Apple] User enabled private email relay:", data?.sub);
-          break;
-
-        case "device-linked":
-          console.log("[Apple] New device linked:", data?.sub);
-          break;
-
-        case "device-unlinked":
-          console.log("[Apple] Device unlinked:", data?.sub);
-          break;
-
-        case "account-delete":
-          console.log("[Apple] User account marked for deletion:", data?.sub);
-          const userToDelete = data?.sub;
-          if (userToDelete) {
-            usersRegistry.delete(userToDelete);
-            console.log(`[Apple] User ${userToDelete} removed from registry`);
+        case "email-disabled": {
+          console.log("[Apple] Private email relay DISABLED for user:", appleUserId ?? email);
+          if (appleUserId) await updateEmailRelayStatus(appleUserId, true);
+          if (matchedUser) {
+            await logEvent(matchedUser.id as string, "apple_email_relay_disabled", null, null,
+              { appleUserId, email, source: "apple_notification" });
           }
+          actionTaken = "email_relay_disabled";
           break;
+        }
 
-        default:
-          console.log("[Apple] Unknown notification type:", notificationType);
+        case "email-enabled": {
+          console.log("[Apple] Private email relay ENABLED for user:", appleUserId ?? email);
+          if (appleUserId) await updateEmailRelayStatus(appleUserId, false);
+          if (matchedUser) {
+            await logEvent(matchedUser.id as string, "apple_email_relay_enabled", null, null,
+              { appleUserId, email, source: "apple_notification" });
+          }
+          actionTaken = "email_relay_enabled";
+          break;
+        }
+
+        case "consent-revoked": {
+          console.log("[Apple] User REVOKED consent (stopped using Sign in with Apple):", appleUserId);
+          if (appleUserId) await revokeAppleConsent(appleUserId);
+          if (matchedUser) {
+            await logEvent(matchedUser.id as string, "apple_consent_revoked", null, null,
+              { appleUserId, source: "apple_notification" });
+          }
+          actionTaken = "consent_revoked";
+          break;
+        }
+
+        case "account-delete": {
+          console.log("[Apple] User DELETED Apple account — marking for deletion:", appleUserId);
+          if (appleUserId) {
+            const deleted = await softDeleteUserByAppleId(appleUserId, "apple_account_delete");
+            matchedUser = deleted;
+          } else if (email) {
+            const userByEmail = await findUserByEmail(email);
+            if (userByEmail) {
+              matchedUser = userByEmail;
+              await softDeleteUser(userByEmail.id, "apple_account_delete");
+            }
+          }
+          actionTaken = matchedUser ? "user_soft_deleted" : "no_user_found";
+          console.log(`[Apple] account-delete action: ${actionTaken}`);
+          break;
+        }
+
+        case "device-linked": {
+          console.log("[Apple] New device linked for user:", appleUserId);
+          if (matchedUser) {
+            await logEvent(matchedUser.id as string, "apple_device_linked", null, null,
+              { appleUserId, source: "apple_notification" });
+          }
+          actionTaken = "device_linked_logged";
+          break;
+        }
+
+        case "device-unlinked": {
+          console.log("[Apple] Device unlinked for user:", appleUserId);
+          if (matchedUser) {
+            await logEvent(matchedUser.id as string, "apple_device_unlinked", null, null,
+              { appleUserId, source: "apple_notification" });
+          }
+          actionTaken = "device_unlinked_logged";
+          break;
+        }
+
+        default: {
+          console.warn("[Apple] Unknown notification type:", notificationType);
+          actionTaken = "unknown_type_logged";
+          break;
+        }
       }
 
-      res.json({ success: true, notificationId });
+      const notifId = await saveAppleNotification({
+        jti,
+        notificationType,
+        appleUserId,
+        email,
+        eventDatetime,
+        rawJwt,
+        eventsPayload: events,
+        userDbId: matchedUser ? (matchedUser.id as string) : null,
+        actionTaken,
+      });
+
+      console.log(`[Apple] Notification ${notifId} saved — type: ${notificationType}, action: ${actionTaken}`);
+      return res.json({ success: true, notifId, type: notificationType, action: actionTaken });
     } catch (error) {
       console.error("[Apple] Notification processing error:", error);
-      res.status(500).json({ error: "Failed to process Apple notification" });
+      return res.status(500).json({ error: "Failed to process Apple notification" });
     }
   });
 
@@ -679,6 +791,17 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
       res.json({ stats });
     } catch (err) {
       res.status(500).json({ stats: [] });
+    }
+  });
+
+  app.get("/api/admin/apple-notifications", async (req, res) => {
+    try {
+      const limit = parseInt(String(req.query.limit ?? 100), 10);
+      const notifications = await getAppleNotifications(limit);
+      res.json({ notifications });
+    } catch (err) {
+      console.error("Apple notifications fetch error:", err);
+      res.status(500).json({ notifications: [] });
     }
   });
 
