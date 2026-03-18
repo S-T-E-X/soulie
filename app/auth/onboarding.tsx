@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
   Alert,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -236,7 +236,13 @@ function GenderPage({
   );
 }
 
-function ProcessingPage({ language, data }: { language: UserLanguage; data: OnboardingData }) {
+function ProcessingPage({ language, data, registeredId, registeredEmail, registeredUserId }: {
+  language: UserLanguage;
+  data: OnboardingData;
+  registeredId?: string;
+  registeredEmail?: string;
+  registeredUserId?: string;
+}) {
   const { login } = useAuth();
   const spinAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -273,7 +279,10 @@ function ProcessingPage({ language, data }: { language: UserLanguage; data: Onbo
               ? `${data.birthYear}-${data.birthMonth.padStart(2, "0")}-${data.birthDay.padStart(2, "0")}`
               : undefined;
           await login({
+            id: registeredId,
+            userId: registeredUserId,
             name: data.name || "User",
+            email: registeredEmail,
             language: data.language,
             birthdate,
             gender: data.gender ?? undefined,
@@ -362,6 +371,7 @@ function ProcessingPage({ language, data }: { language: UserLanguage; data: Onbo
 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ email?: string; registeredId?: string; registeredUserId?: string }>();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<OnboardingData>({
     language: "en",
@@ -516,7 +526,15 @@ export default function OnboardingScreen() {
                 language={data.language}
               />
             )}
-            {step === 5 && <ProcessingPage language={data.language} data={data} />}
+            {step === 5 && (
+              <ProcessingPage
+                language={data.language}
+                data={data}
+                registeredId={params.registeredId}
+                registeredEmail={params.email}
+                registeredUserId={params.registeredUserId}
+              />
+            )}
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>

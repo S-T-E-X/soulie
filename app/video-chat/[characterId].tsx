@@ -685,7 +685,7 @@ export default function VideoChatScreen() {
           <Text style={styles.statusLabel}>{statusLabel}</Text>
         </View>
         {isListening && (
-          <Text style={styles.tapHint}>Bitirmek için ekrana dokun</Text>
+          <Text style={styles.tapHint}>{t("videoChat.hint")}</Text>
         )}
       </Pressable>
 

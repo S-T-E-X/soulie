@@ -97,7 +97,11 @@ export default function WelcomeScreen() {
   }, []);
 
   const navigateToOnboarding = (method: "apple" | "google" | "email") => {
-    router.push({ pathname: "/auth/onboarding", params: { method } });
+    if (method === "email") {
+      router.push({ pathname: "/auth/email-register" });
+    } else {
+      router.push({ pathname: "/auth/onboarding", params: { method } });
+    }
   };
 
   return (

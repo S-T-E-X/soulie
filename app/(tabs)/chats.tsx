@@ -22,6 +22,7 @@ import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
+import { logEvent } from "@/lib/analytics";
 import { WeeklyMissionsSheet } from "@/components/WeeklyMissionsSheet";
 import { useChatContext, type Conversation } from "@/contexts/ChatContext";
 import { getCharacter } from "@/constants/characters";
@@ -384,6 +385,10 @@ export default function ChatsScreen() {
   const [streaks, setStreaks] = useState<Record<string, number>>({});
   const [menuConv, setMenuConv] = useState<Conversation | null>(null);
   const [mutedChars, setMutedChars] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (user?.id) logEvent(user.id, "screen_view", "chats");
+  }, [user?.id]);
 
   useEffect(() => {
     loadConversations();

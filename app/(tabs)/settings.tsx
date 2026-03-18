@@ -20,6 +20,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
+import { logEvent } from "@/lib/analytics";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatContext } from "@/contexts/ChatContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -178,14 +179,17 @@ function SectionHeader({ title, isDark }: { title: string; isDark: boolean }) {
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout, deleteAccount, grantAdminAccess } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const { conversations } = useChatContext();
   const { isDark, colors, toggleTheme } = useTheme();
   const { t } = useI18n();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [versionTaps, setVersionTaps] = useState(0);
+
+  useEffect(() => {
+    if (user?.id) logEvent(user.id, "screen_view", "settings");
+  }, [user?.id]);
 
   useEffect(() => {
     AsyncStorage.getItem(SETTINGS_KEY).then((raw) => {
@@ -223,23 +227,6 @@ export default function SettingsScreen() {
       { text: t("common.cancel"), style: "cancel" },
       { text: t("settings.deleteAccount"), style: "destructive", onPress: async () => { await deleteAccount?.(); router.replace("/"); } },
     ]);
-  };
-
-  const handleVersionTap = async () => {
-    const next = versionTaps + 1;
-    setVersionTaps(next);
-    if (next >= 7) {
-      setVersionTaps(0);
-      if (!user?.isAdmin) {
-        Alert.alert(t("settings.adminActivated"), t("settings.adminActivatedMessage"), [
-          { text: t("common.ok"), onPress: async () => { await grantAdminAccess(); } }
-        ]);
-      } else {
-        Alert.alert(t("settings.alreadyAdmin"), t("settings.alreadyAdminMessage"));
-      }
-    } else if (next >= 4) {
-      Alert.alert("", t("settings.tapVersion", { count: 7 - next }), [{ text: t("common.ok") }]);
-    }
   };
 
   const cardBg = isDark ? "rgba(28,28,48,0.92)" : "rgba(255,255,255,0.8)";
@@ -368,9 +355,7 @@ export default function SettingsScreen() {
           </AnimatedRN.View>
         )}
 
-        <Pressable onPress={handleVersionTap} hitSlop={8}>
-          <Text style={[styles.version, { color: colors.text.tertiary }]}>Soulie v1.0.0</Text>
-        </Pressable>
+        <Text style={[styles.version, { color: colors.text.tertiary }]}>Soulie v1.0.0</Text>
       </ScrollView>
     </BackgroundGradient>
   );

@@ -2,11 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import express from "express";
 import OpenAI from "openai";
+import bcrypt from "bcryptjs";
 import { speechToText, ensureCompatibleFormat, textToSpeech } from "./replit_integrations/audio/client";
+import { upsertUser, getAllUsers, getUserEvents, logEvent, findUserByEmail, getEventStats } from "./db";
 
 let globalSystemPromptOverride: string = "";
-
-const usersRegistry: Map<string, Record<string, unknown>> = new Map();
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -488,13 +488,112 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
     }
   });
 
-  app.post("/api/users/sync", (req, res) => {
+  app.post("/api/users/sync", async (req, res) => {
     const user = req.body;
     if (!user || typeof user !== "object" || !user.id) {
       return res.status(400).json({ error: "user.id required" });
     }
-    usersRegistry.set(user.id, { ...user, _syncedAt: Date.now() });
-    res.json({ success: true });
+    try {
+      const ipAddress =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        req.socket?.remoteAddress ||
+        null;
+      const userAgent = req.headers["user-agent"] || null;
+      await upsertUser(user, ipAddress ?? undefined, userAgent ?? undefined);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("User sync error:", err);
+      res.status(500).json({ error: "sync failed" });
+    }
+  });
+
+  app.post("/api/users/log-event", async (req, res) => {
+    const { userId, eventType, screen, action, metadata, platform } = req.body;
+    if (!userId || !eventType) {
+      return res.status(400).json({ error: "userId and eventType required" });
+    }
+    try {
+      const ipAddress =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        req.socket?.remoteAddress ||
+        null;
+      const userAgent = req.headers["user-agent"] || null;
+      await logEvent(userId, eventType, screen ?? null, action ?? null, metadata ?? {}, ipAddress ?? undefined, platform ?? undefined, userAgent ?? undefined);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Event log error:", err);
+      res.status(500).json({ error: "log failed" });
+    }
+  });
+
+  app.post("/api/auth/email-register", async (req, res) => {
+    const { email, password, name } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "email and password required" });
+    }
+    try {
+      const existing = await findUserByEmail(email);
+      if (existing) {
+        return res.status(409).json({ error: "email_taken" });
+      }
+      const hash = await bcrypt.hash(password, 10);
+      const id = "u_" + Date.now().toString() + Math.random().toString(36).substr(2, 6);
+      const userId = String(Math.floor(100000 + Math.random() * 900000));
+      const username = (name || email.split("@")[0]).toLowerCase().replace(/\s+/g, "_");
+      const ADMIN_EMAILS = ["admin@soulie.app", "soulie_admin@admin.com", "yusufstex@gmail.com"];
+      const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+      await upsertUser({
+        id, userId, name: name || username, username, email,
+        language: "en", isAdmin, isVip: isAdmin, onboardingComplete: false,
+      }, undefined, req.headers["user-agent"] ?? undefined);
+      const { query: dbQuery } = await import("./db");
+      await dbQuery(`UPDATE soulie_users SET password_hash=$1 WHERE id=$2`, [hash, id]);
+      res.json({ success: true, id, userId, username });
+    } catch (err) {
+      console.error("Email register error:", err);
+      res.status(500).json({ error: "registration failed" });
+    }
+  });
+
+  app.post("/api/auth/email-login", async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "email and password required" });
+    }
+    try {
+      const user = await findUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ error: "not_found" });
+      }
+      if (!user.password_hash) {
+        return res.status(401).json({ error: "no_password" });
+      }
+      const match = await bcrypt.compare(password, user.password_hash);
+      if (!match) {
+        return res.status(401).json({ error: "wrong_password" });
+      }
+      const ADMIN_EMAILS = ["admin@soulie.app", "soulie_admin@admin.com", "yusufstex@gmail.com"];
+      const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase()) || user.is_admin;
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          userId: user.user_id,
+          name: user.name,
+          username: user.username,
+          email: user.email,
+          language: user.language || "en",
+          gender: user.gender,
+          birthdate: user.birthdate,
+          isAdmin,
+          isVip: user.is_vip || isAdmin,
+          onboardingComplete: user.onboarding_complete,
+        },
+      });
+    } catch (err) {
+      console.error("Email login error:", err);
+      res.status(500).json({ error: "login failed" });
+    }
   });
 
   app.post("/api/notifications/apple", (req, res) => {
@@ -555,9 +654,32 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
     }
   });
 
-  app.get("/api/admin/users", (req, res) => {
-    const users = Array.from(usersRegistry.values()).sort((a: any, b: any) => (b._syncedAt ?? 0) - (a._syncedAt ?? 0));
-    res.json({ users });
+  app.get("/api/admin/users", async (req, res) => {
+    try {
+      const users = await getAllUsers();
+      res.json({ users });
+    } catch (err) {
+      console.error("Admin users error:", err);
+      res.status(500).json({ users: [] });
+    }
+  });
+
+  app.get("/api/admin/events/:userId", async (req, res) => {
+    try {
+      const events = await getUserEvents(req.params.userId, 100);
+      res.json({ events });
+    } catch (err) {
+      res.status(500).json({ events: [] });
+    }
+  });
+
+  app.get("/api/admin/event-stats", async (req, res) => {
+    try {
+      const stats = await getEventStats();
+      res.json({ stats });
+    } catch (err) {
+      res.status(500).json({ stats: [] });
+    }
   });
 
   app.get("/api/admin/system-prompt", (req, res) => {

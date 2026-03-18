@@ -13,7 +13,7 @@ import { getApiUrl } from "@/lib/query-client";
 export type UserLanguage = "en" | "tr" | "de" | "zh" | "ko" | "es" | "ru";
 export type UserGender = "male" | "female" | "other" | "prefer_not_to_say";
 
-const ADMIN_EMAILS = ["admin@soulie.app", "soulie_admin@admin.com"];
+const ADMIN_EMAILS = ["admin@soulie.app", "soulie_admin@admin.com", "yusufstex@gmail.com"];
 const ADMIN_USERNAMES = ["yusuf"];
 
 export type User = {
@@ -105,10 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (partial: Partial<User> & { name: string }) => {
     const username = partial.name.toLowerCase().replace(/\s+/g, "_");
-    const isAdmin = ADMIN_EMAILS.includes(partial.email?.toLowerCase() ?? "") || ADMIN_USERNAMES.includes(username);
+    const isAdmin = ADMIN_EMAILS.includes(partial.email?.toLowerCase() ?? "") || ADMIN_USERNAMES.includes(username) || !!partial.isAdmin;
     const newUser: User = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 6),
-      userId: String(Math.floor(100000 + Math.random() * 900000)),
+      id: partial.id ?? (Date.now().toString() + Math.random().toString(36).substr(2, 6)),
+      userId: partial.userId ?? String(Math.floor(100000 + Math.random() * 900000)),
       name: partial.name,
       username: partial.name.toLowerCase().replace(/\s+/g, "_"),
       email: partial.email,

@@ -26,6 +26,7 @@ import * as Haptics from "expo-haptics";
 import { showRewardedAd } from "@/lib/admob";
 
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
+import { logEvent } from "@/lib/analytics";
 import { MessageBubble, type Message as BubbleMessage } from "@/components/chat/MessageBubble";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -439,6 +440,12 @@ export default function ChatScreen() {
   const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
   const [showQuotaPopup, setShowQuotaPopup] = useState(false);
   const [resetCountdown, setResetCountdown] = useState(quota.getResetCountdown());
+
+  useEffect(() => {
+    if (user?.id && characterId) {
+      logEvent(user.id, "screen_view", "chat", undefined, { characterId });
+    }
+  }, [user?.id, characterId]);
 
   useEffect(() => {
     if (!quota.loaded || quota.canSend) return;

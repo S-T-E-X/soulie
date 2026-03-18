@@ -43,7 +43,42 @@ const TEXT_TER = "rgba(255,255,255,0.3)";
 
 type TopSection = "app" | "user";
 type AppTab = "genel" | "ai" | "engagement";
-type UserTab = "profil" | "ekonomi" | "hafiza";
+type UserTab = "profil" | "analitik" | "ekonomi" | "hafiza";
+
+type DbUser = {
+  id: string;
+  user_id: string;
+  name: string;
+  username: string;
+  email?: string;
+  language: string;
+  gender?: string;
+  birthdate?: string;
+  is_admin: boolean;
+  is_vip: boolean;
+  vip_plan?: string;
+  platform?: string;
+  ip_address?: string;
+  user_agent?: string;
+  country?: string;
+  city?: string;
+  onboarding_complete: boolean;
+  created_at?: string;
+  last_seen?: string;
+  synced_at?: number;
+};
+
+type UserEvent = {
+  id: number;
+  event_type: string;
+  screen?: string;
+  action?: string;
+  metadata?: Record<string, unknown>;
+  ip_address?: string;
+  platform?: string;
+  user_agent?: string;
+  created_at: string;
+};
 
 type FeedbackEntry = {
   id: string;
@@ -118,7 +153,9 @@ export default function AdminScreen() {
   const [appTab, setAppTab] = useState<AppTab>("genel");
   const [userTab, setUserTab] = useState<UserTab>("profil");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [usersList, setUsersList] = useState<User[]>([]);
+  const [usersList, setUsersList] = useState<DbUser[]>([]);
+  const [userEvents, setUserEvents] = useState<UserEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
 
   const [feedbackList, setFeedbackList] = useState<FeedbackEntry[]>([]);
   const [inventory, setInventory] = useState<{ giftId: string; quantity: number }[]>([]);
@@ -135,7 +172,13 @@ export default function AdminScreen() {
   const [loaded, setLoaded] = useState(false);
   const [userSearch, setUserSearch] = useState("");
 
-  const selectedUser = usersList.find(u => u.id === selectedUserId) ?? user;
+  const selectedDbUser = usersList.find(u => u.id === selectedUserId);
+  const selectedUser = selectedDbUser ?? (user ? {
+    id: user.id, user_id: user.userId, name: user.name, username: user.username,
+    email: user.email, language: user.language, gender: user.gender,
+    birthdate: user.birthdate, is_admin: !!user.isAdmin, is_vip: !!user.isVip,
+    vip_plan: user.vipPlan, onboarding_complete: user.onboardingComplete,
+  } as DbUser : undefined);
 
   useEffect(() => {
     if (!user?.isAdmin) return;
@@ -144,13 +187,12 @@ export default function AdminScreen() {
 
   const loadAll = async () => {
     try {
-      const [fb, inv, q, cs, sk, usersRaw] = await Promise.all([
+      const [fb, inv, q, cs, sk] = await Promise.all([
         AsyncStorage.getItem(FEEDBACK_KEY),
         AsyncStorage.getItem(INVENTORY_KEY),
         AsyncStorage.getItem(QUOTA_KEY),
         AsyncStorage.getItem(CHAR_SETTINGS_KEY),
         AsyncStorage.getItem(STREAKS_KEY),
-        AsyncStorage.getItem("soulie_users_db_v1"),
       ]);
       if (fb) setFeedbackList(JSON.parse(fb));
       if (inv) setInventory(JSON.parse(inv));
@@ -158,28 +200,31 @@ export default function AdminScreen() {
       if (cs) setCharSettings(JSON.parse(cs));
       if (sk) setStreaks(JSON.parse(sk));
 
-      let localUsers: User[] = usersRaw ? JSON.parse(usersRaw) : (user ? [user] : []);
-
       try {
         const url = new URL("/api/admin/users", getApiUrl());
         const res = await fetch(url.toString());
         if (res.ok) {
           const data = await res.json();
-          const serverUsers: User[] = data.users ?? [];
-          const merged = [...serverUsers];
-          localUsers.forEach(lu => {
-            if (!merged.find(su => su.id === lu.id)) merged.push(lu);
-          });
-          setUsersList(merged.length > 0 ? merged : (user ? [user] : []));
-        } else {
-          setUsersList(localUsers.length > 0 ? localUsers : (user ? [user] : []));
+          const dbUsers: DbUser[] = data.users ?? [];
+          setUsersList(dbUsers);
         }
-      } catch {
-        setUsersList(localUsers.length > 0 ? localUsers : (user ? [user] : []));
-      }
+      } catch {}
     } catch {}
     setLoaded(true);
     fetchGlobalPrompt();
+  };
+
+  const loadUserEvents = async (userId: string) => {
+    setEventsLoading(true);
+    try {
+      const url = new URL(`/api/admin/events/${userId}`, getApiUrl());
+      const res = await fetch(url.toString());
+      if (res.ok) {
+        const data = await res.json();
+        setUserEvents(data.events ?? []);
+      }
+    } catch {}
+    setEventsLoading(false);
   };
 
   const fetchGlobalPrompt = async () => {
@@ -235,12 +280,10 @@ export default function AdminScreen() {
     if (!selectedUserId) return;
     const target = usersList.find(u => u.id === selectedUserId);
     if (!target) return;
-    const newVip = !target.isVip;
+    const newVip = !target.is_vip;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const updated = { ...target, isVip: newVip, vipExpiry: newVip ? undefined : undefined };
-    const newList = usersList.map(u => u.id === selectedUserId ? updated : u);
-    setUsersList(newList);
-    await AsyncStorage.setItem("soulie_users_db_v1", JSON.stringify(newList));
+    const updated = { ...target, is_vip: newVip };
+    setUsersList(usersList.map(u => u.id === selectedUserId ? updated : u));
     if (selectedUserId === user?.id) {
       await updateProfile({ isVip: newVip });
     }
@@ -333,6 +376,7 @@ export default function AdminScreen() {
 
   const USER_TABS: { id: UserTab; label: string; icon: string }[] = [
     { id: "profil", label: "Profil", icon: "user" },
+    { id: "analitik", label: "Analitik", icon: "activity" },
     { id: "ekonomi", label: "Ekonomi", icon: "dollar-sign" },
     { id: "hafiza", label: "Hafıza", icon: "database" },
   ];
@@ -649,8 +693,9 @@ export default function AdminScreen() {
                   : usersList.filter(u =>
                       u.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
                       u.username?.toLowerCase().includes(userSearch.toLowerCase()) ||
-                      u.userId?.includes(userSearch) ||
-                      u.id?.includes(userSearch)
+                      u.user_id?.includes(userSearch) ||
+                      u.id?.includes(userSearch) ||
+                      u.email?.toLowerCase().includes(userSearch.toLowerCase())
                     );
                 if (filtered.length === 0) {
                   return (
@@ -665,7 +710,13 @@ export default function AdminScreen() {
                 return filtered.map((u) => (
                   <Pressable
                     key={u.id}
-                    onPress={() => { setSelectedUserId(u.id); setUserTab("profil"); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                    onPress={() => {
+                      setSelectedUserId(u.id);
+                      setUserTab("profil");
+                      setUserEvents([]);
+                      loadUserEvents(u.id);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
                     style={({ pressed }) => [styles.userListCard, pressed && { opacity: 0.75 }]}
                   >
                     <View style={styles.userListAvatar}>
@@ -674,11 +725,14 @@ export default function AdminScreen() {
                     <View style={{ flex: 1, gap: 3 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                         <Text style={styles.userListName}>{u.name}</Text>
-                        {u.isVip && <View style={[styles.badge, { backgroundColor: "#FFD70025" }]}><Text style={[styles.badgeText, { color: "#FFD700" }]}>VIP</Text></View>}
-                        {u.isAdmin && <View style={[styles.badge, { backgroundColor: "#FF950025" }]}><Text style={[styles.badgeText, { color: "#FF9500" }]}>ADMIN</Text></View>}
+                        {u.is_vip && <View style={[styles.badge, { backgroundColor: "#FFD70025" }]}><Text style={[styles.badgeText, { color: "#FFD700" }]}>VIP</Text></View>}
+                        {u.is_admin && <View style={[styles.badge, { backgroundColor: "#FF950025" }]}><Text style={[styles.badgeText, { color: "#FF9500" }]}>ADMIN</Text></View>}
                         {u.id === user?.id && <View style={[styles.badge, { backgroundColor: ACCENT + "25" }]}><Text style={[styles.badgeText, { color: ACCENT }]}>Aktif</Text></View>}
                       </View>
-                      <Text style={[styles.subNote, { fontSize: 11 }]}>@{u.username} · ID: {u.userId}</Text>
+                      <Text style={[styles.subNote, { fontSize: 11 }]}>@{u.username} · {u.platform ?? "?"} · {u.ip_address ?? "IP yok"}</Text>
+                      {u.last_seen && (
+                        <Text style={[styles.subNote, { fontSize: 10 }]}>Son görülme: {new Date(u.last_seen).toLocaleString("tr-TR")}</Text>
+                      )}
                     </View>
                     <Feather name="chevron-right" size={16} color={TEXT_TER} />
                   </Pressable>
@@ -690,17 +744,32 @@ export default function AdminScreen() {
           {/* USER MANAGEMENT (after selecting a user) */}
           {section === "user" && selectedUserId !== null && userTab === "profil" && (
             <>
-              <SectionTitle title="Kullanıcı Bilgileri" icon="user" />
+              <SectionTitle title="Kimlik & Profil" icon="user" />
               <Card>
                 <InfoRow label="İsim" value={selectedUser?.name ?? "—"} />
                 <InfoRow label="Kullanıcı Adı" value={`@${selectedUser?.username ?? "—"}`} />
                 <InfoRow label="E-posta" value={selectedUser?.email ?? "—"} />
-                <InfoRow label="Kullanıcı ID" value={selectedUser?.userId ?? "—"} />
-                <InfoRow label="Dil" value={selectedUser?.language === "en" ? "English" : "Türkçe"} />
+                <InfoRow label="Kullanıcı ID" value={selectedUser?.user_id ?? "—"} />
+                <InfoRow label="DB ID" value={selectedUser?.id ?? "—"} mono />
+                <InfoRow label="Dil" value={selectedUser?.language ?? "—"} />
                 <InfoRow label="Cinsiyet" value={selectedUser?.gender ?? "—"} />
                 <InfoRow label="Doğum Tarihi" value={selectedUser?.birthdate ?? "—"} />
-                <InfoRow label="Bio" value={selectedUser?.bio || "—"} />
-                <InfoRow label="Hobiler" value={selectedUser?.hobbies?.join(", ") || "—"} last />
+                <InfoRow label="Onboarding" value={selectedUser?.onboarding_complete ? "Tamamlandı" : "Eksik"} last />
+              </Card>
+
+              <SectionTitle title="Cihaz & Bağlantı" icon="monitor" color="#34C759" />
+              <Card>
+                <InfoRow label="Platform" value={selectedUser?.platform ?? "—"} />
+                <InfoRow label="IP Adresi" value={selectedUser?.ip_address ?? "—"} mono />
+                <InfoRow label="Şehir" value={selectedUser?.city ?? "—"} />
+                <InfoRow label="Ülke" value={selectedUser?.country ?? "—"} />
+                <InfoRow label="Tarayıcı / Cihaz" value={selectedUser?.user_agent ? selectedUser.user_agent.substring(0, 60) + "..." : "—"} last />
+              </Card>
+
+              <SectionTitle title="Zaman Bilgisi" icon="clock" color="#FF9500" />
+              <Card>
+                <InfoRow label="Kayıt Tarihi" value={selectedUser?.created_at ? new Date(selectedUser.created_at).toLocaleString("tr-TR") : "—"} />
+                <InfoRow label="Son Görülme" value={selectedUser?.last_seen ? new Date(selectedUser.last_seen).toLocaleString("tr-TR") : "—"} last />
               </Card>
 
               <SectionTitle title="VIP & Erişim" icon="star" color="#FFD700" />
@@ -708,10 +777,10 @@ export default function AdminScreen() {
                 <View style={styles.toggleRow}>
                   <View style={{ flex: 1, gap: 3 }}>
                     <Text style={styles.toggleLabel}>VIP Durumu</Text>
-                    <Text style={styles.subNote}>{selectedUser?.isVip ? "Sınırsız mesaj · Tüm özellikler aktif" : "Günlük 15 mesaj limiti"}</Text>
+                    <Text style={styles.subNote}>{selectedUser?.is_vip ? "Sınırsız mesaj · Tüm özellikler aktif" : "Günlük 15 mesaj limiti"}</Text>
                   </View>
                   <Switch
-                    value={!!selectedUser?.isVip}
+                    value={!!selectedUser?.is_vip}
                     onValueChange={toggleSelectedUserVip}
                     trackColor={{ false: "rgba(255,255,255,0.15)", true: "#FFD700" }}
                     thumbColor="#fff"
@@ -721,30 +790,64 @@ export default function AdminScreen() {
                 <View style={styles.toggleRow}>
                   <View style={{ flex: 1, gap: 3 }}>
                     <Text style={styles.toggleLabel}>Admin Erişimi</Text>
-                    <Text style={styles.subNote}>Yönetici hakları aktif</Text>
+                    <Text style={styles.subNote}>{selectedUser?.is_admin ? "Yönetici hakları aktif" : "Normal kullanıcı"}</Text>
                   </View>
-                  <View style={[styles.badge, { backgroundColor: "#FF950020" }]}>
-                    <Text style={[styles.badgeText, { color: "#FF9500" }]}>AKTİF</Text>
+                  <View style={[styles.badge, { backgroundColor: selectedUser?.is_admin ? "#FF950020" : "rgba(255,255,255,0.05)" }]}>
+                    <Text style={[styles.badgeText, { color: selectedUser?.is_admin ? "#FF9500" : TEXT_TER }]}>
+                      {selectedUser?.is_admin ? "AKTİF" : "KAPALI"}
+                    </Text>
                   </View>
                 </View>
-                <Divider />
-                <Pressable
-                  onPress={() => Alert.alert("Ban / Askıya Al", "Gerçek bir multi-user backend bağlandığında burada kullanıcı hesabı askıya alınacak.", [{ text: "Tamam" }])}
-                  style={[styles.actionBtn, { backgroundColor: "#FF3B3015" }]}
-                >
-                  <Feather name="slash" size={15} color="#FF3B30" />
-                  <Text style={[styles.actionBtnText, { color: "#FF3B30" }]}>Ban / Askıya Al</Text>
-                </Pressable>
               </Card>
+            </>
+          )}
 
-              <SectionTitle title="Kullanım İstatistikleri" icon="trending-up" color="#007AFF" />
-              <Card>
-                <InfoRow label="Toplam Gönderilen Mesaj" value={String(userMsgCount)} />
-                <InfoRow label="Toplam Sohbet" value={String(conversations.length)} />
-                <InfoRow label="Toplam XP" value={String(userMsgCount * 10 + conversations.length * 5)} />
-                <InfoRow label="En Çok Konuştuğu Karakter" value={topChar ? (CHARACTERS.find(c => c.id === topChar[0])?.name ?? topChar[0]) : "—"} />
-                <InfoRow label="Son Aktif" value={conversations.length > 0 ? fmtDate(Math.max(...conversations.map(c => c.updatedAt))) : "—"} last />
-              </Card>
+          {section === "user" && selectedUserId !== null && userTab === "analitik" && (
+            <>
+              <SectionTitle title="Oturum Geçmişi" icon="activity" color="#007AFF" />
+              {eventsLoading ? (
+                <View style={{ alignItems: "center", padding: 24 }}>
+                  <ActivityIndicator color={ACCENT} />
+                </View>
+              ) : userEvents.length === 0 ? (
+                <Card>
+                  <View style={{ alignItems: "center", padding: 20, gap: 8 }}>
+                    <Feather name="activity" size={28} color={TEXT_TER} />
+                    <Text style={styles.subNote}>Henüz kayıtlı etkinlik yok</Text>
+                  </View>
+                </Card>
+              ) : (
+                <>
+                  <StatGrid items={[
+                    { label: "Toplam Etkinlik", value: String(userEvents.length), color: "#007AFF", icon: "activity" },
+                    { label: "Farklı Ekran", value: String(new Set(userEvents.map(e => e.screen).filter(Boolean)).size), color: "#34C759", icon: "layers" },
+                    { label: "Son Platform", value: userEvents[0]?.platform ?? "—", color: "#FF9500", icon: "monitor" },
+                    { label: "Son IP", value: userEvents[0]?.ip_address ?? "—", color: "#AF52DE", icon: "globe" },
+                  ]} />
+                  <Card style={{ padding: 0, overflow: "hidden" }}>
+                    {userEvents.map((ev, idx) => (
+                      <View key={ev.id} style={[styles.eventRow, idx === userEvents.length - 1 && { borderBottomWidth: 0 }]}>
+                        <View style={[styles.eventDot, { backgroundColor: ev.event_type === "login" ? "#34C759" : ev.event_type === "screen_view" ? "#007AFF" : ACCENT }]} />
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                            <Text style={styles.eventType}>{ev.event_type}</Text>
+                            {ev.screen && <Text style={styles.eventScreen}>{ev.screen}</Text>}
+                          </View>
+                          <Text style={styles.eventMeta}>{ev.platform ?? "?"} · {ev.ip_address ?? "IP yok"}</Text>
+                        </View>
+                        <Text style={styles.eventTime}>{new Date(ev.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</Text>
+                      </View>
+                    ))}
+                  </Card>
+                  <Pressable
+                    onPress={() => loadUserEvents(selectedUserId!)}
+                    style={[styles.actionBtn, { backgroundColor: ACCENT + "20", marginTop: 0 }]}
+                  >
+                    <Feather name="refresh-cw" size={15} color={ACCENT} />
+                    <Text style={[styles.actionBtnText, { color: ACCENT }]}>Yenile</Text>
+                  </Pressable>
+                </>
+              )}
             </>
           )}
 
@@ -824,9 +927,9 @@ export default function AdminScreen() {
 
               <SectionTitle title="Abonelik Bilgisi" icon="credit-card" color="#007AFF" />
               <Card>
-                <InfoRow label="Mevcut Plan" value={selectedUser?.isVip ? "VIP Premium" : "Ücretsiz"} />
+                <InfoRow label="Mevcut Plan" value={selectedUser?.is_vip ? "VIP Premium" : "Ücretsiz"} />
                 <InfoRow label="Mağaza" value="Apple App Store" />
-                <InfoRow label="Bitiş Tarihi" value={selectedUser?.isVip ? "Süresiz (Manuel)" : "—"} last />
+                <InfoRow label="Bitiş Tarihi" value={selectedUser?.is_vip ? "Süresiz (Manuel)" : "—"} last />
               </Card>
             </>
           )}
@@ -960,4 +1063,10 @@ const styles = StyleSheet.create({
   fbCardTop: { flexDirection: "row", alignItems: "center", gap: 8 },
   fbDate: { fontSize: 10, fontFamily: "Inter_400Regular", color: TEXT_TER, marginLeft: "auto" },
   fbText: { fontSize: 13, fontFamily: "Inter_400Regular", color: TEXT_PRI, lineHeight: 19 },
+  eventRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
+  eventDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  eventType: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: TEXT_PRI },
+  eventScreen: { fontSize: 11, fontFamily: "Inter_400Regular", color: TEXT_SEC, backgroundColor: "rgba(255,255,255,0.06)", paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
+  eventMeta: { fontSize: 10, fontFamily: "Inter_400Regular", color: TEXT_TER },
+  eventTime: { fontSize: 10, fontFamily: "Inter_400Regular", color: TEXT_TER, flexShrink: 0 },
 });

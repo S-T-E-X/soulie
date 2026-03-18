@@ -23,6 +23,7 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { Feather } from "@expo/vector-icons";
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
+import { logEvent } from "@/lib/analytics";
 import { CharacterCard } from "@/components/explore/CharacterCard";
 import { CHARACTERS } from "@/constants/characters";
 import { useChatContext } from "@/contexts/ChatContext";
@@ -294,6 +295,10 @@ export default function ExploreScreen() {
   const [formDesc, setFormDesc] = useState("");
   const [formPhoto, setFormPhoto] = useState<string | null>(null);
   const [formCreating, setFormCreating] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) logEvent(user.id, "screen_view", "explore");
+  }, [user?.id]);
 
   useEffect(() => {
     loadConversations();
