@@ -497,6 +497,64 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
     res.json({ success: true });
   });
 
+  app.post("/api/notifications/apple", (req, res) => {
+    try {
+      const notificationType = req.headers["apple-notification-type"];
+      const notificationId = req.headers["apple-notification-id"];
+      const timestamp = req.headers["apple-notification-timestamp"];
+      const signature = req.headers["apple-notification-signature"];
+
+      const { data } = req.body;
+
+      console.log("[Apple Notification]", {
+        type: notificationType,
+        id: notificationId,
+        timestamp,
+        signaturePresent: !!signature,
+        dataKeys: data ? Object.keys(data) : null,
+      });
+
+      if (!notificationType) {
+        return res.status(400).json({ error: "Missing Apple notification type header" });
+      }
+
+      switch (notificationType) {
+        case "email-disabled":
+          console.log("[Apple] User disabled private email relay:", data?.sub);
+          break;
+
+        case "email-enabled":
+          console.log("[Apple] User enabled private email relay:", data?.sub);
+          break;
+
+        case "device-linked":
+          console.log("[Apple] New device linked:", data?.sub);
+          break;
+
+        case "device-unlinked":
+          console.log("[Apple] Device unlinked:", data?.sub);
+          break;
+
+        case "account-delete":
+          console.log("[Apple] User account marked for deletion:", data?.sub);
+          const userToDelete = data?.sub;
+          if (userToDelete) {
+            usersRegistry.delete(userToDelete);
+            console.log(`[Apple] User ${userToDelete} removed from registry`);
+          }
+          break;
+
+        default:
+          console.log("[Apple] Unknown notification type:", notificationType);
+      }
+
+      res.json({ success: true, notificationId });
+    } catch (error) {
+      console.error("[Apple] Notification processing error:", error);
+      res.status(500).json({ error: "Failed to process Apple notification" });
+    }
+  });
+
   app.get("/api/admin/users", (req, res) => {
     const users = Array.from(usersRegistry.values()).sort((a: any, b: any) => (b._syncedAt ?? 0) - (a._syncedAt ?? 0));
     res.json({ users });
