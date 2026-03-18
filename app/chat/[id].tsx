@@ -412,8 +412,9 @@ const fortuneStyles = StyleSheet.create({
 });
 
 export default function ChatScreen() {
-  const params = useLocalSearchParams<{ characterId: string; id?: string }>();
+  const params = useLocalSearchParams<{ characterId: string; id?: string; notifBody?: string }>();
   const characterId = params.characterId || params.id;
+  const notifBody = params.notifBody;
   const insets = useSafeAreaInsets();
   const { getConversationByCharacter, createConversationWithMessages, loadConversations, isLoaded } = useChatContext();
   const { settings, isLoaded: settingsLoaded, updateSettings, addMemory, removeMemory } = useCharacterSettings(characterId ?? "");
@@ -468,12 +469,33 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!isLoaded || !characterId || initializedRef.current) return;
     const conversation = getConversationByCharacter(characterId);
-    if (conversation?.messages && conversation.messages.length > 0) {
-      setMessages(conversation.messages);
-      initializedRef.current = true;
-    } else if (isLoaded) {
-      initializedRef.current = true;
+    const existingMsgs = (conversation?.messages && conversation.messages.length > 0)
+      ? conversation.messages
+      : [];
+
+    if (notifBody) {
+      const alreadyHas = existingMsgs.some(m => m.content === notifBody && m.role === "assistant");
+      if (!alreadyHas) {
+        const notifMsg: Message = {
+          id: generateId(),
+          role: "assistant",
+          content: notifBody,
+          timestamp: Date.now(),
+        };
+        const withNotif = [...existingMsgs, notifMsg];
+        setMessages(withNotif);
+        if (character) {
+          createConversationWithMessages(character.id, character.name, withNotif);
+        }
+        initializedRef.current = true;
+        return;
+      }
     }
+
+    if (existingMsgs.length > 0) {
+      setMessages(existingMsgs);
+    }
+    initializedRef.current = true;
   }, [isLoaded, characterId, getConversationByCharacter]);
 
   const extractMemoryIfNeeded = useCallback(async (msgs: Message[]) => {

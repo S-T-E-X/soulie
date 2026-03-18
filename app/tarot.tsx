@@ -213,6 +213,7 @@ function PickableCardBack({ onPress, isSelected, index }: { onPress: () => void;
 
 function MysticalCardBack({ onPress, isActive, size }: { onPress: () => void; isActive: boolean; size: "sm" | "md" | "lg" }) {
   const pulseAnim = useRef(new Animated.Value(0)).current;
+  const { t } = useI18n();
   const w = size === "lg" ? 140 : size === "md" ? 110 : 90;
   const h = size === "lg" ? 200 : size === "md" ? 165 : 135;
 
@@ -237,7 +238,7 @@ function MysticalCardBack({ onPress, isActive, size }: { onPress: () => void; is
               <Feather name="eye" size={24} color="rgba(192,132,252,0.5)" />
             </View>
             <View style={styles.cardBackLine} />
-            {isActive && <Text style={styles.cardBackTap}>Dokun</Text>}
+            {isActive && <Text style={styles.cardBackTap}>{t("tarot.tap")}</Text>}
           </View>
           <View style={[styles.cardBackBorder, { width: w - 8, height: h - 8 }]} />
         </LinearGradient>
@@ -275,7 +276,7 @@ function RevealedCard({ card, position, reversed, size }: { card: TarotCard; pos
           </View>
           <Text style={[styles.revealedName, size === "sm" && { fontSize: 10 }]} numberOfLines={1}>{card.name}</Text>
           <Text style={[styles.revealedNameEn, size === "sm" && { fontSize: 8 }]} numberOfLines={1}>{card.nameEn}</Text>
-          {reversed && <Text style={styles.reversedLabel}>Ters</Text>}
+          {reversed && <Text style={styles.reversedLabel}>{t("tarot.reversed")}</Text>}
           <View style={[styles.categoryBadge, { backgroundColor: CATEGORY_COLORS[card.category] + "40" }]}>
             <Text style={[styles.categoryText, { color: CATEGORY_COLORS[card.category] }]}>{catLabel[card.category]}</Text>
           </View>
@@ -519,11 +520,11 @@ export default function TarotScreen() {
           <Feather name="chevron-left" size={24} color="rgba(255,255,255,0.8)" />
         </Pressable>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Tarot Falı</Text>
+          <Text style={styles.headerTitle}>{t("tarot.headerTitle")}</Text>
           {tarotData?.streak > 0 && (
             <View style={styles.streakBadge}>
               <Feather name="zap" size={10} color="#FFD700" />
-              <Text style={styles.streakText}>{tarotData.streak} gün seri</Text>
+              <Text style={styles.streakText}>{t("tarot.streakLabel", { count: tarotData.streak })}</Text>
             </View>
           )}
         </View>
@@ -535,7 +536,7 @@ export default function TarotScreen() {
         {phase === "select" && (
           <>
             <View style={styles.luckySection}>
-              <Text style={styles.luckyTitle}>Günün Şanslı Kartı</Text>
+              <Text style={styles.luckyTitle}>{t("tarot.luckyTitle")}</Text>
               <LinearGradient colors={luckyCard.gradient} style={styles.luckyCard}>
                 <Feather name={luckyCard.icon as any} size={28} color="rgba(255,255,255,0.9)" />
                 <Text style={styles.luckyName}>{luckyCard.name}</Text>
@@ -543,7 +544,7 @@ export default function TarotScreen() {
               </LinearGradient>
             </View>
 
-            <Text style={styles.spreadTitle}>Yayılım Seç</Text>
+            <Text style={styles.spreadTitle}>{t("tarot.spreadTitle")}</Text>
 
             {spreadOptions.map(opt => (
               <Pressable
@@ -571,12 +572,12 @@ export default function TarotScreen() {
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
                   <Text style={styles.statNum}>{tarotData?.totalReadings ?? 0}</Text>
-                  <Text style={styles.statLabel}>Toplam Fal</Text>
+                  <Text style={styles.statLabel}>{t("tarot.totalReadings")}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={styles.statNum}>{tarotData?.streak ?? 0}</Text>
-                  <Text style={styles.statLabel}>Gün Seri</Text>
+                  <Text style={styles.statLabel}>{t("tarot.streakDays")}</Text>
                 </View>
               </View>
             )}
@@ -586,7 +587,7 @@ export default function TarotScreen() {
         {phase === "picking" && (
           <View style={styles.pickingArea}>
             <View style={styles.pickingHeader}>
-              <Text style={styles.pickingTitle}>Kartlarını Seç</Text>
+              <Text style={styles.pickingTitle}>{t("tarot.pickCards")}</Text>
               <View style={styles.pickingCounter}>
                 <Text style={styles.pickingCounterText}>
                   {selectedIndices.length} / {requiredCount}
@@ -594,7 +595,7 @@ export default function TarotScreen() {
               </View>
             </View>
             <Text style={styles.pickingSubtitle}>
-              Sezgilerine güven ve {requiredCount} kart seç
+              {t("tarot.pickSubtitle", { count: requiredCount })}
             </Text>
 
             <View style={styles.pickingProgress}>
@@ -623,7 +624,7 @@ export default function TarotScreen() {
             {selectedIndices.length === requiredCount && (
               <View style={styles.pickingTransition}>
                 <ActivityIndicator size="small" color="#C084FC" />
-                <Text style={styles.pickingTransitionText}>Kartlar açılıyor...</Text>
+                <Text style={styles.pickingTransitionText}>{t("tarot.revealing")}</Text>
               </View>
             )}
           </View>
@@ -670,12 +671,12 @@ export default function TarotScreen() {
                         <View style={styles.crystalBall}>
                           <ActivityIndicator size="small" color="#C084FC" />
                         </View>
-                        <Text style={styles.interpretTitle}>Yıldızlar Konuşuyor...</Text>
+                        <Text style={styles.interpretTitle}>{t("tarot.starsSpeak")}</Text>
                       </>
                     ) : (
                       <>
                         <Feather name="eye" size={18} color="#C084FC" />
-                        <Text style={styles.interpretTitle}>Falın Yorumu</Text>
+                        <Text style={styles.interpretTitle}>{t("tarot.interpretTitle")}</Text>
                       </>
                     )}
                   </View>
@@ -687,7 +688,7 @@ export default function TarotScreen() {
                       </LinearGradient>
                       <Text style={styles.cardSummaryPos}>{positionLabels[spread][idx]}</Text>
                       <Text style={styles.cardSummaryName}>{card.name}</Text>
-                      {card.reversed && <Text style={styles.cardSummaryReversed}>Ters</Text>}
+                      {card.reversed && <Text style={styles.cardSummaryReversed}>{t("tarot.reversed")}</Text>}
                     </View>
                   ))}
 
@@ -697,7 +698,7 @@ export default function TarotScreen() {
                     <Text style={styles.interpretText}>{interpretation}</Text>
                   ) : isInterpreting ? (
                     <View style={{ padding: 20, alignItems: "center" }}>
-                      <Text style={styles.interpretWait}>Kristal küre parlıyor...</Text>
+                      <Text style={styles.interpretWait}>{t("tarot.crystalGlowing")}</Text>
                     </View>
                   ) : null}
                 </LinearGradient>
@@ -708,7 +709,7 @@ export default function TarotScreen() {
               <Pressable onPress={() => setPhase("select")} style={styles.newReadingBtn}>
                 <LinearGradient colors={["#6B21A8", "#C084FC"]} style={styles.newReadingGrad}>
                   <Feather name="repeat" size={16} color="#fff" />
-                  <Text style={styles.newReadingText}>Ana Menüye Dön</Text>
+                  <Text style={styles.newReadingText}>{t("tarot.backToMenu")}</Text>
                 </LinearGradient>
               </Pressable>
             )}

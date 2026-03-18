@@ -23,6 +23,12 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/hooks/useI18n";
 
+const PRODUCT_IDS = {
+  weekly: "com.soulie.vip.weekly",
+  monthly: "com.soulie.vip.monthly",
+  yearly: "com.soulie.vip.yearly",
+} as const;
+
 const ALL_FEAT_KEYS = [
   "market.featAllChars",
   "market.featUnlimitedMessages",
@@ -36,6 +42,7 @@ const ALL_FEAT_KEYS = [
 const PLAN_META = [
   {
     id: "weekly",
+    productId: PRODUCT_IDS.weekly,
     price: "$4.99",
     gradient: [Colors.userBubble.from, Colors.userBubble.to] as [string, string],
     textColor: "#FFFFFF",
@@ -47,6 +54,7 @@ const PLAN_META = [
   },
   {
     id: "monthly",
+    productId: PRODUCT_IDS.monthly,
     price: "$14.99",
     gradient: ["#1D1D1F", "#3A3A3C"] as [string, string],
     textColor: "#FFFFFF",
@@ -58,6 +66,7 @@ const PLAN_META = [
   },
   {
     id: "yearly",
+    productId: PRODUCT_IDS.yearly,
     price: "$79.99",
     gradient: ["#2D0654", "#6B21A8"] as [string, string],
     textColor: "#FFFFFF",

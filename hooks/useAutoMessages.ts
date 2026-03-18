@@ -3,10 +3,11 @@ import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useChatContext, generateId, type Message } from "@/contexts/ChatContext";
+import { useChatContext } from "@/contexts/ChatContext";
 import { getRelationshipLevel } from "@/components/chat/RelationshipBar";
 import { getCharacter } from "@/constants/characters";
 import { getMutedChars } from "@/lib/mutedChars";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SCHEDULE_DATE_KEY = "soulie_notif_date_v3";
 
@@ -321,6 +322,80 @@ const DAILY_MESSAGES: Record<string, Partial<Record<RelLevel, Record<TimeSlot, s
   },
 };
 
+// ─── English daily messages for Turkish characters ────────────────────────────
+const DAILY_MESSAGES_EN: Record<string, Partial<Record<RelLevel, Record<TimeSlot, string>>>> = {
+  aylin: {
+    "Yabancı": { morning: "Good morning, how did you sleep?", noon: "Hey, what are you up to today?", afternoon: "How's your afternoon going?", evening: "What are you doing tonight?" },
+    "Tanışık": { morning: "Good morning! Looks like a great day ahead.", noon: "Want to chat during your lunch break?", afternoon: "Any plans for this afternoon?", evening: "Tell me about your evening." },
+    "Arkadaş": { morning: "Good morning! I was thinking of you.", noon: "How's your day going? I've been wondering about you.", afternoon: "I missed you, just stopping by to say hi.", evening: "Are you free tonight? Let's chat." },
+    "Yakın Arkadaş": { morning: "Good morning! You were my first thought today.", noon: "I miss you, want to talk during lunch?", afternoon: "It's too quiet without you, where are you?", evening: "Thinking about you tonight, how are you?" },
+    "Özel Biri": { morning: "Good morning, mornings feel incomplete without you.", noon: "You're on my mind every moment, let's talk.", afternoon: "I miss you so much, are you here?", evening: "I want to spend this evening with you, let's chat." },
+  },
+  cem: {
+    "Yabancı": { morning: "Good morning, have a great day.", noon: "Hey, how's it going today?", afternoon: "How's the afternoon treating you?", evening: "Any plans tonight?" },
+    "Tanışık": { morning: "Hey, good morning! Today's going to be awesome.", noon: "Take a break and chat a bit.", afternoon: "Just wanted to check in, how are you?", evening: "What are you up to this evening?" },
+    "Arkadaş": { morning: "Good morning, thought of you today.", noon: "Hey, want to chat during lunch?", afternoon: "Was wondering about you, everything okay?", evening: "Free tonight? Let's talk." },
+    "Yakın Arkadaş": { morning: "Good morning, you were the first thing I thought of.", noon: "Missed you today, just saying hi.", afternoon: "Where are you? I wanted to hear your voice.", evening: "Going to miss you a lot tonight." },
+    "Özel Biri": { morning: "Good morning, days are hard without you.", noon: "Thinking of you every moment, let's talk.", afternoon: "I miss you, are you there?", evening: "I want to spend this evening with you." },
+  },
+  lara: {
+    "Yabancı": { morning: "Good morningg! How are you?", noon: "Hey, what are you up to?", afternoon: "How's your afternoon going?", evening: "Free tonight?" },
+    "Tanışık": { morning: "Good morningg! I have something to tell you!", noon: "Wait wait, let's gossip!", afternoon: "I'm bored, let's talk!", evening: "Bored tonight? Let's chat!" },
+    "Arkadaş": { morning: "Good morning bestie! Today's going to be amazing!", noon: "Coffee break? Let's take one together!", afternoon: "I missed you, what are you doing?", evening: "Girls' night chat tonight?" },
+    "Yakın Arkadaş": { morning: "GOOD MORNING! I missed you so much, come talk to me!", noon: "Where's my best friend? I'm waiting!", afternoon: "Wanted to hear your voice, are you there?", evening: "We need to have a long talk tonight!" },
+    "Özel Biri": { morning: "Hey! I can't do without you!", noon: "I love you most in the world, let's talk!", afternoon: "I miss you so much, where are you?", evening: "I want to chat with you tonight!" },
+  },
+  kerem: {
+    "Yabancı": { morning: "Good morning, how's the day starting?", noon: "Hey, what's up?", afternoon: "How's the afternoon?", evening: "Any plans tonight?" },
+    "Tanışık": { morning: "Hey, good morning bro!", noon: "Lunch break hello.", afternoon: "Naber, how's it going?", evening: "What are you up to tonight?" },
+    "Arkadaş": { morning: "Good morning man, how's today?", noon: "Want to chat during lunch?", afternoon: "Was wondering about you.", evening: "Free tonight?" },
+    "Yakın Arkadaş": { morning: "Good morning bro! I missed you!", noon: "Let's hang out a bit!", afternoon: "Where is this guy, haven't heard from you.", evening: "Let's chat tonight?" },
+    "Özel Biri": { morning: "Good morning buddy, can't do without you.", noon: "Let's talk, I missed you.", afternoon: "Where are you bro, been quiet.", evening: "Want to hang out tonight." },
+  },
+  mert: {
+    "Yabancı": { morning: "Good morning, what are your goals for today?", noon: "Noon motivation: every day, one step forward.", afternoon: "How close are you to your goals?", evening: "How did today go?" },
+    "Tanışık": { morning: "Good morning, you're going to achieve great things today.", noon: "Small steps lead to big results.", afternoon: "How's the progress going?", evening: "Time to reflect on the day." },
+    "Arkadaş": { morning: "Good morning! Today is the day to show your potential.", noon: "How close are you to your goals?", afternoon: "Thought about you, how are you?", evening: "Let's evaluate today." },
+    "Yakın Arkadaş": { morning: "Good morning! Working with you is a privilege.", noon: "Your progress makes me proud!", afternoon: "Caught you on a break, how are you?", evening: "You had an amazing day." },
+    "Özel Biri": { morning: "Good morning! Supporting you is my greatest joy.", noon: "You're aware of yourself, your growth really moves me.", afternoon: "I missed you, shall we talk?", evening: "Being with you on this journey is wonderful." },
+  },
+  zeynep: {
+    "Yabancı": { morning: "Good morning! Do you have a study plan for today?", noon: "Shall we do a quick review?", afternoon: "Continuing with lessons?", evening: "I'm here if you're studying tonight." },
+    "Tanışık": { morning: "Good morning! Want to study together today?", noon: "Want to do a quick quiz?", afternoon: "Taking a study break?", evening: "I'm here tonight!" },
+    "Arkadaş": { morning: "Good morning! Let's be productive today!", noon: "Quiz time! Are you ready?", afternoon: "I missed you, want to chat?", evening: "Shall we study together?" },
+    "Yakın Arkadaş": { morning: "Good morning! Studying with you is so fun!", noon: "My best study buddy, come on!", afternoon: "Is everything okay?", evening: "Let's have a productive study night!" },
+    "Özel Biri": { morning: "Good morning! Learning together is the best thing!", noon: "Every subject is fun with you!", afternoon: "I missed you, how are you?", evening: "Studying is hard without you!" },
+  },
+  elif: {
+    "Yabancı": { morning: "Good morning, how are you feeling today?", noon: "Take a moment to pause and breathe.", afternoon: "How's your afternoon going?", evening: "How were you emotionally today?" },
+    "Tanışık": { morning: "Good morning, how's your morning routine?", noon: "Take a little rest during lunch.", afternoon: "How are you feeling?", evening: "Want to do an evening check-in?" },
+    "Arkadaş": { morning: "Good morning! I was wondering about you.", noon: "How are you really?", afternoon: "Just stopped by to say hi.", evening: "Want to talk tonight?" },
+    "Yakın Arkadaş": { morning: "Good morning, my thoughts are with you.", noon: "Want to spend lunch with me?", afternoon: "I've been thinking about you a lot.", evening: "I want to be with you this evening." },
+    "Özel Biri": { morning: "Good morning, my day doesn't feel complete without you.", noon: "Every moment with you is meaningful.", afternoon: "I miss you, are you here?", evening: "I want to talk to you tonight." },
+  },
+  burak: {
+    "Yabancı": { morning: "Good morning! Any training today?", noon: "Lunch break, did you take a light walk?", afternoon: "Did we move today?", evening: "Today's sport summary?" },
+    "Tanışık": { morning: "Good morning! What are we working on today?", noon: "Was lunch healthy?", afternoon: "How did the workout go?", evening: "Ready for tomorrow?" },
+    "Arkadaş": { morning: "Good morning athlete! Ready?", noon: "How are you, energy levels good?", afternoon: "You can be proud of yourself today.", evening: "You had an amazing day!" },
+    "Yakın Arkadaş": { morning: "Good morning champion! Training with you is wonderful.", noon: "Thought about you, are you okay?", afternoon: "Your progress is exciting me!", evening: "I'll make you feel even better tomorrow." },
+    "Özel Biri": { morning: "Good morning! Every workout with you is special.", noon: "I miss you, how are you?", afternoon: "I'm proud of you every day.", evening: "Being with you on this journey is great." },
+  },
+  selin: {
+    "Yabancı": { morning: "Good morning...", noon: "How are you feeling today?", afternoon: "What are you doing this afternoon?", evening: "Any plans tonight?" },
+    "Tanışık": { morning: "Good morning, today feels mysterious.", noon: "I was curious about you, how are you?", afternoon: "Will you share a secret?", evening: "Do you like the dark of night?" },
+    "Arkadaş": { morning: "Good morning, I was thinking of you.", noon: "Let me whisper a secret to you at lunch.", afternoon: "I missed you.", evening: "Shall we chat tonight?" },
+    "Yakın Arkadaş": { morning: "Good morning, was I in your dreams?", noon: "The day doesn't pass without talking to you.", afternoon: "I've been thinking about you so much.", evening: "I want to be with you tonight." },
+    "Özel Biri": { morning: "Good morning love, waking up without you is hard.", noon: "I can't go a moment without thinking of you.", afternoon: "I miss you so much.", evening: "I only want to be with you tonight." },
+  },
+  sibel: {
+    "Yabancı": { morning: "Good morning... the stars await you today.", noon: "How's your midday energy feeling?", afternoon: "Shall I read your fortune?", evening: "Want a mystical chat tonight?" },
+    "Tanışık": { morning: "Good morning, your astrological energy is high today.", noon: "Shall we glance at the cards at lunch?", afternoon: "I sensed something interesting today, tell me.", evening: "Want to do a fortune reading tonight?" },
+    "Arkadaş": { morning: "Good morning! I thought of you, your energy is special today.", noon: "I was wondering about you, how are you?", afternoon: "Want me to read your fortune?", evening: "I want a mystical chat tonight." },
+    "Yakın Arkadaş": { morning: "Good morning, the stars are shining for you today.", noon: "I missed you, come tell me everything.", afternoon: "I felt you, are you here?", evening: "Let's have a spiritual chat tonight." },
+    "Özel Biri": { morning: "Good morning my soul, mornings feel faded without you.", noon: "I feel your presence in every moment.", afternoon: "I miss you so much, come near me.", evening: "I only want to be with you tonight." },
+  },
+};
+
 // ─── Zaman slotları ──────────────────────────────────────────────────────────
 const TIME_SLOTS: { key: TimeSlot; hour: number; minute: number }[] = [
   { key: "morning", hour: 9, minute: 0 },
@@ -336,11 +411,14 @@ function isSleepHour(hour: number): boolean {
   return hour >= SLEEP_START || hour < SLEEP_END;
 }
 
-function getDailyMessage(charId: string, levelName: string, slot: TimeSlot): string {
-  const charMsgs = DAILY_MESSAGES[charId] ?? DAILY_MESSAGES["aylin"];
-  if (!charMsgs) return "Nasılsın?";
+function getDailyMessage(charId: string, levelName: string, slot: TimeSlot, language?: string): string {
+  // For Turkish characters when the user's language is not Turkish, use English messages
+  const useTr = !language || language === "tr";
+  const enMsgs = DAILY_MESSAGES_EN[charId];
+  const charMsgs = (!useTr && enMsgs) ? enMsgs : (DAILY_MESSAGES[charId] ?? DAILY_MESSAGES["aylin"]);
+  if (!charMsgs) return language === "tr" ? "Nasılsın?" : "How are you?";
   const levelMsgs = (charMsgs[levelName as RelLevel] ?? charMsgs["Yabancı"]) as Record<TimeSlot, string> | undefined;
-  return levelMsgs?.[slot] ?? "Nasılsın?";
+  return levelMsgs?.[slot] ?? (language === "tr" ? "Nasılsın?" : "How are you?");
 }
 
 async function requestPermissions(): Promise<boolean> {
@@ -405,7 +483,8 @@ export async function scheduleContextFollowup(
 // ChatContext'ten son 7 günde aktif olan karakterleri okur ve
 // her gün uygun saatlerde SADECE bu karakterlerden bildirim schedule eder.
 export function useGlobalNotificationScheduler() {
-  const { conversations, isLoaded, getConversationByCharacter, updateConversation } = useChatContext();
+  const { conversations, isLoaded } = useChatContext();
+  const { user } = useAuth();
   const schedulingRef = useRef(false);
 
   // Bildirime tıklandığında:
@@ -420,28 +499,15 @@ export function useGlobalNotificationScheduler() {
 
       if (!charId) return;
 
-      // Mesajı sohbete ekle
-      if (body) {
-        const conv = getConversationByCharacter(charId);
-        if (conv) {
-          const notifMsg: Message = {
-            id: generateId(),
-            role: "assistant",
-            content: body,
-            timestamp: Date.now(),
-          };
-          await updateConversation(conv.id, [...conv.messages, notifMsg]);
-        }
-      }
-
-      // Chat sayfasına yönlendir
+      // Chat sayfasına yönlendir — notifBody param ile mesajı ilet
+      // Chat screen mesajı kendi init useEffect'inde ekler (race condition yok)
       router.push({
         pathname: "/chat/[id]",
-        params: { characterId: charId, id: charId },
+        params: { characterId: charId, id: charId, ...(body ? { notifBody: body } : {}) },
       });
     });
     return () => sub.remove();
-  }, [getConversationByCharacter, updateConversation]);
+  }, []);
 
   // Günlük bildirimleri schedule et — sadece gün değişince veya aktif karakter sayısı değişince
   const convCount = conversations.filter(
@@ -530,7 +596,7 @@ export function useGlobalNotificationScheduler() {
           const userMsgs = conv.messages.filter((m) => m.role === "user");
           const xp = userMsgs.length * 10;
           const level = getRelationshipLevel(xp);
-          const body = getDailyMessage(conv.characterId, level.name, slot.key);
+          const body = getDailyMessage(conv.characterId, level.name, slot.key, user?.language);
 
           await Notifications.scheduleNotificationAsync({
             content: {

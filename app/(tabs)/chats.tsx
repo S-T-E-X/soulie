@@ -152,7 +152,7 @@ function ChatRow({
               {isMuted && (
                 <View style={styles.mutedPill}>
                   <Feather name="bell-off" size={9} color="#8E8E93" />
-                  <Text style={styles.mutedPillText}>Sessiz</Text>
+                  <Text style={styles.mutedPillText}>{t("chats.mutedLabel")}</Text>
                 </View>
               )}
             </View>
@@ -293,6 +293,7 @@ function ConversationMenu({
   onClose: () => void;
 }) {
   const character = getCharacter(conv.characterId);
+  const { t } = useI18n();
 
   return (
     <Modal transparent animationType="none" visible onRequestClose={onClose}>
@@ -338,10 +339,10 @@ function ConversationMenu({
             </View>
             <View style={styles.menuItemText}>
               <Text style={[styles.menuItemLabel, { color: colors.text.primary }]}>
-                {isMuted ? "Sesi Aç" : "Sessize Al"}
+                {isMuted ? t("chats.unmute") : t("chats.muteChar")}
               </Text>
               <Text style={[styles.menuItemSub, { color: colors.text.tertiary }]}>
-                {isMuted ? "Bildirimler tekrar gelsin" : "Bu karakterden bildirim gelmesin"}
+                {isMuted ? t("chats.unmuteSubtitle") : t("chats.muteSubtitle")}
               </Text>
             </View>
             {isMuted && (
@@ -363,8 +364,8 @@ function ConversationMenu({
               <Feather name="trash-2" size={18} color="#FF3B30" />
             </View>
             <View style={styles.menuItemText}>
-              <Text style={[styles.menuItemLabel, { color: "#FF3B30" }]}>Sohbeti Sil</Text>
-              <Text style={[styles.menuItemSub, { color: colors.text.tertiary }]}>Tüm mesajlar silinir</Text>
+              <Text style={[styles.menuItemLabel, { color: "#FF3B30" }]}>{t("chats.deleteConfirm")}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.text.tertiary }]}>{t("chats.deleteAllMessages")}</Text>
             </View>
           </Pressable>
         </AnimatedRN.View>
@@ -417,12 +418,12 @@ export default function ChatsScreen() {
   const handleDelete = useCallback((conv: Conversation) => {
     setMenuConv(null);
     Alert.alert(
-      getCharacter(conv.characterId)?.name ?? "Sohbet",
-      "Bu sohbet kalıcı olarak silinecek. Emin misin?",
+      getCharacter(conv.characterId)?.name ?? t("chats.deleteConfirm"),
+      t("chats.deleteMessage"),
       [
-        { text: "Vazgeç", style: "cancel" },
+        { text: t("chats.cancel"), style: "cancel" },
         {
-          text: "Sil",
+          text: t("chats.delete"),
           style: "destructive",
           onPress: () => deleteConversation(conv.id),
         },

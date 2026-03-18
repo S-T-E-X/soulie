@@ -10,12 +10,12 @@ Soulie is a Turkish/English AI companion mobile app built with Expo (React Nativ
 - Real-time streaming chat with persona-specific AI characters
 - Conversation history persistence
 - User profile page with photo upload and hobbies
-- Multi-language support (TR/EN) — AI responds in user's selected language
+- Multi-language support (7 languages: en, tr, de, zh, ko, es, ru) — AI responds in user's selected language; all UI strings i18n-translated
 - Subscription plans (Market tab)
 - Settings and account management
 - Privacy Policy page
 - Relationship progress bar (Yabancı → Tanıdık → Dost → Yakın Dost → Sevgili) with XP tracking and level-up celebration animation
-- Auto-message system with local notifications (sabah/öğle/gece time slots) via expo-notifications
+- Auto-message system with local notifications (morning/noon/afternoon/evening time slots) via expo-notifications — language-aware (Turkish characters send English messages to non-TR users)
 - Voice tone selection (warm/playful/serious/mysterious/energetic) — premium-only feature with upsell UI
 
 The project runs two processes: an **Expo frontend** (React Native / web) and an **Express backend** that proxies requests to OpenAI and manages chat data.
