@@ -1,0 +1,47 @@
+
+📜 SOULIE - PRIVACY POLICY & DATA PROTECTION
+Effective Date: March 18, 2026 Last Updated: March 18, 2026
+1. Introduction
+Welcome to Soulie, an AI-driven companion application. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application, including our chat, video interaction, and mystic features (Tarot/Fortune Telling).
+
+2. Information Collection and Storage
+To provide a seamless "Deep Memory" experience, we collect and store data in our secure PostgreSQL database:
+Account Information: When you sign up, we collect your email address and unique User ID to manage your VIP subscriptions and preferences.
+Interaction Data: All chat messages, character personality settings, and user preferences are stored to ensure your AI friend "remembers" you.
+Mystic Features Data: Information provided for Tarot or Fortune Telling (e.g., zodiac signs or birth dates) is processed solely to generate your readings.
+Technical Data: We may collect device information (model, OS version) and IP addresses to prevent fraud and improve app performance.
+
+3. AI Processing & Third-Party Service Providers (OpenAI)
+Soulie utilizes advanced Artificial Intelligence models provided by OpenAI and other third-party API providers to generate realistic conversations:
+Data Masking: We do not share your personal identifiers (email or real name) with OpenAI. Only the text of your chat is sent for processing.
+Model Training: We explicitly opt-out of allowing our third-party providers to use your private conversations for training their global models, ensuring your secrets stay private.
+Visual Generation: If applicable, character images and reactions are generated through secure API calls that do not store your personal data.
+
+
+
+
+4. Data Security (PostgreSQL & Encryption)
+Your trust is our priority. We implement industry-standard security measures:
+Encrypted Storage: All conversation logs in our PostgreSQL database are protected via secure server-side encryption.
+HTTPS/SSL: Data transmission between your device and our servers is strictly conducted over encrypted SSL/TLS channels.
+
+5. In-App Purchases and Subscriptions
+All financial transactions for VIP memberships or Consumable items are handled exclusively by Apple's App Store (IAP). Soulie does not store your credit card or billing information on its own servers.
+
+6. User Rights and Data Deletion
+In compliance with global privacy standards, you have the following rights:
+Access: You can request a summary of the data we hold.
+Deletion: You can delete your account and all associated chat logs permanently through the "Settings" menu or by contacting support. Once deleted, your AI's "memory" cannot be recovered.
+
+7. Age Rating and Mature Content
+Soulie is rated 17+ (Mature). We do not knowingly collect data from individuals under the age of 17. The AI is programmed to handle adult-oriented conversations responsibly, but parental discretion is advised.
+
+
+
+
+
+
+8. Contact Information
+For any questions regarding your data or this policy, please contact us at: 
+Support Email: help@cszone.gg
+Developer: Zone Digital LLC
