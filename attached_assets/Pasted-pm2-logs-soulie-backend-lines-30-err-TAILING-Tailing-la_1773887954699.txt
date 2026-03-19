@@ -1,0 +1,34 @@
+pm2 logs soulie-backend --lines 30 --err
+[TAILING] Tailing last 30 lines for [soulie-backend] process (change the value with --lines option)
+/root/.pm2/logs/soulie-backend-error.log last 30 lines:
+0|soulie-b |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|soulie-b |     at async <anonymous> (/home/soulie/server/routes.ts:288:22) {
+0|soulie-b |   status: 429,
+0|soulie-b |   headers: Headers {
+0|soulie-b |     date: 'Thu, 19 Mar 2026 02:36:35 GMT',
+0|soulie-b |     'content-type': 'application/json; charset=utf-8',
+0|soulie-b |     'content-length': '337',
+0|soulie-b |     connection: 'keep-alive',
+0|soulie-b |     'set-cookie': '__cf_bm=Ltti7IU61E9_fDv0bv.E8vgEcnYQ0Ad8iP84uDQV3vM-1773887795.1118524-1.0.1.1-fU4MbtegnsUKZ4oPLcqalx6.N_viSF3PTtWrZB3.j453RMhtKa7GWUo6I3WNejHpAeWTYXfeeRuhB8OKXwmZFPMhkKmawqbPFs7EDvfi1fYV71nhsjBfNYxbXnZtxL68; HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Thu, 19 Mar 2026 03:06:35 GMT, _cfuvid=UC6MK3Ix8sopTbPCd8Fj9tCcrWC8zzEJB5KmYwipxec-1773887795.1118524-1.0.1.1-HviZnQlmbxOIoswxTeaNhoEboiG_R7Z9HbgxcmVaERQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com',
+0|soulie-b |     'cf-ray': '9de9171f7cc13602-FRA',
+0|soulie-b |     'cf-cache-status': 'DYNAMIC',
+0|soulie-b |     server: 'cloudflare',
+0|soulie-b |     'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+0|soulie-b |     vary: 'Origin',
+0|soulie-b |     'x-content-type-options': 'nosniff',
+0|soulie-b |     'x-openai-proxy-wasm': 'v0.1',
+0|soulie-b |     'x-request-id': 'req_f8f3c98819d64e81bceb2d7ba8c681ad',
+0|soulie-b |     'alt-svc': 'h3=":443"; ma=86400'
+0|soulie-b |   },
+0|soulie-b |   requestID: 'req_f8f3c98819d64e81bceb2d7ba8c681ad',
+0|soulie-b |   error: {
+0|soulie-b |     message: 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.',
+0|soulie-b |     type: 'insufficient_quota',
+0|soulie-b |     param: null,
+0|soulie-b |     code: 'insufficient_quota'
+0|soulie-b |   },
+0|soulie-b |   code: 'insufficient_quota',
+0|soulie-b |   param: null,
+0|soulie-b |   type: 'insufficient_quota'
+0|soulie-b | }
+
