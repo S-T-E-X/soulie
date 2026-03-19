@@ -64,6 +64,7 @@ async function syncUserToServer(user: User) {
 
 const ALL_STORAGE_KEYS = [
   "lumina_auth_user",
+  "soulie_users_db_v1",
   "soulie_conversations_v2",
   "soulie_archive_msgs_v1",
   "soulie_char_settings_v1",
@@ -151,7 +152,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+    try {
+      await AsyncStorage.multiRemove(ALL_STORAGE_KEYS);
+    } catch {}
     setUser(null);
   }, []);
 
