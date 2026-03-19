@@ -22,7 +22,7 @@ export default function PrivacyPolicyScreen() {
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color="#333" />
         </Pressable>
-        <Text style={styles.headerTitle}>Gizlilik Politikası</Text>
+        <Text style={styles.headerTitle}>Privacy Policy</Text>
         <View style={styles.backBtn} />
       </View>
 
@@ -30,78 +30,78 @@ export default function PrivacyPolicyScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: botPad + 32 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Son güncelleme: 18 Mart 2026</Text>
+        <Text style={styles.lastUpdated}>Last updated: March 18, 2026</Text>
 
-        <Text style={styles.sectionTitle}>Giriş</Text>
+        <Text style={styles.sectionTitle}>Introduction</Text>
         <Text style={styles.bodyText}>
-          Soulie'ye hoş geldiniz. Soulie, yapay zeka destekli bir arkadaş uygulamasıdır. Gizliliğinizi korumaya kararlıyız. Bu Gizlilik Politikası, mobil uygulamamızı (sohbet, video etkileşimi ve mistik özellikler dahil) kullanırken verilerinizi nasıl topladığımızı, kullandığımızı ve koruduğumuzu açıklar.
-        </Text>
-
-        <Text style={styles.sectionTitle}>Bilgi Toplama ve Depolama</Text>
-        <Text style={styles.bodyText}>
-          Kusursuz bir "Derin Bellek" deneyimi sunmak için verileri güvenli PostgreSQL veritabanımızda toplarız ve saklarız:
-        </Text>
-        <Text style={styles.bodyText}>
-          <Text style={{ fontWeight: "600" }}>Hesap Bilgileri:</Text> Kaydolduğunuzda, VIP aboneliklerinizi ve tercihlerinizi yönetmek için e-posta adresiniz ve benzersiz Kullanıcı Kimliğiniz toplanır.
-        </Text>
-        <Text style={styles.bodyText}>
-          <Text style={{ fontWeight: "600" }}>Etkileşim Verileri:</Text> Tüm sohbet mesajları, karakter kişilik ayarları ve kullanıcı tercihleri, yapay zeka arkadaşınızın sizi "hatırlaması" için saklanır.
-        </Text>
-        <Text style={styles.bodyText}>
-          <Text style={{ fontWeight: "600" }}>Mistik Özellikler Verileri:</Text> Tarot veya Fal verme için sağlanan bilgiler (örn. burç veya doğum tarihi) yalnızca okumalarınızı oluşturmak için işlenir.
-        </Text>
-        <Text style={styles.bodyText}>
-          <Text style={{ fontWeight: "600" }}>Teknik Veriler:</Text> Dolandırıcılığı önlemek ve uygulama performansını iyileştirmek için cihaz bilgileri (model, OS sürümü) ve IP adresleri toplanabilir.
+          Welcome to Soulie. Soulie is an AI-powered companion application. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and protect your data when you use our mobile application (including chat, video interaction, and mystical features).
         </Text>
 
-        <Text style={styles.sectionTitle}>AI İşleme ve Üçüncü Taraf Sağlayıcılar</Text>
+        <Text style={styles.sectionTitle}>Information Collection and Storage</Text>
         <Text style={styles.bodyText}>
-          Soulie, gerçekçi konuşmalar oluşturmak için OpenAI ve diğer üçüncü taraf API sağlayıcılarından gelen gelişmiş yapay zeka modellerini kullanır:
+          To provide a seamless "Deep Memory" experience, we collect and store data in our secure PostgreSQL database:
         </Text>
         <Text style={styles.bodyText}>
-          <Text style={{ fontWeight: "600" }}>Veri Maskeleme:</Text> E-posta veya gerçek adınız gibi kişisel kimlik bilgilerinizi OpenAI'ye paylaşmayız. Yalnızca sohbetinizin metni işleme için gönderilir.
+          <Text style={{ fontWeight: "600" }}>Account Information:</Text> When you register, your email address and unique User ID are collected to manage your VIP subscriptions and preferences.
         </Text>
         <Text style={styles.bodyText}>
-          <Text style={{ fontWeight: "600" }}>Model Eğitimi:</Text> Üçüncü taraf sağlayıcılarımızın özel konuşmalarınızı küresel modelleri eğitmek için kullanmasına açıkça izin vermeyiz, gizliliğiniz korunur.
-        </Text>
-
-        <Text style={styles.sectionTitle}>Veri Güvenliği</Text>
-        <Text style={styles.bodyText}>
-          Güveniniz bizim önceliğimiz. Endüstri standardı güvenlik önlemleri uygularız:
+          <Text style={{ fontWeight: "600" }}>Interaction Data:</Text> All chat messages, character personality settings, and user preferences are stored so your AI companion can "remember" you.
         </Text>
         <Text style={styles.bodyText}>
-          <Text style={{ fontWeight: "600" }}>Şifreli Depolama:</Text> PostgreSQL veritabanımızdaki tüm konuşma günlükleri sunucu tarafı şifrelemesiyle korunur.
+          <Text style={{ fontWeight: "600" }}>Mystical Feature Data:</Text> Information provided for Tarot or Fortune features (e.g., zodiac sign or date of birth) is processed solely to generate your readings.
         </Text>
         <Text style={styles.bodyText}>
-          <Text style={{ fontWeight: "600" }}>HTTPS/SSL:</Text> Cihazınız ile sunucularımız arasındaki veri iletişimi tamamen şifreli SSL/TLS kanalları üzerinden gerçekleşir.
+          <Text style={{ fontWeight: "600" }}>Technical Data:</Text> Device information (model, OS version) and IP addresses may be collected to prevent fraud and improve app performance.
         </Text>
 
-        <Text style={styles.sectionTitle}>Uygulama İçi Satın Almalar ve Abonelikler</Text>
+        <Text style={styles.sectionTitle}>AI Processing and Third-Party Providers</Text>
         <Text style={styles.bodyText}>
-          VIP üyelikleri veya tüm finansal işlemler Apple App Store (IAP) tarafından yönetilir. Soulie, kredi kartı veya fatura bilgilerinizi kendi sunucularında saklamaz.
+          Soulie uses advanced AI models from OpenAI and other third-party API providers to generate realistic conversations:
+        </Text>
+        <Text style={styles.bodyText}>
+          <Text style={{ fontWeight: "600" }}>Data Masking:</Text> We do not share your personally identifiable information such as your email or real name with OpenAI. Only the text of your conversation is sent for processing.
+        </Text>
+        <Text style={styles.bodyText}>
+          <Text style={{ fontWeight: "600" }}>Model Training:</Text> We do not explicitly allow our third-party providers to use your private conversations to train global models; your privacy is protected.
         </Text>
 
-        <Text style={styles.sectionTitle}>Kullanıcı Hakları ve Veri Silme</Text>
+        <Text style={styles.sectionTitle}>Data Security</Text>
         <Text style={styles.bodyText}>
-          Küresel gizlilik standartlarına uygun olarak, aşağıdaki haklara sahipsiniz:
+          Your trust is our priority. We apply industry-standard security measures:
         </Text>
         <Text style={styles.bodyText}>
-          <Text style={{ fontWeight: "600" }}>Erişim:</Text> Saklanan verilerinizin bir özetini talep edebilirsiniz.
+          <Text style={{ fontWeight: "600" }}>Encrypted Storage:</Text> All conversation logs in our PostgreSQL database are protected with server-side encryption.
         </Text>
         <Text style={styles.bodyText}>
-          <Text style={{ fontWeight: "600" }}>Silme:</Text> Hesabınızı ve tüm ilişkili sohbet günlüklerini "Ayarlar" menüsünden veya destek ile iletişime geçerek kalıcı olarak silebilirsiniz.
-        </Text>
-
-        <Text style={styles.sectionTitle}>Yaş Derecelendirmesi ve Yetişkin İçerik</Text>
-        <Text style={styles.bodyText}>
-          Soulie 17+ (Yetişkin) olarak derecelendirilmiştir. 17 yaşından küçük bireylerden bilinçli olarak veri toplamayız. Yapay zeka, yetişkin yönelimli konuşmalarla sorumlu bir şekilde başa çıkmak için programlandı, ancak ebeveyn takdirine bırakılır.
+          <Text style={{ fontWeight: "600" }}>HTTPS/SSL:</Text> All data transmission between your device and our servers takes place over fully encrypted SSL/TLS channels.
         </Text>
 
-        <Text style={styles.sectionTitle}>İletişim Bilgileri</Text>
+        <Text style={styles.sectionTitle}>In-App Purchases and Subscriptions</Text>
         <Text style={styles.bodyText}>
-          Verileriniz veya bu politika hakkında herhangi bir sorunuz için lütfen bize ulaşın:{"\n"}
-          Destek E-postası: help@cszone.gg{"\n"}
-          Geliştirici: Zone Digital LLC
+          VIP memberships and all financial transactions are managed by the Apple App Store (IAP). Soulie does not store your credit card or billing information on its own servers.
+        </Text>
+
+        <Text style={styles.sectionTitle}>User Rights and Data Deletion</Text>
+        <Text style={styles.bodyText}>
+          In compliance with global privacy standards, you have the following rights:
+        </Text>
+        <Text style={styles.bodyText}>
+          <Text style={{ fontWeight: "600" }}>Access:</Text> You may request a summary of the data stored about you.
+        </Text>
+        <Text style={styles.bodyText}>
+          <Text style={{ fontWeight: "600" }}>Deletion:</Text> You may permanently delete your account and all associated chat logs from the Settings menu or by contacting support.
+        </Text>
+
+        <Text style={styles.sectionTitle}>Age Rating and Adult Content</Text>
+        <Text style={styles.bodyText}>
+          Soulie is rated 17+ (Adult). We do not knowingly collect data from individuals under the age of 17. The AI is programmed to handle adult-oriented conversations responsibly, though parental discretion is advised.
+        </Text>
+
+        <Text style={styles.sectionTitle}>Contact Information</Text>
+        <Text style={styles.bodyText}>
+          If you have any questions about your data or this policy, please contact us:{"\n"}
+          Support Email: help@cszone.gg{"\n"}
+          Developer: Zone Digital LLC
         </Text>
       </ScrollView>
     </View>
@@ -143,23 +143,6 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: "#AAA",
     marginBottom: 24,
-  },
-  placeholder: {
-    alignItems: "center",
-    paddingVertical: 60,
-    gap: 12,
-  },
-  placeholderTitle: {
-    fontSize: 20,
-    fontFamily: "Inter_600SemiBold",
-    color: "#888",
-  },
-  placeholderText: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    color: "#AAA",
-    textAlign: "center",
-    lineHeight: 22,
   },
   bodyText: {
     fontSize: 15,

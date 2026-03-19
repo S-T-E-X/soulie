@@ -134,6 +134,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const didMergeServerRef = useRef(false);
+  const prevUserIdRef = useRef<string | null>(null);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -146,6 +147,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setIsLoaded(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (prevUserIdRef.current === userId) return;
+    prevUserIdRef.current = userId;
+    didMergeServerRef.current = false;
+    setConversations([]);
+    setIsLoaded(false);
+    if (userId) {
+      loadConversations();
+    }
+  }, [userId, loadConversations]);
 
   useEffect(() => {
     if (!userId || !isLoaded || didMergeServerRef.current) return;

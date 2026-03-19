@@ -68,11 +68,18 @@ export function ChatInput({ onSend, disabled, replyTo, onCancelReply }: ChatInpu
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
+      quality: 0.5,
       allowsEditing: false,
+      base64: true,
     });
     if (!result.canceled && result.assets.length > 0) {
-      setPendingImage(result.assets[0].uri);
+      const asset = result.assets[0];
+      if (asset.base64) {
+        const mimeType = asset.mimeType ?? "image/jpeg";
+        setPendingImage(`data:${mimeType};base64,${asset.base64}`);
+      } else {
+        setPendingImage(asset.uri);
+      }
     }
   };
 
