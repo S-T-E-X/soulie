@@ -1,0 +1,42 @@
+[✓] Pulling schema from database...
+[i] No changes detected
+root@ubuntu-4gb-hel1-1:/home/soulie# psql "postgresql://soulie:yusufbabasikeratar3131@localhost:5432/soulie" -c "\dt"
+psql: error: connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "soulie" does not exist
+root@ubuntu-4gb-hel1-1:/home/soulie# sudo -u postgres psql
+psql (14.22 (Ubuntu 14.22-0ubuntu0.22.04.1))
+Type "help" for help.
+
+postgres=# \l
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
+-----------+----------+----------+-------------+-------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+ soulie_db | soulie   | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =Tc/soulie           +
+           |          |          |             |             | soulie=CTc/soulie
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+(4 rows)
+
+postgres=# CREATE USER soulie WITH PASSWORD 'yusufbabasikeratar3131';
+ERROR:  role "soulie" already exists
+postgres=# \du
+                                   List of roles
+ Role name |                         Attributes                         | Member of
+-----------+------------------------------------------------------------+-----------
+ postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
+ soulie    |                                                            | {}
+
+postgres=# GRANT ALL PRIVILEGES ON DATABASE soulie TO soulie;
+ERROR:  database "soulie" does not exist
+postgres=# \q
+root@ubuntu-4gb-hel1-1:/home/soulie#
+root@ubuntu-4gb-hel1-1:/home/soulie#
+root@ubuntu-4gb-hel1-1:/home/soulie# psql "postgresql://soulie:yusufbabasikeratar3131@localhost:5432/soulie" -c "SELECT 1;"
+psql: error: connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "soulie" does not exist
+root@ubuntu-4gb-hel1-1:/home/soulie# psql "postgresql://soulie_db:yusufbabasikeratar3131@localhost:5432/soulie" -c "SELECT 1
+;"
+psql: error: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "soulie_db"
+connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "soulie_db"
+root@ubuntu-4gb-hel1-1:/home/soulie#
