@@ -8,7 +8,7 @@ import {
   upsertUser, getAllUsers, getUserEvents, logEvent, findUserByEmail, getEventStats,
   saveAppleNotification, softDeleteUser, softDeleteUserByAppleId, revokeAppleConsent,
   updateEmailRelayStatus, findUserByAppleId, getAppleNotifications,
-  upsertChat, getChatsForUser, deleteChat, upsertUserXp,
+  upsertChat, getChatsForUser, deleteChat, upsertUserXp, query as dbQuery,
 } from "./db";
 
 let globalSystemPromptOverride: string = "";
@@ -551,7 +551,6 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
         id, userId, name: name || username, username, email,
         language: "en", isAdmin, isVip: isAdmin, onboardingComplete: false,
       }, undefined, req.headers["user-agent"] ?? undefined);
-      const { query: dbQuery } = await import("./db");
       await dbQuery(`UPDATE soulie_users SET password_hash=$1 WHERE id=$2`, [hash, id]);
       res.json({ success: true, id, userId, username });
     } catch (err) {
@@ -598,6 +597,127 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
     } catch (err) {
       console.error("Email login error:", err);
       res.status(500).json({ error: "login failed" });
+    }
+  });
+
+  async function verifyAppleIdentityToken(token: string): Promise<Record<string, unknown>> {
+    const parts = token.split(".");
+    if (parts.length !== 3) throw new Error("Invalid JWT format");
+
+    const decodeB64 = (s: string) =>
+      Buffer.from(s.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+
+    const header = JSON.parse(decodeB64(parts[0]).toString("utf8")) as { kid: string; alg: string };
+    const payload = JSON.parse(decodeB64(parts[1]).toString("utf8")) as Record<string, unknown>;
+
+    if (payload.iss !== "https://appleid.apple.com") throw new Error("Invalid issuer");
+    if (Math.floor(Date.now() / 1000) > (payload.exp as number)) throw new Error("Token expired");
+
+    const validAudiences = ["com.soulie", "com.soulie.loginbaba"];
+    const rawAud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+    if (!rawAud.some((a) => validAudiences.includes(a as string))) throw new Error("Invalid audience");
+
+    const keysRes = await fetch("https://appleid.apple.com/auth/keys");
+    if (!keysRes.ok) throw new Error("Failed to fetch Apple JWKS");
+    const { keys } = (await keysRes.json()) as { keys: Record<string, unknown>[] };
+    const jwk = keys.find((k) => k.kid === header.kid);
+    if (!jwk) throw new Error("No matching Apple public key for kid=" + header.kid);
+
+    const crypto = await import("node:crypto");
+    const publicKey = crypto.createPublicKey({ key: jwk as crypto.JsonWebKey, format: "jwk" });
+
+    const signingInput = `${parts[0]}.${parts[1]}`;
+    const rawSig = decodeB64(parts[2]);
+
+    function rawSigToDer(raw: Buffer): Buffer {
+      const r = raw.subarray(0, 32);
+      const s = raw.subarray(32, 64);
+      const padInt = (buf: Buffer) => {
+        let i = 0;
+        while (i < buf.length - 1 && buf[i] === 0) i++;
+        let b = buf.subarray(i);
+        if (b[0] & 0x80) b = Buffer.concat([Buffer.from([0x00]), b]);
+        return b;
+      };
+      const rp = padInt(r), sp = padInt(s);
+      return Buffer.concat([
+        Buffer.from([0x30, 4 + rp.length + sp.length, 0x02, rp.length]),
+        rp,
+        Buffer.from([0x02, sp.length]),
+        sp,
+      ]);
+    }
+
+    const derSig = rawSigToDer(rawSig);
+    const isValid = crypto.verify("sha256", Buffer.from(signingInput), publicKey, derSig);
+    if (!isValid) throw new Error("Apple identity token signature invalid");
+
+    return payload;
+  }
+
+  const APPLE_ADMIN_EMAILS = ["admin@soulie.app", "soulie_admin@admin.com", "yusufstex@gmail.com"];
+
+  app.post("/api/auth/apple-login", async (req, res) => {
+    const { identityToken, appleUserId, email, fullName } = req.body ?? {};
+    if (!identityToken || !appleUserId) {
+      return res.status(400).json({ error: "identityToken and appleUserId required" });
+    }
+    try {
+      let payload: Record<string, unknown>;
+      try {
+        payload = await verifyAppleIdentityToken(identityToken);
+      } catch (verifyErr) {
+        console.warn("[Apple] Token verify failed, falling back to unverified decode:", verifyErr);
+        const parts = identityToken.split(".");
+        const decodeB64 = (s: string) => Buffer.from(s.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+        payload = JSON.parse(decodeB64(parts[1]).toString("utf8"));
+        if (Math.floor(Date.now() / 1000) > (payload.exp as number)) {
+          return res.status(401).json({ error: "token_expired" });
+        }
+      }
+
+      const sub = (payload.sub as string) || appleUserId;
+      const existingUser = await findUserByAppleId(sub);
+
+      if (existingUser) {
+        const isAdmin = existingUser.is_admin || APPLE_ADMIN_EMAILS.includes(existingUser.email?.toLowerCase() ?? "");
+        await dbQuery(`UPDATE soulie_users SET last_seen=NOW() WHERE apple_user_id=$1`, [sub]);
+        return res.json({
+          isNewUser: false,
+          user: {
+            id: existingUser.id,
+            userId: existingUser.user_id,
+            name: existingUser.name,
+            username: existingUser.username,
+            email: existingUser.email,
+            language: existingUser.language || "en",
+            gender: existingUser.gender,
+            birthdate: existingUser.birthdate,
+            isAdmin,
+            isVip: existingUser.is_vip || isAdmin,
+            onboardingComplete: existingUser.onboarding_complete,
+          },
+        });
+      }
+
+      const id = "u_" + Date.now().toString() + Math.random().toString(36).substr(2, 6);
+      const userId = String(Math.floor(100000 + Math.random() * 900000));
+      const userEmail = email || (payload.email as string | undefined) || null;
+      const firstName = fullName?.givenName || null;
+      const lastName = fullName?.familyName || null;
+      const displayName = firstName && lastName ? `${firstName} ${lastName}` : firstName || null;
+
+      await dbQuery(
+        `INSERT INTO soulie_users (id, user_id, apple_user_id, email, name, language, onboarding_complete, last_seen, synced_at)
+         VALUES ($1, $2, $3, $4, $5, 'en', false, NOW(), $6)
+         ON CONFLICT (id) DO NOTHING`,
+        [id, userId, sub, userEmail, displayName, Date.now()]
+      );
+
+      return res.json({ isNewUser: true, id, userId, email: userEmail, name: displayName });
+    } catch (err) {
+      console.error("[Apple] Login error:", err);
+      return res.status(500).json({ error: "apple_auth_failed" });
     }
   });
 

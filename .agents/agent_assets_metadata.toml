@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "zXILJ_6SMVse50jwV1OXs"
+uri = "file://vps-deploy-guide.md"
+type = "text"
+title = "Soulie — VPS Deployment Rehberi"

@@ -17,6 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.soulie",
       "buildNumber": "7",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -43,6 +44,7 @@
       ],
       "expo-font",
       "expo-web-browser",
+      "expo-apple-authentication",
       [
         "react-native-google-mobile-ads",
         {

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Animated,
   Image,
   Dimensions,
+  Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,11 +16,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { getTranslation } from "@/constants/i18n";
+import { getApiUrl } from "@/lib/query-client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const DEFAULT_LANG = "en";
-
 const { width, height } = Dimensions.get("window");
-
 const WELCOME_BG_IMAGE = null;
 
 function AuthButton({
@@ -27,11 +28,13 @@ function AuthButton({
   label,
   onPress,
   delay = 0,
+  loading = false,
 }: {
   icon: React.ReactNode;
   label: string;
   onPress: () => void;
   delay?: number;
+  loading?: boolean;
 }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -58,16 +61,23 @@ function AuthButton({
       style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
     >
       <Pressable
-        style={({ pressed }) => [styles.authButton, pressed && styles.authButtonPressed]}
+        style={({ pressed }) => [
+          styles.authButton,
+          (pressed || loading) && styles.authButtonPressed,
+        ]}
         onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          onPress();
+          if (!loading) onPress();
         }}
+        disabled={loading}
       >
         <View style={styles.authButtonIcon}>{icon}</View>
         <Text style={styles.authButtonText}>{label}</Text>
         <View style={styles.authButtonArrow}>
-          <Feather name="chevron-right" size={16} color="rgba(0,0,0,0.3)" />
+          {loading ? (
+            <Ionicons name="ellipsis-horizontal" size={16} color="rgba(0,0,0,0.3)" />
+          ) : (
+            <Feather name="chevron-right" size={16} color="rgba(0,0,0,0.3)" />
+          )}
         </View>
       </Pressable>
     </Animated.View>
@@ -76,8 +86,10 @@ function AuthButton({
 
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
+  const { login } = useAuth();
   const titleFade = useRef(new Animated.Value(0)).current;
   const titleSlide = useRef(new Animated.Value(-20)).current;
+  const [appleLoading, setAppleLoading] = useState(false);
 
   useEffect(() => {
     Animated.parallel([
@@ -96,7 +108,69 @@ export default function WelcomeScreen() {
     ]).start();
   }, []);
 
-  const navigateToOnboarding = (method: "apple" | "google" | "email") => {
+  const handleAppleLogin = async () => {
+    if (Platform.OS !== "ios") return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setAppleLoading(true);
+
+      const AppleAuth = await import("expo-apple-authentication");
+      const isAvailable = await AppleAuth.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert("Not Available", "Apple Sign-in is not available on this device.");
+        return;
+      }
+
+      const credential = await AppleAuth.signInAsync({
+        requestedScopes: [
+          AppleAuth.AppleAuthenticationScope.FULL_NAME,
+          AppleAuth.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      const url = new URL("/api/auth/apple-login", getApiUrl());
+      const response = await fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identityToken: credential.identityToken,
+          appleUserId: credential.user,
+          email: credential.email,
+          fullName: credential.fullName,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Apple auth failed");
+      }
+
+      const data = await response.json();
+
+      if (data.isNewUser) {
+        router.push({
+          pathname: "/auth/social-onboarding",
+          params: {
+            method: "apple",
+            email: data.email || "",
+            registeredId: data.id,
+            registeredUserId: data.userId,
+          },
+        });
+      } else {
+        await login(data.user);
+        router.replace("/(tabs)/explore");
+      }
+    } catch (e: any) {
+      if (e.code === "ERR_REQUEST_CANCELED") return;
+      console.error("[Apple] Login error:", e);
+      Alert.alert("Error", "Apple Sign-in failed. Please try again.");
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
+  const navigateToOnboarding = (method: "google" | "email") => {
     if (method === "email") {
       router.push({ pathname: "/auth/email-register" });
     } else {
@@ -123,9 +197,17 @@ export default function WelcomeScreen() {
 
       <View style={[styles.overlay, StyleSheet.absoluteFill]} />
 
-      <View style={[styles.content, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
+      <View
+        style={[
+          styles.content,
+          { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) },
+        ]}
+      >
         <Animated.View
-          style={[styles.titleContainer, { opacity: titleFade, transform: [{ translateY: titleSlide }] }]}
+          style={[
+            styles.titleContainer,
+            { opacity: titleFade, transform: [{ translateY: titleSlide }] },
+          ]}
         >
           <Text style={styles.appTitle}>Soulie</Text>
           <Text style={styles.appSubtitle}>
@@ -134,13 +216,28 @@ export default function WelcomeScreen() {
         </Animated.View>
       </View>
 
-      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 16 }]}>
-        <AuthButton
-          icon={<Ionicons name="logo-apple" size={20} color="#000" />}
-          label={getTranslation(DEFAULT_LANG, "welcome.loginWithApple")}
-          onPress={() => navigateToOnboarding("apple")}
-          delay={400}
-        />
+      <View
+        style={[
+          styles.bottomContainer,
+          {
+            paddingBottom:
+              insets.bottom + (Platform.OS === "web" ? 34 : 0) + 16,
+          },
+        ]}
+      >
+        {Platform.OS === "ios" && (
+          <AuthButton
+            icon={<Ionicons name="logo-apple" size={20} color="#000" />}
+            label={
+              appleLoading
+                ? "Signing in..."
+                : getTranslation(DEFAULT_LANG, "welcome.loginWithApple")
+            }
+            onPress={handleAppleLogin}
+            loading={appleLoading}
+            delay={400}
+          />
+        )}
         <AuthButton
           icon={
             <View style={styles.googleIcon}>
@@ -159,7 +256,10 @@ export default function WelcomeScreen() {
         />
         <Text style={styles.termsText}>
           {getTranslation(DEFAULT_LANG, "welcome.terms")}{" "}
-          <Text style={styles.termsLink} onPress={() => router.push("/privacy")}>
+          <Text
+            style={styles.termsLink}
+            onPress={() => router.push("/privacy")}
+          >
             {getTranslation(DEFAULT_LANG, "welcome.termsLink")}
           </Text>
         </Text>
