@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: partial.name,
       username: partial.name.toLowerCase().replace(/\s+/g, "_"),
       email: partial.email,
-      language: partial.language ?? "tr",
+      language: partial.language ?? "en",
       birthdate: partial.birthdate,
       gender: partial.gender,
       hobbies: partial.hobbies ?? [],
