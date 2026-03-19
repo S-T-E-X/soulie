@@ -47,15 +47,15 @@ export default function EmailRegisterScreen() {
   const handleRegister = async () => {
     const trimmedEmail = email.trim().toLowerCase();
     if (!validateEmail(trimmedEmail)) {
-      Alert.alert("Geçersiz E-posta", "Lütfen geçerli bir e-posta adresi girin.");
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
     }
     if (password.length < 6) {
-      Alert.alert("Şifre Kısa", "Şifre en az 6 karakter olmalıdır.");
+      Alert.alert("Password Too Short", "Password must be at least 6 characters.");
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert("Şifre Eşleşmiyor", "Girdiğiniz şifreler uyuşmuyor.");
+      Alert.alert("Passwords Don't Match", "The passwords you entered don't match.");
       return;
     }
 
@@ -71,17 +71,17 @@ export default function EmailRegisterScreen() {
 
       if (res.status === 409) {
         Alert.alert(
-          "E-posta Kayıtlı",
-          "Bu e-posta zaten kayıtlı. Giriş yapmak ister misiniz?",
+          "Email Already Registered",
+          "This email is already registered. Would you like to log in?",
           [
-            { text: "İptal", style: "cancel" },
-            { text: "Giriş Yap", onPress: () => setMode("login") },
+            { text: "Cancel", style: "cancel" },
+            { text: "Log In", onPress: () => setMode("login") },
           ]
         );
         return;
       }
       if (!res.ok) {
-        Alert.alert("Hata", "Kayıt sırasında bir sorun oluştu. Tekrar deneyin.");
+        Alert.alert("Error", "Something went wrong during registration. Please try again.");
         return;
       }
 
@@ -91,7 +91,7 @@ export default function EmailRegisterScreen() {
         params: { method: "email", email: trimmedEmail, registeredId: data.id, registeredUserId: data.userId },
       });
     } catch {
-      Alert.alert("Bağlantı Hatası", "Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.");
+      Alert.alert("Connection Error", "Couldn't connect to the server. Check your internet connection.");
     } finally {
       setLoading(false);
     }
@@ -100,11 +100,11 @@ export default function EmailRegisterScreen() {
   const handleLogin = async () => {
     const trimmedEmail = email.trim().toLowerCase();
     if (!validateEmail(trimmedEmail)) {
-      Alert.alert("Geçersiz E-posta", "Lütfen geçerli bir e-posta adresi girin.");
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
     }
     if (!password) {
-      Alert.alert("Şifre Gerekli", "Lütfen şifrenizi girin.");
+      Alert.alert("Password Required", "Please enter your password.");
       return;
     }
 
@@ -121,15 +121,15 @@ export default function EmailRegisterScreen() {
       if (res.status === 401) {
         const msg =
           data.error === "not_found"
-            ? "Bu e-posta ile kayıtlı hesap bulunamadı."
+            ? "No account found with this email."
             : data.error === "wrong_password"
-            ? "Şifre hatalı. Tekrar deneyin."
-            : "Giriş başarısız.";
-        Alert.alert("Giriş Hatası", msg);
+            ? "Incorrect password. Try again."
+            : "Login failed.";
+        Alert.alert("Login Error", msg);
         return;
       }
       if (!res.ok) {
-        Alert.alert("Hata", "Giriş sırasında bir sorun oluştu.");
+        Alert.alert("Error", "Something went wrong during login.");
         return;
       }
 
@@ -137,7 +137,7 @@ export default function EmailRegisterScreen() {
       await login({ ...data.user, onboardingComplete: data.user.onboardingComplete ?? true });
       router.replace("/(tabs)/explore");
     } catch {
-      Alert.alert("Bağlantı Hatası", "Sunucuya bağlanılamadı.");
+      Alert.alert("Connection Error", "Couldn't connect to the server.");
     } finally {
       setLoading(false);
     }
@@ -168,16 +168,16 @@ export default function EmailRegisterScreen() {
         >
           <View style={styles.pageContent}>
             <Text style={styles.pageTitle}>
-              {isRegister ? "Hesap Oluştur" : "Giriş Yap"}
+              {isRegister ? "Create Account" : "Log In"}
             </Text>
             <Text style={styles.pageSubtitle}>
               {isRegister
-                ? "E-posta adresin ve şifrenle devam et."
-                : "E-posta ve şifrenle giriş yap."}
+                ? "Continue with your email and password."
+                : "Log in with your email and password."}
             </Text>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>E-posta Adresi</Text>
+              <Text style={styles.fieldLabel}>Email Address</Text>
               <View style={styles.inputWrapper}>
                 <Feather name="mail" size={18} color="#999" style={styles.inputIcon} />
                 <TextInput
@@ -185,7 +185,7 @@ export default function EmailRegisterScreen() {
                   style={styles.textInput}
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="ornek@email.com"
+                  placeholder="example@email.com"
                   placeholderTextColor="rgba(0,0,0,0.3)"
                   autoCapitalize="none"
                   keyboardType="email-address"
@@ -197,7 +197,7 @@ export default function EmailRegisterScreen() {
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Şifre</Text>
+              <Text style={styles.fieldLabel}>Password</Text>
               <View style={styles.inputWrapper}>
                 <Feather name="lock" size={18} color="#999" style={styles.inputIcon} />
                 <TextInput
@@ -205,7 +205,7 @@ export default function EmailRegisterScreen() {
                   style={[styles.textInput, { flex: 1 }]}
                   value={password}
                   onChangeText={setPassword}
-                  placeholder="En az 6 karakter"
+                  placeholder="At least 6 characters"
                   placeholderTextColor="rgba(0,0,0,0.3)"
                   secureTextEntry={!showPassword}
                   returnKeyType={isRegister ? "next" : "done"}
@@ -219,7 +219,7 @@ export default function EmailRegisterScreen() {
 
             {isRegister && (
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Şifreyi Tekrarla</Text>
+                <Text style={styles.fieldLabel}>Confirm Password</Text>
                 <View style={styles.inputWrapper}>
                   <Feather name="lock" size={18} color="#999" style={styles.inputIcon} />
                   <TextInput
@@ -227,7 +227,7 @@ export default function EmailRegisterScreen() {
                     style={[styles.textInput, { flex: 1 }]}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
-                    placeholder="Şifreni tekrar gir"
+                    placeholder="Confirm your password"
                     placeholderTextColor="rgba(0,0,0,0.3)"
                     secureTextEntry={!showConfirm}
                     returnKeyType="done"
@@ -238,7 +238,7 @@ export default function EmailRegisterScreen() {
                   </Pressable>
                 </View>
                 {!!confirmPassword && password !== confirmPassword && (
-                  <Text style={styles.errorText}>Şifreler eşleşmiyor</Text>
+                  <Text style={styles.errorText}>Passwords don't match</Text>
                 )}
               </View>
             )}
@@ -257,7 +257,7 @@ export default function EmailRegisterScreen() {
           ) : (
             <>
               <Text style={styles.continueBtnText}>
-                {isRegister ? "Devam Et" : "Giriş Yap"}
+                {isRegister ? "Continue" : "Log In"}
               </Text>
               <Feather name="arrow-right" size={18} color="#fff" />
             </>
@@ -274,8 +274,8 @@ export default function EmailRegisterScreen() {
         >
           <Text style={styles.switchText}>
             {isRegister
-              ? "Zaten hesabın var mı? Giriş yap"
-              : "Hesabın yok mu? Kayıt ol"}
+              ? "Already have an account? Log in"
+              : "Don't have an account? Sign up"}
           </Text>
         </Pressable>
       </View>
