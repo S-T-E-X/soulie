@@ -8,6 +8,7 @@ import {
   upsertUser, getAllUsers, getUserEvents, logEvent, findUserByEmail, getEventStats,
   saveAppleNotification, softDeleteUser, softDeleteUserByAppleId, revokeAppleConsent,
   updateEmailRelayStatus, findUserByAppleId, getAppleNotifications,
+  upsertChat, getChatsForUser, deleteChat, upsertUserXp,
 } from "./db";
 
 let globalSystemPromptOverride: string = "";
@@ -819,6 +820,58 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
   app.post("/api/admin/reset-system-prompt", (req, res) => {
     globalSystemPromptOverride = "";
     res.json({ success: true });
+  });
+
+  app.get("/api/chats/:userId", async (req, res) => {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ error: "userId required" });
+    try {
+      const rows = await getChatsForUser(userId);
+      res.json({ chats: rows });
+    } catch (err) {
+      console.error("Get chats error:", err);
+      res.status(500).json({ error: "failed to fetch chats" });
+    }
+  });
+
+  app.post("/api/chats/sync", async (req, res) => {
+    const { userId, characterId, conversationId, messages, updatedAt } = req.body;
+    if (!userId || !characterId || !conversationId || !Array.isArray(messages)) {
+      return res.status(400).json({ error: "userId, characterId, conversationId, messages required" });
+    }
+    try {
+      await upsertChat(userId, characterId, conversationId, messages, updatedAt ?? Date.now());
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Chat sync error:", err);
+      res.status(500).json({ error: "chat sync failed" });
+    }
+  });
+
+  app.delete("/api/chats/:userId/:conversationId", async (req, res) => {
+    const { userId, conversationId } = req.params;
+    if (!userId || !conversationId) return res.status(400).json({ error: "userId and conversationId required" });
+    try {
+      await deleteChat(conversationId, userId);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Delete chat error:", err);
+      res.status(500).json({ error: "delete chat failed" });
+    }
+  });
+
+  app.post("/api/users/sync-xp", async (req, res) => {
+    const { userId, totalXp, level } = req.body;
+    if (!userId || totalXp === undefined || level === undefined) {
+      return res.status(400).json({ error: "userId, totalXp, level required" });
+    }
+    try {
+      await upsertUserXp(userId, totalXp, level);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("XP sync error:", err);
+      res.status(500).json({ error: "xp sync failed" });
+    }
   });
 
   const httpServer = createServer(app);

@@ -437,6 +437,7 @@ export async function scheduleContextFollowup(
   charId: string,
   charName: string,
   userText: string,
+  language: string = "en",
 ): Promise<void> {
   if (Platform.OS === "web") return;
   const lower = userText.toLowerCase();

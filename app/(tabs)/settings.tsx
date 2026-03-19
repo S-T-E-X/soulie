@@ -25,6 +25,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useChatContext } from "@/contexts/ChatContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useI18n } from "@/hooks/useI18n";
+import { getLevelName } from "@/constants/levelNames";
+import { getApiUrl } from "@/lib/query-client";
 
 const DEFAULT_AVATAR_SETTINGS = require("@/assets/default_pp/default-avatar-profile.png");
 
@@ -81,22 +83,13 @@ function getLevelInfo(xp: number) {
   return { level, currentLevelXp, nextLevelXp, progress, xp };
 }
 
-const LEVEL_NAMES: Record<number, string> = {
-  1: "Yeni Ruh", 2: "Meraklı", 3: "Samimi", 4: "Bağlı", 5: "Güvenilir",
-  6: "Yakın Dost", 7: "Sırdaş", 8: "Sadık", 9: "Ruh Eşi", 10: "Efsane",
-  11: "Tanrıça", 12: "Yıldız", 13: "Kraliçe", 14: "İlahi", 15: "Efsanevi",
-  16: "Mükemmel", 17: "Masalı", 18: "Kutsal", 19: "Sonsuz", 20: "Evrenim",
-  21: "Kozmik", 22: "Yankı", 23: "Açılış", 24: "Mabet", 25: "Diriliş",
-  26: "Fırtına", 27: "Bereket", 28: "Işık", 29: "Özgürlük", 30: "Nirvana",
-  31: "Ekstasi", 32: "Tanrı",
-};
 
-function LevelCard({ xp, isDark }: { xp: number; isDark: boolean }) {
+function LevelCard({ xp, isDark, language }: { xp: number; isDark: boolean; language?: string }) {
   const { colors } = useTheme();
   const { t } = useI18n();
   const { level, progress, nextLevelXp } = getLevelInfo(xp);
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const levelName = LEVEL_NAMES[level] ?? "Efsane";
+  const levelName = getLevelName(level, language);
 
   useEffect(() => {
     Animated.spring(progressAnim, { toValue: progress, useNativeDriver: false, damping: 16, stiffness: 100, delay: 300 }).start();
@@ -213,6 +206,24 @@ export default function SettingsScreen() {
   const totalMessages = conversations.reduce((acc, c) => acc + c.messages.length, 0);
   const xp = totalMessages * 10 + conversations.length * 5;
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const levelInfo = (() => {
+      let level = 1;
+      const LEVEL_XP_TABLE = [0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000, 5000, 6200, 7600, 9200, 11000, 13000, 15500, 18500, 22000, 26000, 30500, 35500, 41000, 47000, 53500, 60500, 68000, 76000, 84500, 93500, 103000, 113000];
+      for (let i = 0; i < LEVEL_XP_TABLE.length - 1; i++) {
+        if (xp >= LEVEL_XP_TABLE[i + 1]) { level = i + 2; } else { break; }
+      }
+      return Math.min(level, 32);
+    })();
+    const url = new URL("/api/users/sync-xp", getApiUrl());
+    fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.id, totalXp: xp, level: levelInfo }),
+    }).catch(() => {});
+  }, [user?.id, xp]);
+
   const handleLogout = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(t("settings.logoutConfirm"), t("settings.logoutMessage"), [
@@ -278,7 +289,7 @@ export default function SettingsScreen() {
           </Pressable>
         </AnimatedRN.View>
 
-        <LevelCard xp={xp} isDark={isDark} />
+        <LevelCard xp={xp} isDark={isDark} language={user?.language} />
 
         <AnimatedRN.View entering={FadeInDown.delay(60).springify().damping(18)} style={styles.section}>
           <SectionHeader title={t("settings.account")} isDark={isDark} />

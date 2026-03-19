@@ -220,4 +220,47 @@ export async function getAppleNotifications(limit = 100) {
   return res.rows;
 }
 
+export async function upsertChat(
+  userId: string,
+  characterId: string,
+  conversationId: string,
+  messages: unknown[],
+  updatedAt: number
+) {
+  await query(
+    `INSERT INTO soulie_chats (id, user_id, character_id, messages, updated_at, created_at)
+     VALUES ($1, $2, $3, $4, to_timestamp($5 / 1000.0), NOW())
+     ON CONFLICT (id) DO UPDATE SET
+       messages = EXCLUDED.messages,
+       updated_at = EXCLUDED.updated_at`,
+    [conversationId, userId, characterId, JSON.stringify(messages), updatedAt]
+  );
+}
+
+export async function getChatsForUser(userId: string) {
+  const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  const res = await query(
+    `SELECT id, character_id, messages, updated_at, created_at
+     FROM soulie_chats
+     WHERE user_id = $1 AND updated_at >= $2
+     ORDER BY updated_at DESC`,
+    [userId, twoWeeksAgo]
+  );
+  return res.rows;
+}
+
+export async function deleteChat(conversationId: string, userId: string) {
+  await query(
+    `DELETE FROM soulie_chats WHERE id = $1 AND user_id = $2`,
+    [conversationId, userId]
+  );
+}
+
+export async function upsertUserXp(userId: string, totalXp: number, level: number) {
+  await query(
+    `UPDATE soulie_users SET total_xp = $1, level = $2 WHERE id = $3`,
+    [totalXp, level, userId]
+  );
+}
+
 export default pool;

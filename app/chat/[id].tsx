@@ -558,11 +558,11 @@ export default function ChatScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       await quota.markMessageSent();
-      streak.update(character.name, user?.language ?? "tr");
+      streak.update(character.name, user?.language ?? "en");
 
       // Kullanıcı mesajında önemli bir konu varsa saatler sonra takip bildirimi gönder
       if (finalText) {
-        scheduleContextFollowup(character.id, character.name, finalText).catch(() => {});
+        scheduleContextFollowup(character.id, character.name, finalText, user?.language ?? "en").catch(() => {});
       }
 
       try {

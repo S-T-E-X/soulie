@@ -96,11 +96,30 @@ INSERT INTO soulie_users (
   is_vip = TRUE,
   onboarding_complete = TRUE;
 
--- 8. Kontrol et
+-- 8. soulie_chats tablosu (son 2 haftalık sohbetler)
+CREATE TABLE IF NOT EXISTS soulie_chats (
+  id           TEXT PRIMARY KEY,
+  user_id      TEXT NOT NULL,
+  character_id TEXT NOT NULL,
+  messages     JSONB DEFAULT '[]',
+  updated_at   TIMESTAMPTZ DEFAULT NOW(),
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_soulie_chats_user_id ON soulie_chats (user_id);
+CREATE INDEX IF NOT EXISTS idx_soulie_chats_updated_at ON soulie_chats (updated_at DESC);
+
+-- 9. soulie_users'a XP ve level sütunları ekle
+ALTER TABLE soulie_users ADD COLUMN IF NOT EXISTS total_xp INTEGER DEFAULT 0;
+ALTER TABLE soulie_users ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;
+
+-- 10. Kontrol et
 SELECT 'soulie_users' AS tablo, COUNT(*) FROM soulie_users
 UNION ALL
 SELECT 'soulie_events', COUNT(*) FROM soulie_events
 UNION ALL
-SELECT 'soulie_apple_notifications', COUNT(*) FROM soulie_apple_notifications;
+SELECT 'soulie_apple_notifications', COUNT(*) FROM soulie_apple_notifications
+UNION ALL
+SELECT 'soulie_chats', COUNT(*) FROM soulie_chats;
 
 SELECT id, name, email, is_admin FROM soulie_users;

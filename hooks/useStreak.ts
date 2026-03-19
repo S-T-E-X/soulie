@@ -46,10 +46,47 @@ async function saveAll(all: AllStreaks): Promise<void> {
   } catch {}
 }
 
+type StreakStrings = { title: string; body: (name: string) => string };
+
+const STREAK_STRINGS: Record<string, StreakStrings> = {
+  en: {
+    title: "Streak Warning! 🔥",
+    body: (name) => `Don't lose your streak with ${name}! Chat before midnight.`,
+  },
+  tr: {
+    title: "Seri Tehlikede! 🔥",
+    body: (name) => `${name} ile seriyi kaybetmek üzeresin! Gece yarısından önce sohbet et.`,
+  },
+  de: {
+    title: "Serie in Gefahr! 🔥",
+    body: (name) => `Verliere nicht deine Serie mit ${name}! Chatte vor Mitternacht.`,
+  },
+  zh: {
+    title: "连胜警告！🔥",
+    body: (name) => `别丢掉和${name}的连胜！在午夜前聊天。`,
+  },
+  ko: {
+    title: "연속 위험! 🔥",
+    body: (name) => `${name}와의 연속을 잃지 마세요! 자정 전에 채팅하세요.`,
+  },
+  es: {
+    title: "¡Racha en peligro! 🔥",
+    body: (name) => `¡No pierdas tu racha con ${name}! Chatea antes de medianoche.`,
+  },
+  ru: {
+    title: "Серия под угрозой! 🔥",
+    body: (name) => `Не потеряй серию с ${name}! Пиши до полуночи.`,
+  },
+};
+
+function getStreakStrings(language: string): StreakStrings {
+  return STREAK_STRINGS[language] ?? STREAK_STRINGS.en;
+}
+
 export async function updateStreakForCharacter(
   characterId: string,
   characterName: string,
-  language: string = "tr"
+  language: string = "en"
 ): Promise<StreakData> {
   const all = await loadAll();
   const current = all[characterId] ?? defaultData();
@@ -112,17 +149,12 @@ async function scheduleStreakWarning(
       warningTime.setDate(warningTime.getDate() + 1);
     }
 
-    const body =
-      language === "en"
-        ? `Don't lose your streak with ${characterName}! Chat before midnight.`
-        : `${characterName} ile seriyi kaybetmek üzeresin! Gece yarısından önce sohbet et.`;
-
-    const title = language === "en" ? "Streak Warning!" : "Seri Tehlikede!";
+    const strings = getStreakStrings(language);
 
     await Notifications.scheduleNotificationAsync({
       content: {
-        title,
-        body,
+        title: strings.title,
+        body: strings.body(characterName),
         data: { streakWarning: characterId, characterId },
         sound: true,
       },
@@ -149,7 +181,7 @@ export function useStreak(characterId: string) {
     return () => { mounted = false; };
   }, [characterId]);
 
-  const update = useCallback(async (characterName: string, language: string = "tr") => {
+  const update = useCallback(async (characterName: string, language: string = "en") => {
     const updated = await updateStreakForCharacter(characterId, characterName, language);
     setData(updated);
     return updated;

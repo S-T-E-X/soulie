@@ -4,9 +4,13 @@ import React, {
   useState,
   useCallback,
   useMemo,
+  useEffect,
+  useRef,
   ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "@/contexts/AuthContext";
+import { getApiUrl, apiRequest } from "@/lib/query-client";
 
 export type Message = {
   id: string;
@@ -30,6 +34,53 @@ export type Conversation = {
 const STORAGE_KEY = "soulie_conversations_v2";
 const ARCHIVE_KEY = "soulie_archive_msgs_v1";
 const MAX_DB_MESSAGES = 50;
+const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+
+function isWithinTwoWeeks(updatedAt: number): boolean {
+  return Date.now() - updatedAt < TWO_WEEKS_MS;
+}
+
+async function syncChatToServer(
+  userId: string,
+  conv: { id: string; characterId: string; messages: unknown[]; updatedAt: number }
+): Promise<void> {
+  try {
+    await apiRequest("POST", "/api/chats/sync", {
+      userId,
+      characterId: conv.characterId,
+      conversationId: conv.id,
+      messages: conv.messages,
+      updatedAt: conv.updatedAt,
+    });
+  } catch {}
+}
+
+async function deleteChatFromServer(userId: string, conversationId: string): Promise<void> {
+  try {
+    const url = new URL(`/api/chats/${userId}/${conversationId}`, getApiUrl());
+    await fetch(url.toString(), { method: "DELETE" });
+  } catch {}
+}
+
+async function fetchChatsFromServer(userId: string): Promise<Conversation[]> {
+  try {
+    const url = new URL(`/api/chats/${userId}`, getApiUrl());
+    const res = await fetch(url.toString());
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.chats ?? []).map((row: any) => ({
+      id: row.id,
+      characterId: row.character_id,
+      title: row.character_id,
+      messages: typeof row.messages === "string" ? JSON.parse(row.messages) : row.messages ?? [],
+      updatedAt: new Date(row.updated_at).getTime(),
+      createdAt: new Date(row.created_at ?? row.updated_at).getTime(),
+      lastMessage: undefined as string | undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
 
 let msgCounter = 0;
 export function generateId(): string {
@@ -78,19 +129,49 @@ interface ChatContextValue {
 const ChatContext = createContext<ChatContextValue | null>(null);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const didMergeServerRef = useRef(false);
 
   const loadConversations = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) setConversations(JSON.parse(stored));
+      const local: Conversation[] = stored ? JSON.parse(stored) : [];
+      setConversations(local);
     } catch (e) {
       console.error("Failed to load conversations", e);
     } finally {
       setIsLoaded(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!userId || !isLoaded || didMergeServerRef.current) return;
+    didMergeServerRef.current = true;
+    fetchChatsFromServer(userId).then((serverConvs) => {
+      if (serverConvs.length === 0) return;
+      setConversations((prev) => {
+        const map = new Map<string, Conversation>();
+        for (const c of prev) map.set(c.characterId, c);
+        for (const sc of serverConvs) {
+          const existing = map.get(sc.characterId);
+          if (!existing || sc.updatedAt > existing.updatedAt) {
+            const lastMsg = sc.messages[sc.messages.length - 1] as Message | undefined;
+            map.set(sc.characterId, {
+              ...sc,
+              title: existing?.title ?? sc.characterId,
+              lastMessage: lastMsg?.content?.slice(0, 60),
+            });
+          }
+        }
+        const merged = Array.from(map.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged)).catch(() => {});
+        return merged;
+      });
+    }).catch(() => {});
+  }, [userId, isLoaded]);
 
   const save = useCallback(async (convs: Conversation[]) => {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(convs));
@@ -128,19 +209,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const conv = conversations.find((c) => c.id === id);
       if (!conv) return;
       const lastMsg = messages[messages.length - 1];
+      const now = Date.now();
       const updated = conversations.map((c) => {
         if (c.id !== id) return c;
         return {
           ...c,
           messages,
           lastMessage: lastMsg?.content.slice(0, 60),
-          updatedAt: Date.now(),
+          updatedAt: now,
         };
       });
       setConversations(updated);
       await saveWithArchive(updated, conv.characterId, messages);
+      if (userId && isWithinTwoWeeks(now)) {
+        syncChatToServer(userId, { id, characterId: conv.characterId, messages, updatedAt: now }).catch(() => {});
+      }
     },
-    [conversations, saveWithArchive]
+    [conversations, saveWithArchive, userId]
   );
 
   const createConversation = useCallback(
@@ -214,9 +299,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         const archive = await loadArchive();
         delete archive[conv.characterId];
         await saveArchive(archive);
+        if (userId) {
+          deleteChatFromServer(userId, id).catch(() => {});
+        }
       }
     },
-    [conversations, save]
+    [conversations, save, userId]
   );
 
   const getConversation = useCallback(
