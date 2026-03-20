@@ -47,7 +47,7 @@ const PLAN_PACKAGE_KEYS = [
 
 const COIN_PACKAGE_KEYS = ["coins_100", "coins_550", "coins_1400", "coins_3750", "coins_12000"];
 const COIN_PACKAGE_META: Record<string, { coins: number; bonus?: number; isPopular?: boolean; fallbackPrice: string }> = {
-  coins_100: { coins: 100, fallbackPrice: "$1.49" },
+  coins_100: { coins: 100, fallbackPrice: "$0.99" },
   coins_550: { coins: 550, fallbackPrice: "$3.99" },
   coins_1400: { coins: 1400, fallbackPrice: "$6.99" },
   coins_3750: { coins: 3750, fallbackPrice: "$12.99" },
