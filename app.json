@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.soulie",
-      "buildNumber": "12",
+      "buildNumber": "21",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -31,7 +31,7 @@
     },
     "android": {
       "package": "com.soulie",
-      "versionCode": 12,
+      "versionCode": 21,
       "adaptiveIcon": {
         "backgroundColor": "#0A0F1E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
