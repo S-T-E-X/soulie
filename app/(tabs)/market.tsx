@@ -7,7 +7,8 @@ import {
   Pressable,
   Platform,
   StatusBar,
-  Alert,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,17 +18,16 @@ import * as Haptics from "expo-haptics";
 import { useLocalSearchParams } from "expo-router";
 import { BackgroundGradient } from "@/components/ui/BackgroundGradient";
 import Colors from "@/constants/colors";
-import { useGifts, GIFTS, GIFT_IMAGES, COIN_PACKAGES } from "@/contexts/GiftContext";
+import { useGifts, GIFTS, GIFT_IMAGES } from "@/contexts/GiftContext";
 import { Image } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/hooks/useI18n";
-
-const PRODUCT_IDS = {
-  weekly: "com.soulie.vip.weekly",
-  monthly: "com.soulie.vip.monthly",
-  yearly: "com.soulie.vip.yearly",
-} as const;
+import {
+  useSubscription,
+  REVENUECAT_VIP_ENTITLEMENT,
+} from "@/lib/revenuecat";
+import type { PurchasesPackage } from "react-native-purchases";
 
 const ALL_FEAT_KEYS = [
   "market.featAllChars",
@@ -39,57 +39,79 @@ const ALL_FEAT_KEYS = [
   "market.featCustomChar",
 ];
 
-const PLAN_META = [
-  {
-    id: "weekly",
-    productId: PRODUCT_IDS.weekly,
-    price: "$4.99",
-    gradient: [Colors.userBubble.from, Colors.userBubble.to] as [string, string],
-    textColor: "#FFFFFF",
-    isPopular: false,
-    badge: null as string | null,
-    featKeys: ALL_FEAT_KEYS,
-    periodKey: "market.perWeek",
-    nameKey: "market.weekly",
-  },
-  {
-    id: "monthly",
-    productId: PRODUCT_IDS.monthly,
-    price: "$14.99",
-    gradient: ["#1D1D1F", "#3A3A3C"] as [string, string],
-    textColor: "#FFFFFF",
-    isPopular: true,
-    badge: "market.discount30" as string | null,
-    featKeys: ALL_FEAT_KEYS,
-    periodKey: "market.perMonth",
-    nameKey: "market.monthly",
-  },
-  {
-    id: "yearly",
-    productId: PRODUCT_IDS.yearly,
-    price: "$79.99",
-    gradient: ["#2D0654", "#6B21A8"] as [string, string],
-    textColor: "#FFFFFF",
-    isPopular: false,
-    badge: "market.discount55" as string | null,
-    featKeys: ALL_FEAT_KEYS,
-    periodKey: "market.perYear",
-    nameKey: "market.yearly",
-  },
+const PLAN_PACKAGE_KEYS = [
+  { key: "$rc_weekly", gradient: [Colors.userBubble.from, Colors.userBubble.to] as [string, string], textColor: "#FFFFFF", isPopular: false, periodKey: "market.perWeek", nameKey: "market.weekly", badge: null as string | null },
+  { key: "$rc_monthly", gradient: ["#1D1D1F", "#3A3A3C"] as [string, string], textColor: "#FFFFFF", isPopular: true, periodKey: "market.perMonth", nameKey: "market.monthly", badge: "market.discount30" as string | null },
+  { key: "$rc_annual", gradient: ["#2D0654", "#6B21A8"] as [string, string], textColor: "#FFFFFF", isPopular: false, periodKey: "market.perYear", nameKey: "market.yearly", badge: "market.discount55" as string | null },
 ];
+
+const COIN_PACKAGE_KEYS = ["coins_100", "coins_550", "coins_1400", "coins_3750", "coins_12000"];
+const COIN_PACKAGE_META: Record<string, { coins: number; bonus?: number; isPopular?: boolean }> = {
+  coins_100: { coins: 100 },
+  coins_550: { coins: 550 },
+  coins_1400: { coins: 1400 },
+  coins_3750: { coins: 3750 },
+  coins_12000: { coins: 12000, bonus: 0, isPopular: true },
+};
+
+function ConfirmModal({
+  visible,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  loading,
+}: {
+  visible: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading: boolean;
+}) {
+  return (
+    <Modal transparent animationType="fade" visible={visible} onRequestClose={onCancel}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalBox}>
+          <Text style={styles.modalTitle}>{title}</Text>
+          <Text style={styles.modalMessage}>{message}</Text>
+          {loading ? (
+            <ActivityIndicator color={Colors.accent} style={{ marginTop: 16 }} />
+          ) : (
+            <View style={styles.modalButtons}>
+              <Pressable onPress={onCancel} style={[styles.modalBtn, styles.modalBtnCancel]}>
+                <Text style={styles.modalBtnCancelText}>İptal</Text>
+              </Pressable>
+              <Pressable onPress={onConfirm} style={[styles.modalBtn, styles.modalBtnConfirm]}>
+                <Text style={styles.modalBtnConfirmText}>Satın Al</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 export default function MarketScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const { tab: initialTab } = useLocalSearchParams<{ tab?: string }>();
-  const { coins, purchaseGift, getInventoryCount, addCoins } = useGifts();
+  const { coins, addCoins, purchaseGift, getInventoryCount } = useGifts();
   const { isDark, colors } = useTheme();
   const { user, isVipActive } = useAuth();
   const { t } = useI18n();
+  const { vipOffering, coinsOffering, isVip, isPurchasing, purchase, restore } = useSubscription();
+
   const validTabs = ["premium", "gifts", "coins"] as const;
   const [activeTab, setActiveTab] = useState<"premium" | "gifts" | "coins">(
     validTabs.includes(initialTab as any) ? (initialTab as any) : "premium"
   );
+
+  const [pendingPkg, setPendingPkg] = useState<PurchasesPackage | null>(null);
+  const [pendingCoinPkg, setPendingCoinPkg] = useState<PurchasesPackage | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
 
   React.useEffect(() => {
     if (validTabs.includes(initialTab as any)) {
@@ -97,55 +119,127 @@ export default function MarketScreen() {
     }
   }, [initialTab]);
 
-  const handleCoinPurchase = (pkg: typeof COIN_PACKAGES[0]) => {
+  const handleVipPurchase = (pkg: PurchasesPackage) => {
+    if (isVip || isVipActive) {
+      setPendingPkg(null);
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      t("market.comingSoon"),
-      `${pkg.price} ile satın almaya yönlendirileceksin. In-App Purchase ödemesi tamamlandığında ${pkg.coins + (pkg.bonus ?? 0)} coin hesabına eklenecek.`,
-      [{ text: t("common.cancel") }]
-    );
+    setPendingPkg(pkg);
+  };
+
+  const confirmVipPurchase = async () => {
+    if (!pendingPkg) return;
+    setPurchasing(true);
+    try {
+      await purchase(pendingPkg);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setSuccessMsg("VIP aktif edildi!");
+    } catch (e: any) {
+      if (e.userCancelled) return;
+      setSuccessMsg("Satın alma başarısız.");
+    } finally {
+      setPurchasing(false);
+      setPendingPkg(null);
+      setTimeout(() => setSuccessMsg(""), 3000);
+    }
+  };
+
+  const handleCoinPurchase = (pkg: PurchasesPackage) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setPendingCoinPkg(pkg);
+  };
+
+  const confirmCoinPurchase = async () => {
+    if (!pendingCoinPkg) return;
+    setPurchasing(true);
+    try {
+      await purchase(pendingCoinPkg);
+      const meta = COIN_PACKAGE_META[pendingCoinPkg.identifier] ?? { coins: 0 };
+      const total = meta.coins + (meta.bonus ?? 0);
+      await addCoins(total);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setSuccessMsg(`${total} coin eklendi!`);
+    } catch (e: any) {
+      if (e.userCancelled) return;
+      setSuccessMsg("Satın alma başarısız.");
+    } finally {
+      setPurchasing(false);
+      setPendingCoinPkg(null);
+      setTimeout(() => setSuccessMsg(""), 3000);
+    }
   };
 
   const handleGiftPurchase = (giftId: string) => {
     const gift = GIFTS.find((g) => g.id === giftId);
     if (!gift) return;
     if (coins < gift.price) {
-      Alert.alert(
-        t("gifts.insufficientCoins"),
-        t("gifts.insufficientCoinsMessage"),
-        [
-          { text: t("common.cancel"), style: "cancel" },
-          { text: t("gifts.buyCoins"), onPress: () => setActiveTab("coins") },
-        ]
-      );
+      setActiveTab("coins");
       return;
     }
-    Alert.alert(
-      t("market.confirmGiftTitle", { name: gift.name }),
-      t("market.confirmGiftMessage", { price: String(gift.price), name: gift.name }),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("market.buy"),
-          onPress: async () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            await purchaseGift(giftId);
-            Alert.alert(t("market.success"), t("market.giftAddedToInventory", { name: gift.name }));
-          },
-        },
-      ]
-    );
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    purchaseGift(giftId);
   };
+
+  const handleRestore = async () => {
+    try {
+      await restore();
+      setSuccessMsg("Satın almalar geri yüklendi!");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch {
+      setSuccessMsg("Geri yükleme başarısız.");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    }
+  };
+
+  const vipPackages = PLAN_PACKAGE_KEYS.map((meta) => ({
+    meta,
+    pkg: vipOffering?.availablePackages?.find((p) => p.identifier === meta.key),
+  }));
+
+  const coinPackages = COIN_PACKAGE_KEYS.map((key) => ({
+    key,
+    meta: COIN_PACKAGE_META[key],
+    pkg: coinsOffering?.availablePackages?.find((p) => p.identifier === key),
+  }));
 
   return (
     <BackgroundGradient>
       <StatusBar barStyle={colors.statusBar} />
 
+      {successMsg !== "" && (
+        <View style={styles.successBanner}>
+          <Text style={styles.successBannerText}>{successMsg}</Text>
+        </View>
+      )}
+
+      <ConfirmModal
+        visible={pendingPkg !== null}
+        title="VIP Satın Al"
+        message={`${pendingPkg?.product.title ?? ""} — ${pendingPkg?.product.priceString ?? ""} ile satın almak istiyor musun?`}
+        onConfirm={confirmVipPurchase}
+        onCancel={() => setPendingPkg(null)}
+        loading={purchasing}
+      />
+
+      <ConfirmModal
+        visible={pendingCoinPkg !== null}
+        title="Coin Satın Al"
+        message={`${pendingCoinPkg?.product.title ?? ""} — ${pendingCoinPkg?.product.priceString ?? ""} ile satın almak istiyor musun?`}
+        onConfirm={confirmCoinPurchase}
+        onCancel={() => setPendingCoinPkg(null)}
+        loading={purchasing}
+      />
+
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>{t("market.title")}</Text>
         <Pressable
           onPress={() => setActiveTab("coins")}
-          style={({ pressed }) => [styles.coinChip, { backgroundColor: isDark ? "rgba(255,215,0,0.15)" : "rgba(255,215,0,0.1)" }, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [
+            styles.coinChip,
+            { backgroundColor: isDark ? "rgba(255,215,0,0.15)" : "rgba(255,215,0,0.1)" },
+            pressed && { opacity: 0.8 },
+          ]}
         >
           <Feather name="circle" size={14} color="#FFD700" />
           <Text style={[styles.coinChipText, { color: colors.text.primary }]}>{coins}</Text>
@@ -169,7 +263,11 @@ export default function MarketScreen() {
               },
             ]}
           >
-            <Text style={[styles.tabBtnText, { color: activeTab === tab ? "#fff" : (isDark ? "rgba(255,255,255,0.7)" : "#1D1D1F") }, activeTab === tab && styles.tabBtnTextActive]}>
+            <Text style={[
+              styles.tabBtnText,
+              { color: activeTab === tab ? "#fff" : (isDark ? "rgba(255,255,255,0.7)" : "#1D1D1F") },
+              activeTab === tab && styles.tabBtnTextActive,
+            ]}>
               {tab === "premium" ? t("market.premium") : tab === "gifts" ? t("market.gifts") : t("market.coins")}
             </Text>
           </Pressable>
@@ -177,10 +275,7 @@ export default function MarketScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: 16, paddingBottom: insets.bottom + 100 },
-        ]}
+        contentContainerStyle={[styles.scroll, { paddingTop: 16, paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
         {activeTab === "premium" && (
@@ -193,63 +288,59 @@ export default function MarketScreen() {
               <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
                 {t("market.premiumHeroSubtitle")}
               </Text>
+              {(isVip || isVipActive) && (
+                <View style={styles.activeVipBadge}>
+                  <Feather name="check-circle" size={14} color="#22c55e" />
+                  <Text style={styles.activeVipText}>VIP Aktif</Text>
+                </View>
+              )}
             </Animated.View>
 
             <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>{t("market.choosePlan")}</Text>
 
-            {PLAN_META.map((plan, i) => (
-              <Animated.View
-                key={plan.id}
-                entering={FadeInDown.delay(80 + i * 60).springify().damping(18)}
-              >
+            {vipPackages.map(({ meta, pkg }, i) => (
+              <Animated.View key={meta.key} entering={FadeInDown.delay(80 + i * 60).springify().damping(18)}>
                 <Pressable
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    if (isVipActive) {
-                      Alert.alert(t("market.alreadyVip"), t("market.alreadyVipMessage"));
-                      return;
-                    }
-                    Alert.alert(t("market.comingSoon"), t("market.comingSoonMessage"));
-                  }}
+                  onPress={() => pkg && handleVipPurchase(pkg)}
                   style={({ pressed }) => [styles.planCard, pressed && { opacity: 0.85 }]}
                 >
-                  <LinearGradient colors={plan.gradient} style={styles.planGradient}>
-                    {plan.badge ? (
+                  <LinearGradient colors={meta.gradient} style={styles.planGradient}>
+                    {meta.badge ? (
                       <View style={styles.badgeChip}>
-                        <Text style={styles.badgeText}>{t(plan.badge as any)}</Text>
+                        <Text style={styles.badgeText}>{t(meta.badge as any)}</Text>
                       </View>
                     ) : null}
-                    {plan.isPopular ? (
+                    {meta.isPopular ? (
                       <View style={styles.popularChip}>
                         <Text style={styles.popularText}>{t("market.mostPopular")}</Text>
                       </View>
                     ) : null}
                     <View style={styles.planHeader}>
                       <View>
-                        <Text style={[styles.planName, { color: plan.textColor }]}>{t(plan.nameKey as any)}</Text>
+                        <Text style={[styles.planName, { color: meta.textColor }]}>{t(meta.nameKey as any)}</Text>
                         <View style={styles.priceRow}>
-                          <Text style={[styles.planPrice, { color: plan.textColor }]}>{plan.price}</Text>
-                          <Text style={[styles.planPeriod, { color: plan.textColor, opacity: 0.7 }]}>{t(plan.periodKey as any)}</Text>
+                          <Text style={[styles.planPrice, { color: meta.textColor }]}>
+                            {pkg?.product.priceString ?? "—"}
+                          </Text>
+                          <Text style={[styles.planPeriod, { color: meta.textColor, opacity: 0.7 }]}>
+                            {t(meta.periodKey as any)}
+                          </Text>
                         </View>
                       </View>
                     </View>
                     <View style={styles.featuresList}>
-                      {plan.featKeys.map((featKey) => (
+                      {ALL_FEAT_KEYS.map((featKey) => (
                         <View key={featKey} style={styles.featRow}>
-                          <Feather
-                            name="check"
-                            size={13}
-                            color={plan.textColor === "#FFFFFF" ? "rgba(255,255,255,0.9)" : Colors.accent}
-                          />
-                          <Text style={[styles.featRowText, { color: plan.textColor, opacity: plan.textColor === "#FFFFFF" ? 0.9 : 0.8 }]}>
+                          <Feather name="check" size={13} color="rgba(255,255,255,0.9)" />
+                          <Text style={[styles.featRowText, { color: meta.textColor, opacity: 0.9 }]}>
                             {t(featKey as any)}
                           </Text>
                         </View>
                       ))}
                     </View>
-                    <View style={[styles.selectButton, { backgroundColor: plan.textColor === "#FFFFFF" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.06)" }]}>
-                      <Text style={[styles.selectButtonText, { color: plan.textColor }]}>
-                        {plan.id === "monthly" ? t("market.start") : t("market.select")}
+                    <View style={[styles.selectButton, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+                      <Text style={[styles.selectButtonText, { color: meta.textColor }]}>
+                        {isVip || isVipActive ? "Aktif" : meta.isPopular ? t("market.start") : t("market.select")}
                       </Text>
                     </View>
                   </LinearGradient>
@@ -257,9 +348,11 @@ export default function MarketScreen() {
               </Animated.View>
             ))}
 
-            <Text style={styles.legalText}>
-              {t("market.cancelAnytime")}
-            </Text>
+            <Pressable onPress={handleRestore} style={styles.restoreBtn}>
+              <Text style={styles.restoreBtnText}>Satın almaları geri yükle</Text>
+            </Pressable>
+
+            <Text style={styles.legalText}>{t("market.cancelAnytime")}</Text>
           </>
         )}
 
@@ -275,50 +368,49 @@ export default function MarketScreen() {
               </Text>
               <View style={styles.currentCoinBadge}>
                 <Feather name="circle" size={14} color="#FFD700" />
-                <Text style={[styles.currentCoinText, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{t("market.currentCoins", { count: coins })}</Text>
+                <Text style={[styles.currentCoinText, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>
+                  {t("market.currentCoins", { count: coins })}
+                </Text>
               </View>
             </Animated.View>
 
             <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>{t("market.packages")}</Text>
 
-            {COIN_PACKAGES.map((pkg, i) => (
-              <Animated.View
-                key={pkg.id}
-                entering={FadeInDown.delay(80 + i * 60).springify().damping(18)}
-              >
+            {coinPackages.map(({ key, meta, pkg }, i) => (
+              <Animated.View key={key} entering={FadeInDown.delay(80 + i * 60).springify().damping(18)}>
                 <Pressable
-                  onPress={() => handleCoinPurchase(pkg)}
+                  onPress={() => pkg && handleCoinPurchase(pkg)}
                   style={({ pressed }) => [styles.coinCard, pressed && { opacity: 0.85 }]}
                 >
                   <LinearGradient
-                    colors={pkg.isPopular ? ["#FFD700", "#FF9500"] : (isDark ? ["#1C1C2E", "#2A2A42"] : ["#F5F5F7", "#ECECEE"])}
+                    colors={meta.isPopular ? ["#FFD700", "#FF9500"] : (isDark ? ["#1C1C2E", "#2A2A42"] : ["#F5F5F7", "#ECECEE"])}
                     style={styles.coinCardGrad}
                   >
-                    {pkg.isPopular && (
+                    {meta.isPopular && (
                       <View style={styles.popularCoinChip}>
                         <Text style={styles.popularCoinText}>{t("market.popular")}</Text>
                       </View>
                     )}
                     <View style={styles.coinCardContent}>
                       <View style={styles.coinAmountRow}>
-                        <Feather name="circle" size={22} color={pkg.isPopular ? "#fff" : "#FFD700"} />
-                        <Text style={[styles.coinAmount, { color: pkg.isPopular ? "#fff" : colors.text.primary }]}>
-                          {(pkg.coins + (pkg.bonus ?? 0)).toLocaleString()}
+                        <Feather name="circle" size={22} color={meta.isPopular ? "#fff" : "#FFD700"} />
+                        <Text style={[styles.coinAmount, { color: meta.isPopular ? "#fff" : colors.text.primary }]}>
+                          {(meta.coins + (meta.bonus ?? 0)).toLocaleString()}
                         </Text>
-                        {pkg.bonus ? (
-                          <View style={[styles.bonusChip, { backgroundColor: pkg.isPopular ? "rgba(255,255,255,0.25)" : "rgba(0,122,255,0.1)" }]}>
-                            <Text style={[styles.bonusText, { color: pkg.isPopular ? "#fff" : colors.accent }]}>
-                              +{pkg.bonus} bonus
+                        {(meta.bonus ?? 0) > 0 && (
+                          <View style={[styles.bonusChip, { backgroundColor: meta.isPopular ? "rgba(255,255,255,0.25)" : "rgba(0,122,255,0.1)" }]}>
+                            <Text style={[styles.bonusText, { color: meta.isPopular ? "#fff" : colors.accent }]}>
+                              +{meta.bonus} bonus
                             </Text>
                           </View>
-                        ) : null}
+                        )}
                       </View>
-                      <Text style={[styles.coinCardPrice, { color: pkg.isPopular ? "#fff" : colors.text.secondary }]}>
-                        {pkg.price}
+                      <Text style={[styles.coinCardPrice, { color: meta.isPopular ? "#fff" : colors.text.secondary }]}>
+                        {pkg?.product.priceString ?? "—"}
                       </Text>
                     </View>
-                    <View style={[styles.coinBuyBtn, { backgroundColor: pkg.isPopular ? "rgba(255,255,255,0.25)" : isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)" }]}>
-                      <Text style={[styles.coinBuyBtnText, { color: pkg.isPopular ? "#fff" : colors.text.primary }]}>
+                    <View style={[styles.coinBuyBtn, { backgroundColor: meta.isPopular ? "rgba(255,255,255,0.25)" : isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)" }]}>
+                      <Text style={[styles.coinBuyBtnText, { color: meta.isPopular ? "#fff" : colors.text.primary }]}>
                         {t("market.buyNow")}
                       </Text>
                     </View>
@@ -339,10 +431,7 @@ export default function MarketScreen() {
               <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
                 {t("market.giftStoreSubtitle")}
               </Text>
-              <Pressable
-                onPress={() => setActiveTab("coins")}
-                style={styles.currentCoinBadge}
-              >
+              <Pressable onPress={() => setActiveTab("coins")} style={styles.currentCoinBadge}>
                 <Feather name="circle" size={14} color="#FFD700" />
                 <Text style={[styles.currentCoinText, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{coins} coin</Text>
                 <Feather name="plus-circle" size={13} color={Colors.accent} />
@@ -358,7 +447,11 @@ export default function MarketScreen() {
                 >
                   <Pressable
                     onPress={() => handleGiftPurchase(gift.id)}
-                    style={({ pressed }) => [styles.giftItem, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.75)" }, pressed && { opacity: 0.85 }]}
+                    style={({ pressed }) => [
+                      styles.giftItem,
+                      { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.75)" },
+                      pressed && { opacity: 0.85 },
+                    ]}
                   >
                     <Image source={GIFT_IMAGES[gift.imageKey]} style={styles.giftItemImg} resizeMode="contain" />
                     <Text style={[styles.giftItemName, { color: colors.text.primary }]}>{gift.name}</Text>
@@ -407,7 +500,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "rgba(255,215,0,0.1)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -417,7 +509,6 @@ const styles = StyleSheet.create({
   coinChipText: {
     fontSize: 14,
     fontFamily: "Inter_700Bold",
-    color: Colors.text.primary,
     letterSpacing: -0.2,
   },
   tabBar: {
@@ -430,22 +521,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 9,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.6)",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  tabBtnActive: {
-    backgroundColor: Colors.accent,
-    borderColor: Colors.accent,
   },
   tabBtnText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
-    color: "#1D1D1F",
   },
   tabBtnTextActive: {
-    color: "#fff",
     fontFamily: "Inter_600SemiBold",
   },
   scroll: {
@@ -468,15 +551,29 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 26,
     fontFamily: "Inter_700Bold",
-    color: Colors.text.primary,
     letterSpacing: -0.8,
   },
   heroSubtitle: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
-    color: Colors.text.secondary,
     textAlign: "center",
     lineHeight: 21,
+  },
+  activeVipBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(34,197,94,0.15)",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.3)",
+  },
+  activeVipText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#22c55e",
   },
   currentCoinBadge: {
     flexDirection: "row",
@@ -492,12 +589,10 @@ const styles = StyleSheet.create({
   currentCoinText: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
-    color: Colors.text.primary,
   },
   sectionTitle: {
     fontSize: 17,
     fontFamily: "Inter_700Bold",
-    color: Colors.text.primary,
     letterSpacing: -0.4,
     marginBottom: 4,
   },
@@ -585,6 +680,16 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     letterSpacing: -0.2,
   },
+  restoreBtn: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  restoreBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.tertiary,
+    textDecorationLine: "underline",
+  },
   legalText: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
@@ -658,35 +763,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
-    marginBottom: 4,
   },
   giftItemWrapper: {
-    width: "22%",
+    width: "30%",
   },
   giftItem: {
+    borderRadius: 16,
+    padding: 10,
     alignItems: "center",
     gap: 6,
-    padding: 10,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.75)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.5)",
-    position: "relative",
-  },
-  giftItemRare: {
-    borderColor: "rgba(79,195,247,0.4)",
-    backgroundColor: "rgba(79,195,247,0.06)",
   },
   giftItemImg: {
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
   },
   giftItemName: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.text.primary,
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
     textAlign: "center",
-    letterSpacing: -0.1,
   },
   giftItemPrice: {
     flexDirection: "row",
@@ -695,56 +789,101 @@ const styles = StyleSheet.create({
   },
   giftItemPriceText: {
     fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: Colors.text.secondary,
+    fontFamily: "Inter_600SemiBold",
   },
   ownedBadge: {
     position: "absolute",
-    top: 4,
-    right: 4,
+    top: 6,
+    right: 6,
+    backgroundColor: Colors.accent,
+    borderRadius: 10,
     minWidth: 18,
     height: 18,
-    borderRadius: 9,
-    backgroundColor: Colors.accent,
-    justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 3,
+    justifyContent: "center",
+    paddingHorizontal: 4,
   },
   ownedBadgeText: {
+    color: "#fff",
     fontSize: 10,
     fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
-  rareBadge: {
-    position: "absolute",
-    top: -4,
-    left: "50%",
-    transform: [{ translateX: -20 }],
-    backgroundColor: "#4FC3F7",
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 8,
-    zIndex: 1,
-  },
-  rareBadgeText: {
-    fontSize: 9,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
   },
   inventoryNote: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    backgroundColor: "rgba(255,255,255,0.6)",
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
   },
   inventoryNoteText: {
-    flex: 1,
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: Colors.text.secondary,
-    lineHeight: 17,
+    flex: 1,
+  },
+  successBanner: {
+    position: "absolute",
+    top: 60,
+    alignSelf: "center",
+    backgroundColor: "#22c55e",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    zIndex: 100,
+  },
+  successBannerText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
+  },
+  modalBox: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: "#1D1D1F",
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "#6B6B6B",
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 20,
+  },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  modalBtnCancel: {
+    backgroundColor: "#F2F2F7",
+  },
+  modalBtnCancelText: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: "#6B6B6B",
+  },
+  modalBtnConfirm: {
+    backgroundColor: Colors.accent,
+  },
+  modalBtnConfirmText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
   },
 });

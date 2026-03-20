@@ -19,6 +19,9 @@ import { GiftProvider } from "@/contexts/GiftContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CustomCharProvider } from "@/contexts/CustomCharContext";
 import { useGlobalNotificationScheduler } from "@/hooks/useAutoMessages";
+import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
+
+initializeRevenueCat();
 
 SplashScreen.preventAutoHideAsync();
 
@@ -60,21 +63,23 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <ChatProvider>
-              <GiftProvider>
-                <CustomCharProvider>
-                  <GestureHandlerRootView style={{ flex: 1 }}>
-                    <KeyboardProvider>
-                      <RootLayoutNav />
-                    </KeyboardProvider>
-                  </GestureHandlerRootView>
-                </CustomCharProvider>
-              </GiftProvider>
-            </ChatProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <SubscriptionProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <ChatProvider>
+                <GiftProvider>
+                  <CustomCharProvider>
+                    <GestureHandlerRootView style={{ flex: 1 }}>
+                      <KeyboardProvider>
+                        <RootLayoutNav />
+                      </KeyboardProvider>
+                    </GestureHandlerRootView>
+                  </CustomCharProvider>
+                </GiftProvider>
+              </ChatProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </SubscriptionProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
