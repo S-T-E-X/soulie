@@ -39,15 +39,17 @@ export function initializeRevenueCat() {
     Purchases.configure({ apiKey });
     console.log("[RevenueCat] Initialized with key:", apiKey.slice(0, 12) + "...");
     
-    // Clear cache to fetch fresh pricing data from App Store
-    (async () => {
-      try {
-        await Purchases.invalidateCustomerInfoCache();
-        console.log("[RevenueCat] Customer info cache invalidated");
-      } catch (e) {
-        console.warn("[RevenueCat] Cache invalidation failed:", e);
-      }
-    })();
+    // Clear cache to fetch fresh pricing data from App Store (iOS/Android only)
+    if (Platform.OS !== "web") {
+      (async () => {
+        try {
+          await Purchases.invalidateCustomerInfoCache();
+          console.log("[RevenueCat] Customer info cache invalidated");
+        } catch (e) {
+          console.warn("[RevenueCat] Cache invalidation failed:", e);
+        }
+      })();
+    }
   } catch (e) {
     console.warn("[RevenueCat] Init failed:", e);
   }
