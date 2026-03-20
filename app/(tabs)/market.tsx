@@ -349,7 +349,7 @@ export default function MarketScreen() {
             ))}
 
             <Pressable onPress={handleRestore} style={styles.restoreBtn}>
-              <Text style={styles.restoreBtnText}>Satın almaları geri yükle</Text>
+              <Text style={styles.restoreBtnText}>{t("settings.restorePurchases")}</Text>
             </Pressable>
 
             <Text style={styles.legalText}>{t("market.cancelAnytime")}</Text>

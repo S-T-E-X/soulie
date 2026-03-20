@@ -27,6 +27,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useI18n } from "@/hooks/useI18n";
 import { getLevelName } from "@/constants/levelNames";
 import { getApiUrl } from "@/lib/query-client";
+import { useSubscription } from "@/lib/revenuecat";
 
 const DEFAULT_AVATAR_SETTINGS = require("@/assets/default_pp/default-avatar-profile.png");
 
@@ -177,8 +178,19 @@ export default function SettingsScreen() {
   const { isDark, colors, toggleTheme } = useTheme();
   const { t } = useI18n();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const { restore } = useSubscription();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  const handleRestorePurchases = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await restore();
+      Alert.alert(t("settings.restorePurchases"), t("settings.restoreSuccess") || "Satın alımlar geri yüklendi!");
+    } catch {
+      Alert.alert(t("settings.restorePurchases"), t("settings.restoreFailed") || "Geri yükleme başarısız oldu.");
+    }
+  };
 
   useEffect(() => {
     if (user?.id) logEvent(user.id, "screen_view", "settings");
@@ -325,7 +337,7 @@ export default function SettingsScreen() {
           <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <SettingRow icon="star" label={t("settings.upgradePremium")} isDark={isDark} value={user?.isVip ? t("settings.vipActive") : t("settings.freePlan")} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(tabs)/market"); }} />
             <View style={[styles.rowDivider, { backgroundColor: dividerColor }]} />
-            <SettingRow icon="refresh-cw" label={t("settings.restorePurchases")} isDark={isDark} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)} />
+            <SettingRow icon="refresh-cw" label={t("settings.restorePurchases")} isDark={isDark} onPress={handleRestorePurchases} />
           </View>
         </AnimatedRN.View>
 
