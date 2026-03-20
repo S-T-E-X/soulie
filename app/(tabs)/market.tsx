@@ -40,18 +40,18 @@ const ALL_FEAT_KEYS = [
 ];
 
 const PLAN_PACKAGE_KEYS = [
-  { key: "$rc_weekly", gradient: [Colors.userBubble.from, Colors.userBubble.to] as [string, string], textColor: "#FFFFFF", isPopular: false, periodKey: "market.perWeek", nameKey: "market.weekly", badge: null as string | null },
-  { key: "$rc_monthly", gradient: ["#1D1D1F", "#3A3A3C"] as [string, string], textColor: "#FFFFFF", isPopular: true, periodKey: "market.perMonth", nameKey: "market.monthly", badge: "market.discount30" as string | null },
-  { key: "$rc_annual", gradient: ["#2D0654", "#6B21A8"] as [string, string], textColor: "#FFFFFF", isPopular: false, periodKey: "market.perYear", nameKey: "market.yearly", badge: "market.discount55" as string | null },
+  { key: "$rc_weekly", gradient: [Colors.userBubble.from, Colors.userBubble.to] as [string, string], textColor: "#FFFFFF", isPopular: false, periodKey: "market.perWeek", nameKey: "market.weekly", badge: null as string | null, fallbackPrice: "$4.99" },
+  { key: "$rc_monthly", gradient: ["#1D1D1F", "#3A3A3C"] as [string, string], textColor: "#FFFFFF", isPopular: true, periodKey: "market.perMonth", nameKey: "market.monthly", badge: "market.discount30" as string | null, fallbackPrice: "$14.99" },
+  { key: "$rc_annual", gradient: ["#2D0654", "#6B21A8"] as [string, string], textColor: "#FFFFFF", isPopular: false, periodKey: "market.perYear", nameKey: "market.yearly", badge: "market.discount55" as string | null, fallbackPrice: "$79.99" },
 ];
 
 const COIN_PACKAGE_KEYS = ["coins_100", "coins_550", "coins_1400", "coins_3750", "coins_12000"];
-const COIN_PACKAGE_META: Record<string, { coins: number; bonus?: number; isPopular?: boolean }> = {
-  coins_100: { coins: 100 },
-  coins_550: { coins: 550 },
-  coins_1400: { coins: 1400 },
-  coins_3750: { coins: 3750 },
-  coins_12000: { coins: 12000, bonus: 0, isPopular: true },
+const COIN_PACKAGE_META: Record<string, { coins: number; bonus?: number; isPopular?: boolean; fallbackPrice: string }> = {
+  coins_100: { coins: 100, fallbackPrice: "$1.49" },
+  coins_550: { coins: 550, fallbackPrice: "$3.99" },
+  coins_1400: { coins: 1400, fallbackPrice: "$6.99" },
+  coins_3750: { coins: 3750, fallbackPrice: "$12.99" },
+  coins_12000: { coins: 12000, bonus: 0, isPopular: true, fallbackPrice: "$24.99" },
 };
 
 function ConfirmModal({
@@ -216,7 +216,7 @@ export default function MarketScreen() {
       <ConfirmModal
         visible={pendingPkg !== null}
         title="VIP Satın Al"
-        message={`${pendingPkg?.product.title ?? ""} — ${pendingPkg?.product.priceString ?? ""} ile satın almak istiyor musun?`}
+        message={`${pendingPkg?.product.title ?? ""} — ${pendingPkg?.product.priceString || (pendingPkg && PLAN_PACKAGE_KEYS.find(m => m.key === pendingPkg.identifier)?.fallbackPrice) || ""} ile satın almak istiyor musun?`}
         onConfirm={confirmVipPurchase}
         onCancel={() => setPendingPkg(null)}
         loading={purchasing}
@@ -225,7 +225,7 @@ export default function MarketScreen() {
       <ConfirmModal
         visible={pendingCoinPkg !== null}
         title="Coin Satın Al"
-        message={`${pendingCoinPkg?.product.title ?? ""} — ${pendingCoinPkg?.product.priceString ?? ""} ile satın almak istiyor musun?`}
+        message={`${pendingCoinPkg?.product.title ?? ""} — ${pendingCoinPkg?.product.priceString || (pendingCoinPkg && COIN_PACKAGE_META[pendingCoinPkg.identifier]?.fallbackPrice) || ""} ile satın almak istiyor musun?`}
         onConfirm={confirmCoinPurchase}
         onCancel={() => setPendingCoinPkg(null)}
         loading={purchasing}
@@ -320,7 +320,7 @@ export default function MarketScreen() {
                         <Text style={[styles.planName, { color: meta.textColor }]}>{t(meta.nameKey as any)}</Text>
                         <View style={styles.priceRow}>
                           <Text style={[styles.planPrice, { color: meta.textColor }]}>
-                            {pkg?.product.priceString ?? "—"}
+                            {pkg?.product.priceString || meta.fallbackPrice}
                           </Text>
                           <Text style={[styles.planPeriod, { color: meta.textColor, opacity: 0.7 }]}>
                             {t(meta.periodKey as any)}
@@ -406,7 +406,7 @@ export default function MarketScreen() {
                         )}
                       </View>
                       <Text style={[styles.coinCardPrice, { color: meta.isPopular ? "#fff" : colors.text.secondary }]}>
-                        {pkg?.product.priceString ?? "—"}
+                        {pkg?.product.priceString || meta.fallbackPrice}
                       </Text>
                     </View>
                     <View style={[styles.coinBuyBtn, { backgroundColor: meta.isPopular ? "rgba(255,255,255,0.25)" : isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)" }]}>
