@@ -129,14 +129,24 @@ function useSubscriptionContext() {
       try {
         // Force fresh fetch from App Store, bypass cache
         const offerings = await Purchases.getOfferings();
+        
+        // Debug all offerings
+        const allOfferingsDebug: Record<string, any> = {};
+        Object.entries(offerings.all).forEach(([key, offering]) => {
+          allOfferingsDebug[key] = {
+            packages: offering.availablePackages.map(p => ({
+              id: p.identifier,
+              price: p.product.priceString,
+              title: p.product.title,
+              productId: p.product.identifier,
+            })),
+          };
+        });
+        
         console.log("[RevenueCat] Offerings fetched (fresh):", {
           current: offerings.current?.identifier,
           allKeys: Object.keys(offerings.all),
-          currentPackages: offerings.current?.availablePackages?.map(p => ({
-            id: p.identifier,
-            price: p.product.priceString,
-            title: p.product.title,
-          })),
+          allOfferings: allOfferingsDebug,
         });
         return offerings;
       } catch (e) {

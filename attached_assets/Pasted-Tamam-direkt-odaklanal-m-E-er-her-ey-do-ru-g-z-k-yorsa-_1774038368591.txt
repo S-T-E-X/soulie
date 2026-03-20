@@ -1,0 +1,173 @@
+Tamam, direkt odaklanalım. Eğer her şey doğru gözüküyorsa sorun %90 **kod tarafı / fetch / mapping**.
+
+Aşağıdaki checklist’i tek tek kontrol et → hatayı bulursun 👇
+
+---
+
+# 🔥 1. En kritik kontrol: Hangi ürünleri çekiyorsun?
+
+Kodunda büyük ihtimal şuna benzer bir şey var:
+
+### ❌ HATALI (en yaygın hata)
+
+```js
+const offerings = await Purchases.getOfferings();
+const products = offerings.current.availablePackages;
+```
+
+👉 Eğer `current offering` yanlışsa → yanlış ürün / fiyat gelir
+
+---
+
+### ✅ DOĞRU DEBUG
+
+Şunu yaz:
+
+```js
+const offerings = await Purchases.getOfferings();
+console.log(JSON.stringify(offerings, null, 2));
+```
+
+👉 Bak:
+
+* `current` hangi offering?
+* içindeki `product.identifier` ne?
+
+---
+
+# ⚠️ 2. Yanlış Product ID çekiyor olabilirsin
+
+Kontrol et:
+
+```js
+offerings.current.availablePackages.forEach(p => {
+  console.log(p.product.identifier);
+  console.log(p.product.priceString);
+});
+```
+
+👉 Eğer burada:
+
+* `com.soulie.coin100` yerine başka bir şey geliyorsa → sorun bu
+
+---
+
+# ⚠️ 3. StoreKit config / test environment
+
+Eğer Expo + iOS simulator kullanıyorsan:
+
+👉 Şu hatayı çok kişi yapıyor:
+
+* Xcode’da **StoreKit Configuration file** açık kalıyor
+* Fake fiyatlar geliyor
+
+### Kontrol:
+
+* Xcode → Scheme → Run → Options
+* StoreKit config **kapalı olsun**
+
+---
+
+# ⚠️ 4. Sandbox user problemi
+
+* Apple sandbox bazen fiyatı yanlış gösterir
+* Özellikle TL / USD karışır
+
+👉 Gerçek cihazda test et (simulator değil)
+
+---
+
+# ⚠️ 5. RevenueCat cache sorunu
+
+Şunu yap:
+
+```js
+await Purchases.invalidateCustomerInfoCache();
+```
+
+veya app’i sil → tekrar yükle
+
+---
+
+# ⚠️ 6. Yanlış offering seçiliyor olabilir
+
+RevenueCat dashboard:
+
+👉 Offerings:
+
+* `default` var mı?
+* `coins` mi current?
+
+Kodda özellikle:
+
+```js
+offerings.current
+```
+
+👉 bu **default offering**’i çeker
+
+Eğer sen `coins` kullanıyorsan ama default başka ise → yanlış ürün gelir
+
+---
+
+# ⚠️ 7. App Store tarafı aktif mi?
+
+* IAP status: **Ready to Submit / Approved**
+* “Cleared for Sale” açık mı?
+
+---
+
+# 🧪 DOĞRU ÇALIŞAN ÖRNEK KOD
+
+Expo / React Native:
+
+```js
+import Purchases from 'react-native-purchases';
+
+await Purchases.configure({ apiKey: "REVENUECAT_API_KEY" });
+
+const offerings = await Purchases.getOfferings();
+
+const packages = offerings.current.availablePackages;
+
+packages.forEach(pkg => {
+  console.log("ID:", pkg.product.identifier);
+  console.log("Price:", pkg.product.priceString);
+});
+```
+
+---
+
+# 🧠 En çok çıkan gerçek problem
+
+%70 ihtimal:
+👉 yanlış offering çekiyorsun
+%20 ihtimal:
+👉 StoreKit config açık
+%10:
+👉 sandbox saçmalığı
+
+---
+
+# ⚡ Sana en hızlı çözüm yolu
+
+Şunu yap:
+
+1. Console log at:
+
+```js
+console.log(offerings)
+```
+
+2. Bana at
+
+👉 direkt sana şunu derim:
+
+* “şu offering yanlış”
+* “şu product yanlış”
+* “şu kod hatalı”
+
+---
+
+İstersen sana direkt:
+👉 **“coin satın alma + premium unlock + backend sync” full production kodu** yazayım (copy paste çalışır)
