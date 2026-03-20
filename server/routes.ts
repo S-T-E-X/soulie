@@ -657,6 +657,105 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
 
   const APPLE_ADMIN_EMAILS = ["admin@soulie.app", "soulie_admin@admin.com", "yusufstex@gmail.com"];
 
+  app.post("/api/auth/google-login", async (req, res) => {
+    const { accessToken } = req.body ?? {};
+    if (!accessToken) {
+      return res.status(400).json({ error: "accessToken required" });
+    }
+    try {
+      await dbQuery(
+        `ALTER TABLE soulie_users ADD COLUMN IF NOT EXISTS google_user_id TEXT UNIQUE`,
+        []
+      ).catch(() => {});
+
+      const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!userInfoRes.ok) {
+        return res.status(401).json({ error: "invalid_google_token" });
+      }
+      const userInfo = await userInfoRes.json() as {
+        sub: string; email?: string; name?: string; picture?: string;
+      };
+      const googleId = userInfo.sub;
+      if (!googleId) {
+        return res.status(401).json({ error: "google_id_missing" });
+      }
+
+      const existing = await dbQuery(
+        `SELECT * FROM soulie_users WHERE google_user_id = $1 AND deleted_at IS NULL`,
+        [googleId]
+      );
+      if (existing.rows.length > 0) {
+        const u = existing.rows[0];
+        const isAdmin = u.is_admin || APPLE_ADMIN_EMAILS.includes(u.email?.toLowerCase() ?? "");
+        await dbQuery(`UPDATE soulie_users SET last_seen=NOW() WHERE google_user_id=$1`, [googleId]);
+        return res.json({
+          isNewUser: false,
+          user: {
+            id: u.id,
+            userId: u.user_id,
+            name: u.name,
+            username: u.username,
+            email: u.email,
+            language: u.language || "en",
+            gender: u.gender,
+            birthdate: u.birthdate,
+            isAdmin,
+            isVip: u.is_vip || isAdmin,
+            onboardingComplete: u.onboarding_complete,
+          },
+        });
+      }
+
+      const existingByEmail = userInfo.email
+        ? await dbQuery(
+            `SELECT * FROM soulie_users WHERE LOWER(email) = LOWER($1) AND deleted_at IS NULL`,
+            [userInfo.email]
+          )
+        : { rows: [] };
+
+      if (existingByEmail.rows.length > 0) {
+        const u = existingByEmail.rows[0];
+        await dbQuery(`UPDATE soulie_users SET google_user_id=$1, last_seen=NOW() WHERE id=$2`, [googleId, u.id]);
+        const isAdmin = u.is_admin || APPLE_ADMIN_EMAILS.includes(u.email?.toLowerCase() ?? "");
+        return res.json({
+          isNewUser: false,
+          user: {
+            id: u.id,
+            userId: u.user_id,
+            name: u.name,
+            username: u.username,
+            email: u.email,
+            language: u.language || "en",
+            gender: u.gender,
+            birthdate: u.birthdate,
+            isAdmin,
+            isVip: u.is_vip || isAdmin,
+            onboardingComplete: u.onboarding_complete,
+          },
+        });
+      }
+
+      const id = "u_" + Date.now().toString() + Math.random().toString(36).substr(2, 6);
+      const userId = String(Math.floor(100000 + Math.random() * 900000));
+      const displayName = userInfo.name || null;
+      const userEmail = userInfo.email || null;
+
+      await dbQuery(
+        `INSERT INTO soulie_users (id, user_id, google_user_id, email, name, language, onboarding_complete, last_seen, synced_at)
+         VALUES ($1, $2, $3, $4, $5, 'en', false, NOW(), $6)
+         ON CONFLICT (id) DO NOTHING`,
+        [id, userId, googleId, userEmail, displayName, Date.now()]
+      );
+
+      return res.json({ isNewUser: true, id, userId, email: userEmail, name: displayName });
+    } catch (err) {
+      console.error("[Google] Login error:", err);
+      return res.status(500).json({ error: "google_auth_failed" });
+    }
+  });
+
   app.post("/api/auth/apple-login", async (req, res) => {
     const { identityToken, appleUserId, email, fullName } = req.body ?? {};
     if (!identityToken || !appleUserId) {

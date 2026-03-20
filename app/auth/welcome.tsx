@@ -15,9 +15,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
 import { getTranslation } from "@/constants/i18n";
 import { getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
+
+WebBrowser.maybeCompleteAuthSession();
 
 const DEFAULT_LANG = "en";
 const { width, height } = Dimensions.get("window");
@@ -84,12 +88,33 @@ function AuthButton({
   );
 }
 
+const GOOGLE_IOS_CLIENT_ID =
+  "925534757567-vms4ukvoq6c7m4ca2vkj09of6n1kc1lc.apps.googleusercontent.com";
+
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const { login } = useAuth();
   const titleFade = useRef(new Animated.Value(0)).current;
   const titleSlide = useRef(new Animated.Value(-20)).current;
   const [appleLoading, setAppleLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const [, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    iosClientId: GOOGLE_IOS_CLIENT_ID,
+    webClientId: GOOGLE_IOS_CLIENT_ID,
+    scopes: ["openid", "profile", "email"],
+  });
+
+  useEffect(() => {
+    if (googleResponse?.type === "success") {
+      const accessToken = googleResponse.authentication?.accessToken;
+      if (accessToken) {
+        handleGoogleToken(accessToken);
+      }
+    } else if (googleResponse?.type === "error" || googleResponse?.type === "dismiss") {
+      setGoogleLoading(false);
+    }
+  }, [googleResponse]);
 
   useEffect(() => {
     Animated.parallel([
@@ -107,6 +132,56 @@ export default function WelcomeScreen() {
       }),
     ]).start();
   }, []);
+
+  const handleGoogleToken = async (accessToken: string) => {
+    try {
+      const url = new URL("/api/auth/google-login", getApiUrl());
+      const response = await fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Google auth failed");
+      }
+
+      const data = await response.json();
+
+      if (data.isNewUser) {
+        router.push({
+          pathname: "/auth/social-onboarding",
+          params: {
+            method: "google",
+            email: data.email || "",
+            registeredId: data.id,
+            registeredUserId: data.userId,
+            prefillName: data.name || "",
+          },
+        });
+      } else {
+        await login(data.user);
+        router.replace("/(tabs)/explore");
+      }
+    } catch (e: any) {
+      console.error("[Google] Login error:", e);
+      Alert.alert("Error", "Google Sign-in failed. Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setGoogleLoading(true);
+      await googlePromptAsync();
+    } catch (e: any) {
+      console.error("[Google] promptAsync error:", e);
+      setGoogleLoading(false);
+    }
+  };
 
   const handleAppleLogin = async () => {
     if (Platform.OS !== "ios") return;
@@ -244,8 +319,13 @@ export default function WelcomeScreen() {
               <Text style={styles.googleIconText}>G</Text>
             </View>
           }
-          label={getTranslation(DEFAULT_LANG, "welcome.loginWithGoogle")}
-          onPress={() => navigateToOnboarding("google")}
+          label={
+            googleLoading
+              ? "Signing in..."
+              : getTranslation(DEFAULT_LANG, "welcome.loginWithGoogle")
+          }
+          onPress={handleGoogleLogin}
+          loading={googleLoading}
           delay={500}
         />
         <AuthButton

@@ -19,7 +19,14 @@
       "buildNumber": "12",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.925534757567-vms4ukvoq6c7m4ca2vkj09of6n1kc1lc"
+            ]
+          }
+        ]
       }
     },
     "android": {
