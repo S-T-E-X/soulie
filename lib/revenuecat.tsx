@@ -38,6 +38,16 @@ export function initializeRevenueCat() {
     Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
     Purchases.configure({ apiKey });
     console.log("[RevenueCat] Initialized with key:", apiKey.slice(0, 12) + "...");
+    
+    // Clear cache to fetch fresh pricing data from App Store
+    (async () => {
+      try {
+        await Purchases.invalidateCustomerInfoCache();
+        console.log("[RevenueCat] Customer info cache invalidated");
+      } catch (e) {
+        console.warn("[RevenueCat] Cache invalidation failed:", e);
+      }
+    })();
   } catch (e) {
     console.warn("[RevenueCat] Init failed:", e);
   }
@@ -115,11 +125,16 @@ function useSubscriptionContext() {
     queryKey: ["revenuecat", "offerings"],
     queryFn: async () => {
       try {
+        // Force fresh fetch from App Store, bypass cache
         const offerings = await Purchases.getOfferings();
-        console.log("[RevenueCat] Offerings fetched:", {
+        console.log("[RevenueCat] Offerings fetched (fresh):", {
           current: offerings.current?.identifier,
           allKeys: Object.keys(offerings.all),
-          currentPackages: offerings.current?.availablePackages?.map(p => p.identifier),
+          currentPackages: offerings.current?.availablePackages?.map(p => ({
+            id: p.identifier,
+            price: p.product.priceString,
+            title: p.product.title,
+          })),
         });
         return offerings;
       } catch (e) {
@@ -127,7 +142,7 @@ function useSubscriptionContext() {
         throw e;
       }
     },
-    staleTime: 300 * 1000,
+    staleTime: 60 * 1000, // Reduced from 300s to 60s for fresher data
     retry: 2,
   });
 
