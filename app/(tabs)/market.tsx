@@ -26,8 +26,9 @@ import { useI18n } from "@/hooks/useI18n";
 import {
   useSubscription,
   REVENUECAT_VIP_ENTITLEMENT,
+  REVENUECAT_VIP_OFFERING,
+  REVENUECAT_COINS_OFFERING,
 } from "@/lib/revenuecat";
-import type { PurchasesPackage } from "react-native-purchases";
 
 const ALL_FEAT_KEYS = [
   "market.featAllChars",
@@ -101,15 +102,16 @@ export default function MarketScreen() {
   const { isDark, colors } = useTheme();
   const { user, isVipActive } = useAuth();
   const { t } = useI18n();
-  const { vipOffering, coinsOffering, isVip, isPurchasing, purchase, restore } = useSubscription();
+  const { isVip, isPurchasing, purchaseById, restore } = useSubscription();
 
   const validTabs = ["premium", "gifts", "coins"] as const;
   const [activeTab, setActiveTab] = useState<"premium" | "gifts" | "coins">(
     validTabs.includes(initialTab as any) ? (initialTab as any) : "premium"
   );
 
-  const [pendingPkg, setPendingPkg] = useState<PurchasesPackage | null>(null);
-  const [pendingCoinPkg, setPendingCoinPkg] = useState<PurchasesPackage | null>(null);
+  type PendingItem = { packageId: string; offeringId: string; name: string; price: string; coins?: number } | null;
+  const [pendingVip, setPendingVip] = useState<PendingItem>(null);
+  const [pendingCoin, setPendingCoin] = useState<PendingItem>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -119,54 +121,69 @@ export default function MarketScreen() {
     }
   }, [initialTab]);
 
-  const handleVipPurchase = (pkg: PurchasesPackage) => {
-    if (isVip || isVipActive) {
-      setPendingPkg(null);
-      return;
-    }
+  const handleVipPress = (meta: typeof PLAN_PACKAGE_KEYS[number]) => {
+    if (isVip || isVipActive) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setPendingPkg(pkg);
+    setPendingVip({
+      packageId: meta.key,
+      offeringId: REVENUECAT_VIP_OFFERING,
+      name: meta.nameKey,
+      price: meta.fallbackPrice,
+    });
   };
 
   const confirmVipPurchase = async () => {
-    if (!pendingPkg) return;
+    if (!pendingVip) return;
     setPurchasing(true);
     try {
-      await purchase(pendingPkg);
+      await purchaseById({ packageId: pendingVip.packageId, offeringId: pendingVip.offeringId });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessMsg("VIP aktif edildi!");
     } catch (e: any) {
-      if (e.userCancelled) return;
-      setSuccessMsg("Satın alma başarısız.");
+      if (e?.userCancelled || e?.message?.includes("userCancelled")) return;
+      if (e?.message === "PACKAGE_NOT_FOUND") {
+        setSuccessMsg("Ürün bulunamadı. App Store Connect'te IAP tanımlandığından emin olun.");
+      } else {
+        setSuccessMsg("Satın alma başarısız. Lütfen tekrar deneyin.");
+      }
     } finally {
       setPurchasing(false);
-      setPendingPkg(null);
-      setTimeout(() => setSuccessMsg(""), 3000);
+      setPendingVip(null);
+      setTimeout(() => setSuccessMsg(""), 4000);
     }
   };
 
-  const handleCoinPurchase = (pkg: PurchasesPackage) => {
+  const handleCoinPress = (packageId: string, meta: typeof COIN_PACKAGE_META[string]) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setPendingCoinPkg(pkg);
+    setPendingCoin({
+      packageId,
+      offeringId: REVENUECAT_COINS_OFFERING,
+      name: `${meta.coins + (meta.bonus ?? 0)} Coin`,
+      price: meta.fallbackPrice,
+      coins: meta.coins + (meta.bonus ?? 0),
+    });
   };
 
   const confirmCoinPurchase = async () => {
-    if (!pendingCoinPkg) return;
+    if (!pendingCoin) return;
     setPurchasing(true);
     try {
-      await purchase(pendingCoinPkg);
-      const meta = COIN_PACKAGE_META[pendingCoinPkg.identifier] ?? { coins: 0 };
-      const total = meta.coins + (meta.bonus ?? 0);
+      await purchaseById({ packageId: pendingCoin.packageId, offeringId: pendingCoin.offeringId });
+      const total = pendingCoin.coins ?? 0;
       await addCoins(total);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessMsg(`${total} coin eklendi!`);
     } catch (e: any) {
-      if (e.userCancelled) return;
-      setSuccessMsg("Satın alma başarısız.");
+      if (e?.userCancelled || e?.message?.includes("userCancelled")) return;
+      if (e?.message === "PACKAGE_NOT_FOUND") {
+        setSuccessMsg("Ürün bulunamadı. App Store Connect'te IAP tanımlandığından emin olun.");
+      } else {
+        setSuccessMsg("Satın alma başarısız. Lütfen tekrar deneyin.");
+      }
     } finally {
       setPurchasing(false);
-      setPendingCoinPkg(null);
-      setTimeout(() => setSuccessMsg(""), 3000);
+      setPendingCoin(null);
+      setTimeout(() => setSuccessMsg(""), 4000);
     }
   };
 
@@ -192,17 +209,6 @@ export default function MarketScreen() {
     }
   };
 
-  const vipPackages = PLAN_PACKAGE_KEYS.map((meta) => ({
-    meta,
-    pkg: vipOffering?.availablePackages?.find((p) => p.identifier === meta.key),
-  }));
-
-  const coinPackages = COIN_PACKAGE_KEYS.map((key) => ({
-    key,
-    meta: COIN_PACKAGE_META[key],
-    pkg: coinsOffering?.availablePackages?.find((p) => p.identifier === key),
-  }));
-
   return (
     <BackgroundGradient>
       <StatusBar barStyle={colors.statusBar} />
@@ -214,20 +220,20 @@ export default function MarketScreen() {
       )}
 
       <ConfirmModal
-        visible={pendingPkg !== null}
+        visible={pendingVip !== null}
         title="VIP Satın Al"
-        message={`${pendingPkg ? (PLAN_PACKAGE_KEYS.find(m => m.key === pendingPkg.identifier)?.nameKey ? t(PLAN_PACKAGE_KEYS.find(m => m.key === pendingPkg.identifier)!.nameKey as any) : "") : ""} — ${pendingPkg ? (PLAN_PACKAGE_KEYS.find(m => m.key === pendingPkg.identifier)?.fallbackPrice ?? "") : ""} ile satın almak istiyor musun?`}
+        message={`${pendingVip ? t(pendingVip.name as any) : ""} — ${pendingVip?.price ?? ""} ile satın almak istiyor musun?`}
         onConfirm={confirmVipPurchase}
-        onCancel={() => setPendingPkg(null)}
+        onCancel={() => setPendingVip(null)}
         loading={purchasing}
       />
 
       <ConfirmModal
-        visible={pendingCoinPkg !== null}
+        visible={pendingCoin !== null}
         title="Coin Satın Al"
-        message={`${pendingCoinPkg ? (COIN_PACKAGE_META[pendingCoinPkg.identifier]?.coins ?? 0) : 0} Coin — ${pendingCoinPkg ? (COIN_PACKAGE_META[pendingCoinPkg.identifier]?.fallbackPrice ?? "") : ""} ile satın almak istiyor musun?`}
+        message={`${pendingCoin?.name ?? ""} — ${pendingCoin?.price ?? ""} ile satın almak istiyor musun?`}
         onConfirm={confirmCoinPurchase}
-        onCancel={() => setPendingCoinPkg(null)}
+        onCancel={() => setPendingCoin(null)}
         loading={purchasing}
       />
 
@@ -298,10 +304,10 @@ export default function MarketScreen() {
 
             <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>{t("market.choosePlan")}</Text>
 
-            {vipPackages.map(({ meta, pkg }, i) => (
+            {PLAN_PACKAGE_KEYS.map((meta, i) => (
               <Animated.View key={meta.key} entering={FadeInDown.delay(80 + i * 60).springify().damping(18)}>
                 <Pressable
-                  onPress={() => pkg && handleVipPurchase(pkg)}
+                  onPress={() => handleVipPress(meta)}
                   style={({ pressed }) => [styles.planCard, pressed && { opacity: 0.85 }]}
                 >
                   <LinearGradient colors={meta.gradient} style={styles.planGradient}>
@@ -376,10 +382,12 @@ export default function MarketScreen() {
 
             <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>{t("market.packages")}</Text>
 
-            {coinPackages.map(({ key, meta, pkg }, i) => (
+            {COIN_PACKAGE_KEYS.map((key, i) => {
+              const meta = COIN_PACKAGE_META[key];
+              return (
               <Animated.View key={key} entering={FadeInDown.delay(80 + i * 60).springify().damping(18)}>
                 <Pressable
-                  onPress={() => pkg && handleCoinPurchase(pkg)}
+                  onPress={() => handleCoinPress(key, meta)}
                   style={({ pressed }) => [styles.coinCard, pressed && { opacity: 0.85 }]}
                 >
                   <LinearGradient
@@ -417,7 +425,8 @@ export default function MarketScreen() {
                   </LinearGradient>
                 </Pressable>
               </Animated.View>
-            ))}
+              );
+            })}
           </>
         )}
 
