@@ -109,9 +109,6 @@ export default function MarketScreen() {
     validTabs.includes(initialTab as any) ? (initialTab as any) : "premium"
   );
 
-  type PendingItem = { packageId: string; offeringId: string; name: string; price: string; coins?: number } | null;
-  const [pendingVip, setPendingVip] = useState<PendingItem>(null);
-  const [pendingCoin, setPendingCoin] = useState<PendingItem>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -121,26 +118,19 @@ export default function MarketScreen() {
     }
   }, [initialTab]);
 
-  const handleVipPress = (meta: typeof PLAN_PACKAGE_KEYS[number]) => {
+  const handleVipPress = async (meta: typeof PLAN_PACKAGE_KEYS[number]) => {
     if (isVip || isVipActive) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setPendingVip({
-      packageId: meta.key,
-      offeringId: REVENUECAT_VIP_OFFERING,
-      name: meta.nameKey,
-      price: meta.fallbackPrice,
-    });
-  };
-
-  const confirmVipPurchase = async () => {
-    if (!pendingVip) return;
     setPurchasing(true);
     try {
-      await purchaseById({ packageId: pendingVip.packageId, offeringId: pendingVip.offeringId });
+      await purchaseById({ packageId: meta.key, offeringId: REVENUECAT_VIP_OFFERING });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessMsg("VIP aktif edildi!");
     } catch (e: any) {
-      if (e?.userCancelled || e?.message?.includes("userCancelled")) return;
+      if (e?.userCancelled || e?.message?.includes("userCancelled")) {
+        setPurchasing(false);
+        return;
+      }
       if (e?.message === "PACKAGE_NOT_FOUND") {
         setSuccessMsg("Ürün bulunamadı. App Store Connect'te IAP tanımlandığından emin olun.");
       } else {
@@ -148,33 +138,24 @@ export default function MarketScreen() {
       }
     } finally {
       setPurchasing(false);
-      setPendingVip(null);
       setTimeout(() => setSuccessMsg(""), 4000);
     }
   };
 
-  const handleCoinPress = (packageId: string, meta: typeof COIN_PACKAGE_META[string]) => {
+  const handleCoinPress = async (packageId: string, meta: typeof COIN_PACKAGE_META[string]) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setPendingCoin({
-      packageId,
-      offeringId: REVENUECAT_COINS_OFFERING,
-      name: `${meta.coins + (meta.bonus ?? 0)} Coin`,
-      price: meta.fallbackPrice,
-      coins: meta.coins + (meta.bonus ?? 0),
-    });
-  };
-
-  const confirmCoinPurchase = async () => {
-    if (!pendingCoin) return;
     setPurchasing(true);
+    const total = meta.coins + (meta.bonus ?? 0);
     try {
-      await purchaseById({ packageId: pendingCoin.packageId, offeringId: pendingCoin.offeringId });
-      const total = pendingCoin.coins ?? 0;
+      await purchaseById({ packageId, offeringId: REVENUECAT_COINS_OFFERING });
       await addCoins(total);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessMsg(`${total} coin eklendi!`);
     } catch (e: any) {
-      if (e?.userCancelled || e?.message?.includes("userCancelled")) return;
+      if (e?.userCancelled || e?.message?.includes("userCancelled")) {
+        setPurchasing(false);
+        return;
+      }
       if (e?.message === "PACKAGE_NOT_FOUND") {
         setSuccessMsg("Ürün bulunamadı. App Store Connect'te IAP tanımlandığından emin olun.");
       } else {
@@ -182,7 +163,6 @@ export default function MarketScreen() {
       }
     } finally {
       setPurchasing(false);
-      setPendingCoin(null);
       setTimeout(() => setSuccessMsg(""), 4000);
     }
   };
@@ -219,23 +199,6 @@ export default function MarketScreen() {
         </View>
       )}
 
-      <ConfirmModal
-        visible={pendingVip !== null}
-        title="VIP Satın Al"
-        message={`${pendingVip ? t(pendingVip.name as any) : ""} — ${pendingVip?.price ?? ""} ile satın almak istiyor musun?`}
-        onConfirm={confirmVipPurchase}
-        onCancel={() => setPendingVip(null)}
-        loading={purchasing}
-      />
-
-      <ConfirmModal
-        visible={pendingCoin !== null}
-        title="Coin Satın Al"
-        message={`${pendingCoin?.name ?? ""} — ${pendingCoin?.price ?? ""} ile satın almak istiyor musun?`}
-        onConfirm={confirmCoinPurchase}
-        onCancel={() => setPendingCoin(null)}
-        loading={purchasing}
-      />
 
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>{t("market.title")}</Text>
