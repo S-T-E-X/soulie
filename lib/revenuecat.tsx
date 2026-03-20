@@ -1,12 +1,11 @@
 import React, { createContext, useContext } from "react";
-import { Alert, Platform } from "react-native";
+import { Platform } from "react-native";
 import Purchases, {
   type PurchasesOfferings,
   type CustomerInfo,
   type PurchasesPackage,
 } from "react-native-purchases";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import Constants from "expo-constants";
 
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? "";
 const REVENUECAT_ANDROID_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY ?? "";
@@ -15,6 +14,9 @@ const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY 
 export const REVENUECAT_VIP_ENTITLEMENT = "vip";
 export const REVENUECAT_VIP_OFFERING = "default";
 export const REVENUECAT_COINS_OFFERING = "coins";
+
+const _global = globalThis as any;
+if (_global.__rcInitialized === undefined) _global.__rcInitialized = false;
 
 function getRevenueCatApiKey(): string {
   if (Platform.OS === "web") {
@@ -29,6 +31,7 @@ function getRevenueCatApiKey(): string {
 }
 
 export function initializeRevenueCat() {
+  if (_global.__rcInitialized) return;
   try {
     const apiKey = getRevenueCatApiKey();
     if (!apiKey) {
@@ -37,9 +40,9 @@ export function initializeRevenueCat() {
     }
     Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
     Purchases.configure({ apiKey });
+    _global.__rcInitialized = true;
     console.log("[RevenueCat] Initialized with key:", apiKey.slice(0, 12) + "...");
-    
-    // Clear cache to fetch fresh pricing data from App Store (iOS/Android only)
+
     if (Platform.OS !== "web") {
       (async () => {
         try {
@@ -53,6 +56,14 @@ export function initializeRevenueCat() {
   } catch (e) {
     console.warn("[RevenueCat] Init failed:", e);
   }
+}
+
+function isPurchaseCancelled(error: any): boolean {
+  if (error?.userCancelled === true) return true;
+  if (error?.code === 1 || error?.code === "1") return true;
+  if (typeof error?.message === "string" && error.message.toLowerCase().includes("cancel")) return true;
+  if (typeof error?.message === "string" && error.message.toLowerCase().includes("usercancelled")) return true;
+  return false;
 }
 
 export async function purchaseByIdentifier(
@@ -109,7 +120,14 @@ export async function purchaseByIdentifier(
     const { customerInfo } = await Purchases.purchasePackage(pkg);
     console.log("[RevenueCat] Purchase successful!");
     return customerInfo;
-  } catch (e) {
+  } catch (e: any) {
+    if (isPurchaseCancelled(e)) {
+      console.log("[RevenueCat] Purchase cancelled by user");
+      const cancelError = new Error("USER_CANCELLED");
+      (cancelError as any).userCancelled = true;
+      (cancelError as any).code = 1;
+      throw cancelError;
+    }
     console.error("[RevenueCat] purchaseByIdentifier error:", e);
     throw e;
   }
@@ -127,10 +145,8 @@ function useSubscriptionContext() {
     queryKey: ["revenuecat", "offerings"],
     queryFn: async () => {
       try {
-        // Force fresh fetch from App Store, bypass cache
         const offerings = await Purchases.getOfferings();
         
-        // Debug all offerings
         const allOfferingsDebug: Record<string, any> = {};
         Object.entries(offerings.all).forEach(([key, offering]) => {
           allOfferingsDebug[key] = {
@@ -143,7 +159,7 @@ function useSubscriptionContext() {
           };
         });
         
-        console.log("[RevenueCat] Offerings fetched (fresh):", {
+        console.log("[RevenueCat] Offerings fetched:", {
           current: offerings.current?.identifier,
           allKeys: Object.keys(offerings.all),
           allOfferings: allOfferingsDebug,
@@ -154,7 +170,7 @@ function useSubscriptionContext() {
         throw e;
       }
     },
-    staleTime: 60 * 1000, // Reduced from 300s to 60s for fresher data
+    staleTime: 60 * 1000,
     retry: 2,
   });
 

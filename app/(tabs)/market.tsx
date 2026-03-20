@@ -7,8 +7,6 @@ import {
   Pressable,
   Platform,
   StatusBar,
-  Modal,
-  ActivityIndicator,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -55,45 +53,6 @@ const COIN_PACKAGE_META: Record<string, { coins: number; bonus?: number; isPopul
   coins_12000: { coins: 12000, bonus: 0, isPopular: true, fallbackPrice: "$24.99" },
 };
 
-function ConfirmModal({
-  visible,
-  title,
-  message,
-  onConfirm,
-  onCancel,
-  loading,
-}: {
-  visible: boolean;
-  title: string;
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  loading: boolean;
-}) {
-  return (
-    <Modal transparent animationType="fade" visible={visible} onRequestClose={onCancel}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalBox}>
-          <Text style={styles.modalTitle}>{title}</Text>
-          <Text style={styles.modalMessage}>{message}</Text>
-          {loading ? (
-            <ActivityIndicator color={Colors.accent} style={{ marginTop: 16 }} />
-          ) : (
-            <View style={styles.modalButtons}>
-              <Pressable onPress={onCancel} style={[styles.modalBtn, styles.modalBtnCancel]}>
-                <Text style={styles.modalBtnCancelText}>İptal</Text>
-              </Pressable>
-              <Pressable onPress={onConfirm} style={[styles.modalBtn, styles.modalBtnConfirm]}>
-                <Text style={styles.modalBtnConfirmText}>Satın Al</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 export default function MarketScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -127,14 +86,15 @@ export default function MarketScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessMsg("VIP aktif edildi!");
     } catch (e: any) {
-      if (e?.userCancelled || e?.message?.includes("userCancelled")) {
+      if (e?.userCancelled === true || e?.code === 1 || e?.code === "1" || e?.message === "USER_CANCELLED") {
         setPurchasing(false);
         return;
       }
       if (e?.message === "PACKAGE_NOT_FOUND") {
-        setSuccessMsg("Ürün bulunamadı. App Store Connect'te IAP tanımlandığından emin olun.");
+        setSuccessMsg(t("market.packageNotFound" as any) || "Ürün bulunamadı.");
       } else {
-        setSuccessMsg("Satın alma başarısız. Lütfen tekrar deneyin.");
+        console.warn("[Market] VIP purchase error:", e?.code, e?.message);
+        setSuccessMsg(t("market.purchaseFailed" as any) || "Satın alma başarısız. Lütfen tekrar deneyin.");
       }
     } finally {
       setPurchasing(false);
@@ -152,14 +112,15 @@ export default function MarketScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessMsg(`${total} coin eklendi!`);
     } catch (e: any) {
-      if (e?.userCancelled || e?.message?.includes("userCancelled")) {
+      if (e?.userCancelled === true || e?.code === 1 || e?.code === "1" || e?.message === "USER_CANCELLED") {
         setPurchasing(false);
         return;
       }
       if (e?.message === "PACKAGE_NOT_FOUND") {
-        setSuccessMsg("Ürün bulunamadı. App Store Connect'te IAP tanımlandığından emin olun.");
+        setSuccessMsg(t("market.packageNotFound" as any) || "Ürün bulunamadı.");
       } else {
-        setSuccessMsg("Satın alma başarısız. Lütfen tekrar deneyin.");
+        console.warn("[Market] Coin purchase error:", e?.code, e?.message);
+        setSuccessMsg(t("market.purchaseFailed" as any) || "Satın alma başarısız. Lütfen tekrar deneyin.");
       }
     } finally {
       setPurchasing(false);
@@ -805,57 +766,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 32,
-  },
-  modalBox: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 24,
-    width: "100%",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    color: "#1D1D1F",
-    marginBottom: 8,
-  },
-  modalMessage: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: "#6B6B6B",
-    lineHeight: 22,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 20,
-  },
-  modalBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 14,
-    alignItems: "center",
-  },
-  modalBtnCancel: {
-    backgroundColor: "#F2F2F7",
-  },
-  modalBtnCancelText: {
-    fontSize: 15,
-    fontFamily: "Inter_500Medium",
-    color: "#6B6B6B",
-  },
-  modalBtnConfirm: {
-    backgroundColor: Colors.accent,
-  },
-  modalBtnConfirmText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    color: "#fff",
   },
 });
