@@ -216,7 +216,7 @@ export default function MarketScreen() {
       <ConfirmModal
         visible={pendingPkg !== null}
         title="VIP Satın Al"
-        message={`${pendingPkg?.product.title ?? ""} — ${pendingPkg?.product.priceString || (pendingPkg && PLAN_PACKAGE_KEYS.find(m => m.key === pendingPkg.identifier)?.fallbackPrice) || ""} ile satın almak istiyor musun?`}
+        message={`${pendingPkg ? (PLAN_PACKAGE_KEYS.find(m => m.key === pendingPkg.identifier)?.nameKey ? t(PLAN_PACKAGE_KEYS.find(m => m.key === pendingPkg.identifier)!.nameKey as any) : "") : ""} — ${pendingPkg ? (PLAN_PACKAGE_KEYS.find(m => m.key === pendingPkg.identifier)?.fallbackPrice ?? "") : ""} ile satın almak istiyor musun?`}
         onConfirm={confirmVipPurchase}
         onCancel={() => setPendingPkg(null)}
         loading={purchasing}
@@ -225,7 +225,7 @@ export default function MarketScreen() {
       <ConfirmModal
         visible={pendingCoinPkg !== null}
         title="Coin Satın Al"
-        message={`${pendingCoinPkg?.product.title ?? ""} — ${pendingCoinPkg?.product.priceString || (pendingCoinPkg && COIN_PACKAGE_META[pendingCoinPkg.identifier]?.fallbackPrice) || ""} ile satın almak istiyor musun?`}
+        message={`${pendingCoinPkg ? (COIN_PACKAGE_META[pendingCoinPkg.identifier]?.coins ?? 0) : 0} Coin — ${pendingCoinPkg ? (COIN_PACKAGE_META[pendingCoinPkg.identifier]?.fallbackPrice ?? "") : ""} ile satın almak istiyor musun?`}
         onConfirm={confirmCoinPurchase}
         onCancel={() => setPendingCoinPkg(null)}
         loading={purchasing}
@@ -320,7 +320,7 @@ export default function MarketScreen() {
                         <Text style={[styles.planName, { color: meta.textColor }]}>{t(meta.nameKey as any)}</Text>
                         <View style={styles.priceRow}>
                           <Text style={[styles.planPrice, { color: meta.textColor }]}>
-                            {pkg?.product.priceString || meta.fallbackPrice}
+                            {meta.fallbackPrice}
                           </Text>
                           <Text style={[styles.planPeriod, { color: meta.textColor, opacity: 0.7 }]}>
                             {t(meta.periodKey as any)}
@@ -406,7 +406,7 @@ export default function MarketScreen() {
                         )}
                       </View>
                       <Text style={[styles.coinCardPrice, { color: meta.isPopular ? "#fff" : colors.text.secondary }]}>
-                        {pkg?.product.priceString || meta.fallbackPrice}
+                        {meta.fallbackPrice}
                       </Text>
                     </View>
                     <View style={[styles.coinBuyBtn, { backgroundColor: meta.isPopular ? "rgba(255,255,255,0.25)" : isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)" }]}>
