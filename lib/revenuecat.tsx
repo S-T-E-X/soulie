@@ -47,34 +47,60 @@ export async function purchaseByIdentifier(
   packageIdentifier: string,
   offeringIdentifier: string
 ): Promise<CustomerInfo> {
-  const offerings = await Purchases.getOfferings();
-  console.log("[RevenueCat] All offerings:", Object.keys(offerings.all));
-  console.log("[RevenueCat] Current offering:", offerings.current?.identifier);
+  try {
+    console.log("[RevenueCat] purchaseByIdentifier called:", { packageIdentifier, offeringIdentifier });
+    
+    const offerings = await Purchases.getOfferings();
+    console.log("[RevenueCat] All offerings:", {
+      allKeys: Object.keys(offerings.all),
+      current: offerings.current?.identifier,
+    });
 
-  let pkg: PurchasesPackage | undefined;
+    let pkg: PurchasesPackage | undefined;
 
-  const targetOffering = offerings.all[offeringIdentifier] ?? offerings.current;
-  pkg = targetOffering?.availablePackages?.find((p) => p.identifier === packageIdentifier);
+    const targetOffering = offerings.all[offeringIdentifier] ?? offerings.current;
+    console.log("[RevenueCat] Target offering:", {
+      id: targetOffering?.identifier,
+      packages: targetOffering?.availablePackages?.map(p => p.identifier),
+    });
+    
+    pkg = targetOffering?.availablePackages?.find((p) => p.identifier === packageIdentifier);
 
-  if (!pkg) {
-    for (const offering of Object.values(offerings.all)) {
-      pkg = offering.availablePackages.find((p) => p.identifier === packageIdentifier);
-      if (pkg) break;
+    if (!pkg) {
+      console.log("[RevenueCat] Package not in target offering, searching all offerings...");
+      for (const offering of Object.values(offerings.all)) {
+        pkg = offering.availablePackages.find((p) => p.identifier === packageIdentifier);
+        if (pkg) {
+          console.log("[RevenueCat] Found in offering:", offering.identifier);
+          break;
+        }
+      }
     }
-  }
 
-  if (!pkg && offerings.current) {
-    pkg = offerings.current.availablePackages.find((p) => p.identifier === packageIdentifier);
-  }
+    if (!pkg && offerings.current) {
+      pkg = offerings.current.availablePackages.find((p) => p.identifier === packageIdentifier);
+      if (pkg) console.log("[RevenueCat] Found in current offering");
+    }
 
-  if (!pkg) {
-    console.warn("[RevenueCat] Package not found:", packageIdentifier, "in any offering");
-    throw new Error("PACKAGE_NOT_FOUND");
-  }
+    if (!pkg) {
+      console.error("[RevenueCat] Package not found:", packageIdentifier);
+      console.error("[RevenueCat] All available packages:", {
+        all: Object.entries(offerings.all).map(([id, off]) => ({
+          id,
+          packages: off.availablePackages.map(p => p.identifier),
+        })),
+      });
+      throw new Error("PACKAGE_NOT_FOUND");
+    }
 
-  console.log("[RevenueCat] Purchasing package:", pkg.identifier);
-  const { customerInfo } = await Purchases.purchasePackage(pkg);
-  return customerInfo;
+    console.log("[RevenueCat] Purchasing package:", pkg.identifier, pkg.product.title);
+    const { customerInfo } = await Purchases.purchasePackage(pkg);
+    console.log("[RevenueCat] Purchase successful!");
+    return customerInfo;
+  } catch (e) {
+    console.error("[RevenueCat] purchaseByIdentifier error:", e);
+    throw e;
+  }
 }
 
 function useSubscriptionContext() {
@@ -87,7 +113,20 @@ function useSubscriptionContext() {
 
   const offeringsQuery = useQuery<PurchasesOfferings>({
     queryKey: ["revenuecat", "offerings"],
-    queryFn: () => Purchases.getOfferings(),
+    queryFn: async () => {
+      try {
+        const offerings = await Purchases.getOfferings();
+        console.log("[RevenueCat] Offerings fetched:", {
+          current: offerings.current?.identifier,
+          allKeys: Object.keys(offerings.all),
+          currentPackages: offerings.current?.availablePackages?.map(p => p.identifier),
+        });
+        return offerings;
+      } catch (e) {
+        console.error("[RevenueCat] getOfferings() failed:", e);
+        throw e;
+      }
+    },
     staleTime: 300 * 1000,
     retry: 2,
   });
