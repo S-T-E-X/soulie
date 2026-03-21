@@ -487,9 +487,14 @@ TAVSIYE: (kullanıcıya somut tavsiye)`;
         audio: audioBase64,
         audioFormat: "mp3",
       });
-    } catch (error) {
-      console.error("Voice chat error:", error);
-      res.status(500).json({ error: "Voice chat failed" });
+    } catch (error: any) {
+      console.error("[Voice Chat] Full error:", error?.message || error?.toString?.() || error);
+      console.error("[Voice Chat] Stack:", error?.stack);
+      res.status(500).json({ 
+        error: "Voice chat failed", 
+        details: error?.message || "Unknown error",
+        code: error?.code 
+      });
     }
   });
 
