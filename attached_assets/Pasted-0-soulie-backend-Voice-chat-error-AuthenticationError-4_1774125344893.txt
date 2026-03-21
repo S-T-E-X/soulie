@@ -1,0 +1,42 @@
+0|soulie-backend  | Voice chat error: AuthenticationError: 401 Incorrect API key provided: sk-svcac************************************************************************************************8jr7. You can find your API key at https://platform.openai.com/account/api-keys.
+0|soulie-backend  |     at Function.generate (/home/soulie/node_modules/openai/src/core/error.ts:76:14)
+0|soulie-backend  |     at OpenAI.makeStatusError (/home/soulie/node_modules/openai/src/client.ts:488:28)
+0|soulie-backend  |     at OpenAI.makeRequest (/home/soulie/node_modules/openai/src/client.ts:738:24)
+0|soulie-backend  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|soulie-backend  |     at async speechToText (/home/soulie/server/replit_integrations/audio/client.ts:289:20)
+0|soulie-backend  |     at async <anonymous> (/home/soulie/server/routes.ts:444:30) {
+0|soulie-backend  |   status: 401,
+0|soulie-backend  |   headers: Headers {
+0|soulie-backend  |     date: 'Sat, 21 Mar 2026 20:35:26 GMT',
+0|soulie-backend  |     'content-type': 'text/plain',
+0|soulie-backend  |     'content-length': '354',
+0|soulie-backend  |     connection: 'keep-alive',
+0|soulie-backend  |     'x-openai-ide-error-code': 'invalid_api_key',
+0|soulie-backend  |     'x-openai-authorization-error': '401',
+0|soulie-backend  |     'x-error-json': 'ewogICJlcnJvciI6IHsKICAgICJtZXNzYWdlIjogIkluY29ycmVjdCBBUEkga2V5IHByb3ZpZGVkOiBzay1zdmNhYyoqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKjhqcjcuIFlvdSBjYW4gZmluZCB5b3VyIEFQSSBrZXkgYXQgaHR0cHM6Ly9wbGF0Zm9ybS5vcGVuYWkuY29tL2FjY291bnQvYXBpLWtleXMuIiwKICAgICJ0eXBlIjogImludmFsaWRfcmVxdWVzdF9lcnJvciIsCiAgICAiY29kZSI6ICJpbnZhbGlkX2FwaV9rZXkiLAogICAgInBhcmFtIjogbnVsbAogIH0sCiAgInN0YXR1cyI6IDQwMQp9',
+0|soulie-backend  |     'x-datadog-trace-id': '1258559333222365044',
+0|soulie-backend  |     'x-datadog-parent-id': '8717314843008190214',
+0|soulie-backend  |     'x-datadog-sampling-priority': '0',
+0|soulie-backend  |     'x-request-id': 'req_99cc94b9723844a79a5b38a24f24fae4',
+0|soulie-backend  |     'x-openai-internal-caller': 'unknown_through_ide',
+0|soulie-backend  |     'x-openai-proxy-wasm': 'v0.1',
+0|soulie-backend  |     server: 'cloudflare',
+0|soulie-backend  |     'cf-cache-status': 'DYNAMIC',
+0|soulie-backend  |     'set-cookie': '__cf_bm=PSa2NZWH.B_wpEIiaQEfgbuJsyYQMLbKaa.Cc03TG34-1774125326.320239-1.0.1.1-DGQt9qaR.KFmuMwjDfh9cfUCC_zXY.DpF8QKPj7bxjlreIyC_TpOLngvTWuN.05.VeMnhG2d61wTk_BxJiJzoMy4H0xu9XuHkp31TIJxSirsUkYhI5zCwdUgCXliX4bc; HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Sat, 21 Mar 2026 21:05:26 GMT, _cfuvid=YrGtyiEotaXNiGaNNzFxMHSYiTm5oIHYivW2MxfN8dI-1774125326.320239-1.0.1.1-frLNe5lmSWavMVaq5wGpFZEfsHujb8p3XCKxpzTNlDA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com',
+0|soulie-backend  |     'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+0|soulie-backend  |     'x-content-type-options': 'nosniff',
+0|soulie-backend  |     'cf-ray': '9dffbe397a5fdcb4-FRA',
+0|soulie-backend  |     'alt-svc': 'h3=":443"; ma=86400'
+0|soulie-backend  |   },
+0|soulie-backend  |   requestID: 'req_99cc94b9723844a79a5b38a24f24fae4',
+0|soulie-backend  |   error: {
+0|soulie-backend  |     message: 'Incorrect API key provided: sk-svcac************************************************************************************************8jr7. You can find your API key at https://platform.openai.com/account/api-keys.',
+0|soulie-backend  |     type: 'invalid_request_error',
+0|soulie-backend  |     code: 'invalid_api_key',
+0|soulie-backend  |     param: null
+0|soulie-backend  |   },
+0|soulie-backend  |   code: 'invalid_api_key',
+0|soulie-backend  |   param: null,
+0|soulie-backend  |   type: 'invalid_request_error'
+0|soulie-backend  | }
+0|soulie-backend  | POST /api/voice-chat 500 in 318ms :: {"error":"Voice chat failed"}
