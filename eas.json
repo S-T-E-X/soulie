@@ -20,7 +20,10 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "api.cszone.gg"
+        "EXPO_PUBLIC_DOMAIN": "api.cszone.gg",
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_CRcIyqcgwslEwqABqiZDsZxIYXN",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "goog_bqQOYDTfeMPiFUwmusrjPZIuGnf",
+        "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_HVhQUzsxtuWdUunfAhZwYxoPeaT"
       }
     }
   },
