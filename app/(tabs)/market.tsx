@@ -7,6 +7,7 @@ import {
   Pressable,
   Platform,
   StatusBar,
+  Alert,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -90,15 +91,11 @@ export default function MarketScreen() {
         setPurchasing(false);
         return;
       }
-      if (e?.message === "PACKAGE_NOT_FOUND") {
-        setSuccessMsg(t("market.packageNotFound" as any) || "Ürün bulunamadı.");
-      } else {
-        console.warn("[Market] VIP purchase error:", e?.code, e?.message);
-        setSuccessMsg(t("market.purchaseFailed" as any) || "Satın alma başarısız. Lütfen tekrar deneyin.");
-      }
+      const errorMsg = `Code: ${e?.code}\nMessage: ${e?.message}\nUnderlyingError: ${e?.underlyingErrorMessage || "N/A"}`;
+      console.warn("[Market] VIP purchase error:", errorMsg);
+      Alert.alert("VIP Satın Alma Hatası", errorMsg);
     } finally {
       setPurchasing(false);
-      setTimeout(() => setSuccessMsg(""), 4000);
     }
   };
 
@@ -116,15 +113,11 @@ export default function MarketScreen() {
         setPurchasing(false);
         return;
       }
-      if (e?.message === "PACKAGE_NOT_FOUND") {
-        setSuccessMsg(t("market.packageNotFound" as any) || "Ürün bulunamadı.");
-      } else {
-        console.warn("[Market] Coin purchase error:", e?.code, e?.message);
-        setSuccessMsg(t("market.purchaseFailed" as any) || "Satın alma başarısız. Lütfen tekrar deneyin.");
-      }
+      const errorMsg = `Code: ${e?.code}\nMessage: ${e?.message}\nUnderlyingError: ${e?.underlyingErrorMessage || "N/A"}`;
+      console.warn("[Market] Coin purchase error:", errorMsg);
+      Alert.alert("Coin Satın Alma Hatası", errorMsg);
     } finally {
       setPurchasing(false);
-      setTimeout(() => setSuccessMsg(""), 4000);
     }
   };
 
