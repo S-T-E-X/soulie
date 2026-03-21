@@ -3,6 +3,7 @@ dotenv.config();
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { expireVipUsers } from "./db";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -251,4 +252,18 @@ function setupErrorHandler(app: express.Application) {
       log(`express server serving on port ${port}`);
     },
   );
+
+  async function runVipExpiry() {
+    try {
+      const count = await expireVipUsers();
+      if (count > 0) {
+        log(`VIP expiry cron: expired ${count} user(s)`);
+      }
+    } catch (err) {
+      console.error("VIP expiry cron error:", err);
+    }
+  }
+
+  runVipExpiry();
+  setInterval(runVipExpiry, 60 * 60 * 1000);
 })();

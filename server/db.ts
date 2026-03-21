@@ -263,4 +263,18 @@ export async function upsertUserXp(userId: string, totalXp: number, level: numbe
   );
 }
 
+export async function expireVipUsers(): Promise<number> {
+  const now = Date.now();
+  const res = await query(
+    `UPDATE soulie_users
+     SET is_vip = false, vip_plan = NULL, vip_expiry = NULL
+     WHERE is_vip = true
+       AND vip_expiry IS NOT NULL
+       AND vip_expiry < $1
+     RETURNING id`,
+    [now]
+  );
+  return res.rowCount ?? 0;
+}
+
 export default pool;
