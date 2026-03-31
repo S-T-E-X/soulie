@@ -356,27 +356,57 @@ KURALLAR:
       const { cards, spreadType, language = "tr" } = req.body;
       if (!cards || !Array.isArray(cards)) return res.status(400).json({ error: "Cards required" });
 
+      const posLabels: Record<string, { three: string[]; five: string[]; reversed: string }> = {
+        tr: { three: ["Geçmiş", "Şu An", "Gelecek"], five: ["Geçmiş", "Yakın Geçmiş", "Şu An", "Yakın Gelecek", "Sonuç"], reversed: "[Ters]" },
+        en: { three: ["Past", "Present", "Future"], five: ["Past", "Recent Past", "Present", "Near Future", "Outcome"], reversed: "[Reversed]" },
+        de: { three: ["Vergangenheit", "Gegenwart", "Zukunft"], five: ["Vergangenheit", "Jüngste Vergangenheit", "Gegenwart", "Nahe Zukunft", "Ergebnis"], reversed: "[Umgekehrt]" },
+        zh: { three: ["过去", "现在", "未来"], five: ["过去", "近期过去", "现在", "近期未来", "结果"], reversed: "[逆位]" },
+        ko: { three: ["과거", "현재", "미래"], five: ["과거", "최근 과거", "현재", "가까운 미래", "결과"], reversed: "[역방향]" },
+        es: { three: ["Pasado", "Presente", "Futuro"], five: ["Pasado", "Pasado reciente", "Presente", "Futuro cercano", "Resultado"], reversed: "[Invertida]" },
+        ru: { three: ["Прошлое", "Настоящее", "Будущее"], five: ["Прошлое", "Недавнее прошлое", "Настоящее", "Ближайшее будущее", "Исход"], reversed: "[Перевёрнутая]" },
+      };
+
+      const sectionLabels: Record<string, { summary: string; reading: string; advice: string }> = {
+        tr: { summary: "ÖZET", reading: "YORUM", advice: "TAVSİYE" },
+        en: { summary: "SUMMARY", reading: "READING", advice: "ADVICE" },
+        de: { summary: "ZUSAMMENFASSUNG", reading: "DEUTUNG", advice: "RATSCHLAG" },
+        zh: { summary: "总结", reading: "解读", advice: "建议" },
+        ko: { summary: "요약", reading: "해석", advice: "조언" },
+        es: { summary: "RESUMEN", reading: "LECTURA", advice: "CONSEJO" },
+        ru: { summary: "КРАТКОЕ СОДЕРЖАНИЕ", reading: "ТОЛКОВАНИЕ", advice: "СОВЕТ" },
+      };
+
+      const langInstructions: Record<string, string> = {
+        tr: "Türkçe yanıt ver.",
+        en: "Respond in English.",
+        de: "Antworte auf Deutsch.",
+        zh: "用中文回答。",
+        ko: "한국어로 답하세요.",
+        es: "Responde en español.",
+        ru: "Отвечай на русском.",
+      };
+
+      const pos = posLabels[language] ?? posLabels["tr"];
+      const sec = sectionLabels[language] ?? sectionLabels["tr"];
+      const langInst = langInstructions[language] ?? langInstructions["tr"];
+
       const cardList = cards.map((c: any, i: number) => {
-        const pos = spreadType === "single" ? "" :
-          spreadType === "three" ? ["Geçmiş", "Şu An", "Gelecek"][i] :
-          ["Geçmiş", "Yakın Geçmiş", "Şu An", "Yakın Gelecek", "Sonuç"][i];
-        return `${pos ? pos + ": " : ""}${c.name} (${c.arcana}, ${c.energy}, ${c.category})${c.reversed ? " [Ters]" : ""}`;
+        const posLabel = spreadType === "single" ? "" :
+          spreadType === "three" ? pos.three[i] :
+          pos.five[i];
+        return `${posLabel ? posLabel + ": " : ""}${c.name} (${c.arcana}, ${c.energy}, ${c.category})${c.reversed ? ` ${pos.reversed}` : ""}`;
       }).join("\n");
 
-      const langInst = language === "en"
-        ? "Respond in English."
-        : "Türkçe yanıt ver.";
-
-      const prompt = `Sen mistik bir tarot falcısısın. Büyüleyici, gizemli ve ilham verici bir dille yorum yap.
+      const prompt = `You are a mystical tarot reader. Interpret with enchanting, mysterious and inspiring language.
 ${langInst}
 
-Aşağıdaki tarot kartlarını yorumla:
+Interpret the following tarot cards:
 ${cardList}
 
-Şu formatta yanıt ver:
-OZET: (1-2 cümle mistik özet)
-YORUM: (her kartın detaylı yorumu, paragraf halinde)
-TAVSIYE: (kullanıcıya somut tavsiye)`;
+Respond in this exact format:
+${sec.summary}: (1-2 sentence mystical summary)
+${sec.reading}: (detailed interpretation of each card in paragraphs)
+${sec.advice}: (concrete advice for the user)`;
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache, no-transform");

@@ -39,7 +39,7 @@ import { useCharacterSettings } from "@/hooks/useCharacterSettings";
 import { scheduleContextFollowup } from "@/hooks/useAutoMessages";
 import { useStreak } from "@/hooks/useStreak";
 import { useDailyQuota } from "@/hooks/useDailyQuota";
-import { getCharacter, type Character } from "@/constants/characters";
+import { getCharacter, getCharacterDisplayName, type Character } from "@/constants/characters";
 import { useCustomChars } from "@/contexts/CustomCharContext";
 import { getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -108,8 +108,8 @@ function CharacterAvatar({ character, size = 38 }: { character: Character; size?
 
 function WelcomeMessage({ character, customName }: { character: Character; customName?: string }) {
   const { colors } = useTheme();
-  const { t } = useI18n();
-  const displayName = customName || character.name;
+  const { t, lang } = useI18n();
+  const displayName = customName || getCharacterDisplayName(character, lang);
   return (
     <Animated.View entering={FadeInUp.springify().damping(18)} style={styles.welcomeContainer}>
       <View style={styles.welcomeAvatarWrapper}>
@@ -421,7 +421,7 @@ export default function ChatScreen() {
   const { settings, isLoaded: settingsLoaded, updateSettings, addMemory, removeMemory } = useCharacterSettings(characterId ?? "");
   const { user, isVipActive } = useAuth();
   const { isDark, colors } = useTheme();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const streak = useStreak(characterId ?? "");
   const quota = useDailyQuota(isVipActive);
 
@@ -856,14 +856,14 @@ export default function ChatScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
   const reversedMessages = [...messages].reverse() as BubbleMessage[];
-  const displayName = settings.customName || character?.name || "";
+  const displayName = settings.customName || (character ? getCharacterDisplayName(character, lang) : "") || "";
 
   if (!character) {
     return (
       <BackgroundGradient>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <Text style={{ color: "#6B6B6E", fontFamily: "Inter_400Regular" }}>
-            Karakter bulunamadı
+            {t("explore.noChars")}
           </Text>
         </View>
       </BackgroundGradient>
@@ -1105,18 +1105,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 5,
     backgroundColor: "rgba(139,92,246,0.18)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "rgba(139,92,246,0.35)",
   },
   coffeePillEmoji: {
-    fontSize: 15,
-    lineHeight: 18,
+    fontSize: 16,
+    lineHeight: 20,
   },
   coffeePillText: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     color: "#C4B5FD",
     letterSpacing: 0.1,

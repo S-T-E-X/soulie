@@ -25,7 +25,7 @@ import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-import { getCharacter } from "@/constants/characters";
+import { getCharacter, getCharacterDisplayName } from "@/constants/characters";
 import { useCustomChars } from "@/contexts/CustomCharContext";
 import { useCharacterSettings } from "@/hooks/useCharacterSettings";
 import { useChatContext } from "@/contexts/ChatContext";
@@ -86,7 +86,7 @@ export default function CharacterProfileScreen() {
           <Feather name="chevron-down" size={20} color="#fff" />
         </Pressable>
         <Feather name="user-x" size={48} color={colors.text.tertiary} />
-        <Text style={{ color: colors.text.secondary, fontFamily: "Inter_500Medium", fontSize: 16, marginTop: 16 }}>Karakter bulunamadı</Text>
+        <Text style={{ color: colors.text.secondary, fontFamily: "Inter_500Medium", fontSize: 16, marginTop: 16 }}>{t("explore.noChars")}</Text>
       </View>
     );
   }
@@ -118,7 +118,7 @@ export default function CharacterProfileScreen() {
           <Pressable onPress={() => router.back()} style={styles.stickyBack} hitSlop={8}>
             <Feather name="chevron-left" size={22} color={colors.text.primary} />
           </Pressable>
-          <Text style={[styles.stickyTitle, { color: colors.text.primary }]}>{character.name}</Text>
+          <Text style={[styles.stickyTitle, { color: colors.text.primary }]}>{getCharacterDisplayName(character, lang)}</Text>
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -193,7 +193,7 @@ export default function CharacterProfileScreen() {
             ) : null}
 
             <Animated.View entering={FadeInDown.delay(150)} style={styles.nameRow}>
-              <Text style={styles.nameText}>{character.name}</Text>
+              <Text style={styles.nameText}>{getCharacterDisplayName(character, lang)}</Text>
               <Text style={styles.ageText}>{character.age}</Text>
             </Animated.View>
 
@@ -280,7 +280,7 @@ export default function CharacterProfileScreen() {
       <CharacterCustomizeSheet
         visible={showCustomize}
         onClose={() => setShowCustomize(false)}
-        characterName={character.name}
+        characterName={getCharacterDisplayName(character, lang)}
         settings={settings}
         isVip={isVipActive}
         onSave={(partial) => updateSettings(partial)}

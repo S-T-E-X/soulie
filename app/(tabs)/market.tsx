@@ -8,6 +8,7 @@ import {
   Platform,
   StatusBar,
   Alert,
+  Linking,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -85,7 +86,7 @@ export default function MarketScreen() {
     try {
       await purchaseById({ packageId: meta.key, offeringId: REVENUECAT_VIP_OFFERING });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setSuccessMsg("VIP aktif edildi!");
+      setSuccessMsg(t("market.purchaseSuccess"));
     } catch (e: any) {
       if (e?.userCancelled === true || e?.code === 1 || e?.code === "1" || e?.message === "USER_CANCELLED") {
         setPurchasing(false);
@@ -93,7 +94,7 @@ export default function MarketScreen() {
       }
       const errorMsg = `Code: ${e?.code}\nMessage: ${e?.message}\nUnderlyingError: ${e?.underlyingErrorMessage || "N/A"}`;
       console.warn("[Market] VIP purchase error:", errorMsg);
-      Alert.alert("VIP Satın Alma Hatası", errorMsg);
+      Alert.alert(t("market.purchaseError"), errorMsg);
     } finally {
       setPurchasing(false);
     }
@@ -107,7 +108,7 @@ export default function MarketScreen() {
       await purchaseById({ packageId, offeringId: REVENUECAT_COINS_OFFERING });
       await addCoins(total);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setSuccessMsg(`${total} coin eklendi!`);
+      setSuccessMsg(t("market.coinSuccess").replace("{count}", String(total)));
     } catch (e: any) {
       if (e?.userCancelled === true || e?.code === 1 || e?.code === "1" || e?.message === "USER_CANCELLED") {
         setPurchasing(false);
@@ -115,7 +116,7 @@ export default function MarketScreen() {
       }
       const errorMsg = `Code: ${e?.code}\nMessage: ${e?.message}\nUnderlyingError: ${e?.underlyingErrorMessage || "N/A"}`;
       console.warn("[Market] Coin purchase error:", errorMsg);
-      Alert.alert("Coin Satın Alma Hatası", errorMsg);
+      Alert.alert(t("market.purchaseError"), errorMsg);
     } finally {
       setPurchasing(false);
     }
@@ -135,10 +136,10 @@ export default function MarketScreen() {
   const handleRestore = async () => {
     try {
       await restore();
-      setSuccessMsg("Satın almalar geri yüklendi!");
+      setSuccessMsg(t("market.restoreSuccess"));
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch {
-      setSuccessMsg("Geri yükleme başarısız.");
+      setSuccessMsg(t("market.restoreFail"));
       setTimeout(() => setSuccessMsg(""), 3000);
     }
   };
@@ -214,7 +215,7 @@ export default function MarketScreen() {
               {(isVip || isVipActive) && (
                 <View style={styles.activeVipBadge}>
                   <Feather name="check-circle" size={14} color="#22c55e" />
-                  <Text style={styles.activeVipText}>VIP Aktif</Text>
+                  <Text style={styles.activeVipText}>{t("market.vipActive")}</Text>
                 </View>
               )}
             </Animated.View>
@@ -263,7 +264,7 @@ export default function MarketScreen() {
                     </View>
                     <View style={[styles.selectButton, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
                       <Text style={[styles.selectButtonText, { color: meta.textColor }]}>
-                        {isVip || isVipActive ? "Aktif" : meta.isPopular ? t("market.start") : t("market.select")}
+                        {isVip || isVipActive ? t("market.activeBtn") : meta.isPopular ? t("market.start") : t("market.select")}
                       </Text>
                     </View>
                   </LinearGradient>
@@ -276,6 +277,16 @@ export default function MarketScreen() {
             </Pressable>
 
             <Text style={styles.legalText}>{t("market.cancelAnytime")}</Text>
+            <Text style={styles.legalText}>{t("market.legalNote")}</Text>
+            <View style={styles.legalLinks}>
+              <Pressable onPress={() => Linking.openURL("https://soulie.app/terms")}>
+                <Text style={styles.legalLink}>{t("market.termsOfUse")}</Text>
+              </Pressable>
+              <Text style={styles.legalSep}>·</Text>
+              <Pressable onPress={() => Linking.openURL("https://soulie.app/privacy")}>
+                <Text style={styles.legalLink}>{t("market.privacyPolicy")}</Text>
+              </Pressable>
+            </View>
           </>
         )}
 
@@ -623,6 +634,23 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 4,
     lineHeight: 16,
+  },
+  legalLinks: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 6,
+    gap: 6,
+  },
+  legalLink: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.tertiary,
+    textDecorationLine: "underline",
+  },
+  legalSep: {
+    fontSize: 11,
+    color: Colors.text.tertiary,
   },
   coinCard: {
     borderRadius: 20,

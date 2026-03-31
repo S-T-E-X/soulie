@@ -20,6 +20,7 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Soulie uses your photo library to let you personalize your profile and share images with your AI companion. For example, you can upload a photo to show your AI friend a memory you've had.",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [

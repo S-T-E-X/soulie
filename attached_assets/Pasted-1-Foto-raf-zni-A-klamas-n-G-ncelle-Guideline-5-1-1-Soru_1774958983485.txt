@@ -1,0 +1,24 @@
+1. Fotoğraf İzni Açıklamasını Güncelle (Guideline 5.1.1)
+Sorun: Uygulama fotoğraf istediğinde çıkan yazı (Purpose String) çok kısa veya belirsiz. Apple "Neden istediğini bir örnekle açıkla" diyor.
+Yapılacak: app.json (Expo kullanıyorsan) veya Info.plist dosyasındaki NSPhotoLibraryUsageDescription kısmını şu şekilde güncelle:
+> Yeni Metin: "Soulie uses your photo library to let you personalize your profile and share images with your AI companion. For example, you can upload a photo to show your AI friend a memory you've had."
+> 
+2. Ödeme Ekranına (Paywall) Linkleri Ekle (Guideline 3.1.2)
+Sorun: Abonelik sattığın ekranda yasal linkler eksik. Apple bunları görmeden onay vermez.
+Yapılacak: VIP/Satın alım ekranına (genellikle "Satın Al" butonunun hemen altına küçük yazılarla) şu 4 şeyi ekle:
+ * Subscription Title: Paket adı (Örn: Soulie VIP Weekly).
+ * Price & Duration: Fiyat ve süre (Örn: $4.99 per week).
+ * Terms of Use (EULA) Linki: Tıklanabilir olmalı. Apple'ın standart linkini kullanabilirsin: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+ * Privacy Policy Linki: https://docs.google.com/document/d/1JgpG76-wx-KwNk4O-sEJRoepH7zTG3R8SvhhsGfbvjA/edit?usp=drivesdk
+
+
+Kahve falını bulamamıs apple yetkisi falcı ablanın adını i18n olarak ayarla türkçe dışındaki dillerde Falcının çevirisi ne ise öyle gözüksün dillere göre
+ve tarot falı buttonun yanında küçük bir kahve falı buttonu oluştur button ve yazılar i18n olsun tıklandıgında falcı abla sohbetine yönlendirme yapılsın falcı abla sohbetindede sağ üstteki fal bakma buttonu daha büyük yap
+
+uygulamada dil hataları var sohbet ekranındaki herşeyi i18n yap karakterin ayarlarını yaptıgımız sayfayıda i18n yap
+
+custom karakter oluşturma sayfasında karakterin cinsiyetini belirleyebilelim i18n olsun
+
+Eğer hesabımdaki dil ingilizce ise ve Vip paketlerinin sayfasına girersem VIP Aktif yazısı i18n değil ve paketlerde bulunan indirim yazıları i18n değil
+
+tarot falı baktırınca çıkan metinde özet yorum ve tavsiye kısımları i18n değil

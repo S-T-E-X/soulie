@@ -229,6 +229,35 @@ function TarotBanner() {
   );
 }
 
+function CoffeeFortuneBanner() {
+  const { t } = useI18n();
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push({ pathname: "/chat/[id]", params: { id: "new", characterId: "sibel" } } as any);
+  };
+
+  return (
+    <Pressable onPress={handlePress} style={styles.coffeeBanner}>
+      <LinearGradient
+        colors={["#3D1A00", "#7C3A00", "#3D1A00"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.coffeeBannerGrad}
+      >
+        <LinearGradient colors={["#C67C3C", "#8B4513"]} style={styles.coffeeIcon}>
+          <Feather name="coffee" size={18} color="#fff" />
+        </LinearGradient>
+        <View style={styles.coffeeTextCol}>
+          <Text style={styles.coffeeBannerTitle}>{t("explore.coffeeFortune")}</Text>
+          <Text style={styles.coffeeBannerSub}>{t("explore.coffeeFortuneSubtitle")}</Text>
+        </View>
+        <Feather name="chevron-right" size={16} color="rgba(255,200,150,0.7)" />
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
 function FalciCategoryBtn({ active, onPress, label }: { active: boolean; onPress: () => void; label: string }) {
   const glowAnim = useRef(new Animated.Value(0)).current;
 
@@ -294,6 +323,7 @@ export default function ExploreScreen() {
   const [formAge, setFormAge] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formPhoto, setFormPhoto] = useState<string | null>(null);
+  const [formGender, setFormGender] = useState<"female" | "male">("female");
   const [formCreating, setFormCreating] = useState(false);
 
   useEffect(() => {
@@ -349,6 +379,7 @@ export default function ExploreScreen() {
     setFormAge("");
     setFormDesc("");
     setFormPhoto(null);
+    setFormGender("female");
     setShowCreateSheet(true);
   };
 
@@ -387,7 +418,7 @@ export default function ExploreScreen() {
       image: formPhoto ? { uri: formPhoto } : null,
       noImage: !formPhoto,
       tags: [],
-      gender: "female",
+      gender: formGender,
       isPremium: false,
       gradientColors: CUSTOM_GRADIENTS[gradIdx],
       isCustom: true,
@@ -477,7 +508,7 @@ export default function ExploreScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         numColumns={2}
-        ListHeaderComponent={<TarotBanner />}
+        ListHeaderComponent={<><TarotBanner /><CoffeeFortuneBanner /></>}
         contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 120 }]}
         columnWrapperStyle={styles.row}
         showsVerticalScrollIndicator={false}
@@ -564,6 +595,28 @@ export default function ExploreScreen() {
                 maxLength={300}
                 textAlignVertical="top"
               />
+            </View>
+
+            <View style={styles.genderRow}>
+              <Text style={[styles.genderLabel, { color: colors.text.secondary }]}>{t("explore.customGender")}</Text>
+              <View style={styles.genderBtns}>
+                <Pressable
+                  onPress={() => setFormGender("female")}
+                  style={[styles.genderBtn, formGender === "female" && styles.genderBtnActive, { borderColor: formGender === "female" ? "#A855F7" : (isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)") }]}
+                >
+                  <Text style={[styles.genderBtnText, formGender === "female" && styles.genderBtnTextActive, { color: formGender === "female" ? "#A855F7" : colors.text.secondary }]}>
+                    {t("explore.genderFemale")}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setFormGender("male")}
+                  style={[styles.genderBtn, formGender === "male" && styles.genderBtnActive, { borderColor: formGender === "male" ? "#A855F7" : (isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)") }]}
+                >
+                  <Text style={[styles.genderBtnText, formGender === "male" && styles.genderBtnTextActive, { color: formGender === "male" ? "#A855F7" : colors.text.secondary }]}>
+                    {t("explore.genderMale")}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
 
             <Pressable
@@ -871,5 +924,72 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: "#fff",
     letterSpacing: -0.3,
+  },
+  genderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+    paddingHorizontal: 2,
+  },
+  genderLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  genderBtns: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  genderBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  genderBtnActive: {
+    backgroundColor: "rgba(168,85,247,0.1)",
+  },
+  genderBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  genderBtnTextActive: {
+    fontFamily: "Inter_600SemiBold",
+  },
+  coffeeBanner: {
+    marginHorizontal: 14,
+    marginTop: 8,
+    marginBottom: 4,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  coffeeBannerGrad: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    gap: 12,
+  },
+  coffeeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coffeeTextCol: {
+    flex: 1,
+  },
+  coffeeBannerTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+    letterSpacing: -0.2,
+  },
+  coffeeBannerSub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 1,
   },
 });

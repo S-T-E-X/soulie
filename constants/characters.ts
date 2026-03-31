@@ -3,6 +3,7 @@ export type LangCode = "tr" | "en" | "de" | "zh" | "ko" | "es" | "ru";
 export type Character = {
   id: string;
   name: string;
+  names?: Partial<Record<LangCode, string>>;
   role: string;
   shortRole: string;
   shortRoleKey: string;
@@ -21,6 +22,10 @@ export type Character = {
   ownerId?: string;
   createdAt?: number;
 };
+
+export function getCharacterDisplayName(character: Character, lang: string): string {
+  return (character.names as any)?.[lang] ?? character.name;
+}
 
 export const CHARACTERS: Character[] = [
   {
@@ -166,6 +171,15 @@ export const CHARACTERS: Character[] = [
   {
     id: "sibel",
     name: "Falcı Abla",
+    names: {
+      tr: "Falcı Abla",
+      en: "The Fortune Teller",
+      de: "Die Wahrsagerin",
+      zh: "占卜师",
+      ko: "점쟁이",
+      es: "La Adivina",
+      ru: "Гадалка",
+    },
     role: "Falcı",
     shortRole: "Mistik Falcı",
     shortRoleKey: "char.role.fortune",
