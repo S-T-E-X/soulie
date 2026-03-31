@@ -258,9 +258,63 @@ export async function deleteChat(conversationId: string, userId: string) {
 
 export async function upsertUserXp(userId: string, totalXp: number, level: number) {
   await query(
-    `UPDATE soulie_users SET total_xp = $1, level = $2 WHERE id = $3`,
+    `UPDATE soulie_users SET total_xp = GREATEST(COALESCE(total_xp, 0), $1), level = GREATEST(COALESCE(level, 1), $2) WHERE id = $3`,
     [totalXp, level, userId]
   );
+}
+
+export async function getUserXp(userId: string): Promise<{ total_xp: number; level: number } | null> {
+  const res = await query(
+    `SELECT total_xp, level FROM soulie_users WHERE id = $1`,
+    [userId]
+  );
+  if (res.rows.length === 0) return null;
+  return { total_xp: res.rows[0].total_xp ?? 0, level: res.rows[0].level ?? 1 };
+}
+
+export async function getAnalyticsData() {
+  const daily = await query(`
+    SELECT DATE(created_at) as date, COUNT(*) as count
+    FROM soulie_users
+    WHERE created_at >= NOW() - INTERVAL '30 days'
+    GROUP BY DATE(created_at)
+    ORDER BY date ASC
+  `);
+
+  const weekly = await query(`
+    SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as count
+    FROM soulie_users
+    WHERE created_at >= NOW() - INTERVAL '12 weeks'
+    GROUP BY DATE_TRUNC('week', created_at)
+    ORDER BY week ASC
+  `);
+
+  const monthly = await query(`
+    SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as count
+    FROM soulie_users
+    WHERE created_at >= NOW() - INTERVAL '12 months'
+    GROUP BY DATE_TRUNC('month', created_at)
+    ORDER BY month ASC
+  `);
+
+  const total = await query(`SELECT COUNT(*) as count FROM soulie_users`);
+  const vip = await query(`SELECT COUNT(*) as count FROM soulie_users WHERE is_vip = true`);
+  const today = await query(`SELECT COUNT(*) as count FROM soulie_users WHERE DATE(created_at) = CURRENT_DATE`);
+  const thisWeek = await query(`SELECT COUNT(*) as count FROM soulie_users WHERE created_at >= DATE_TRUNC('week', NOW())`);
+  const thisMonth = await query(`SELECT COUNT(*) as count FROM soulie_users WHERE created_at >= DATE_TRUNC('month', NOW())`);
+
+  return {
+    daily: daily.rows,
+    weekly: weekly.rows,
+    monthly: monthly.rows,
+    totals: {
+      total: parseInt(total.rows[0]?.count ?? 0),
+      vip: parseInt(vip.rows[0]?.count ?? 0),
+      today: parseInt(today.rows[0]?.count ?? 0),
+      thisWeek: parseInt(thisWeek.rows[0]?.count ?? 0),
+      thisMonth: parseInt(thisMonth.rows[0]?.count ?? 0),
+    }
+  };
 }
 
 export async function expireVipUsers(): Promise<number> {

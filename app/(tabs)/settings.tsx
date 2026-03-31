@@ -181,6 +181,16 @@ export default function SettingsScreen() {
   const { restore } = useSubscription();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [serverXp, setServerXp] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const url = new URL(`/api/users/xp/${user.id}`, getApiUrl());
+    fetch(url.toString())
+      .then(r => r.json())
+      .then(d => { if (d.total_xp) setServerXp(d.total_xp); })
+      .catch(() => {});
+  }, [user?.id]);
 
   const handleRestorePurchases = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -216,7 +226,8 @@ export default function SettingsScreen() {
   };
 
   const totalMessages = conversations.reduce((acc, c) => acc + c.messages.length, 0);
-  const xp = totalMessages * 10 + conversations.length * 5;
+  const localXp = totalMessages * 10 + conversations.length * 5;
+  const xp = Math.max(localXp, serverXp);
 
   useEffect(() => {
     if (!user?.id) return;

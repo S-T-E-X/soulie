@@ -45,6 +45,13 @@ type TopSection = "app" | "user";
 type AppTab = "genel" | "ai" | "engagement";
 type UserTab = "profil" | "analitik" | "ekonomi" | "hafiza";
 
+type AnalyticsData = {
+  daily: { date: string; count: string }[];
+  weekly: { week: string; count: string }[];
+  monthly: { month: string; count: string }[];
+  totals: { total: number; vip: number; today: number; thisWeek: number; thisMonth: number };
+};
+
 type DbUser = {
   id: string;
   user_id: string;
@@ -88,7 +95,7 @@ type FeedbackEntry = {
   timestamp: number;
 };
 
-const CAT_LABELS: Record<string, string> = { bug: "Hata", suggestion: "Öneri", praise: "Beğeni", other: "Diğer" };
+const CAT_LABELS: Record<string, string> = { bug: "Bug", suggestion: "Suggestion", praise: "Praise", other: "Other" };
 const CAT_COLORS: Record<string, string> = { bug: "#FF3B30", suggestion: "#007AFF", praise: "#34C759", other: "#8E8E93" };
 
 function fmtDate(ts: number) {
@@ -140,6 +147,70 @@ function Divider() {
   return <View style={styles.divider} />;
 }
 
+type BarPeriod = "daily" | "weekly" | "monthly";
+
+function RegistrationChart({ data }: { data: AnalyticsData | null }) {
+  const [period, setPeriod] = React.useState<BarPeriod>("daily");
+
+  const rows = React.useMemo(() => {
+    if (!data) return [];
+    const raw = period === "daily" ? data.daily : period === "weekly" ? data.weekly : data.monthly;
+    return raw.map(r => ({
+      label: period === "daily"
+        ? new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        : period === "weekly"
+        ? new Date((r as any).week).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        : new Date((r as any).month).toLocaleDateString("en-US", { month: "short" }),
+      count: parseInt(r.count as any) || 0,
+    })).slice(-12);
+  }, [data, period]);
+
+  const maxVal = Math.max(...rows.map(r => r.count), 1);
+
+  return (
+    <Card>
+      <View style={{ flexDirection: "row", gap: 6, marginBottom: 14 }}>
+        {(["daily", "weekly", "monthly"] as BarPeriod[]).map(p => (
+          <Pressable
+            key={p}
+            onPress={() => setPeriod(p)}
+            style={[
+              { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.06)" },
+              period === p && { backgroundColor: ACCENT + "30" }
+            ]}
+          >
+            <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: period === p ? ACCENT : TEXT_SEC }}>
+              {p === "daily" ? "Daily" : p === "weekly" ? "Weekly" : "Monthly"}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      {rows.length === 0 ? (
+        <View style={{ alignItems: "center", padding: 20 }}>
+          <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: TEXT_TER }}>No data available</Text>
+        </View>
+      ) : (
+        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 4, height: 80 }}>
+          {rows.map((r, i) => (
+            <View key={i} style={{ flex: 1, alignItems: "center", gap: 4 }}>
+              <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: TEXT_TER }}>{r.count > 0 ? r.count : ""}</Text>
+              <View style={{ width: "100%", height: 56, justifyContent: "flex-end" }}>
+                <View style={{
+                  width: "100%",
+                  height: Math.max(3, Math.round((r.count / maxVal) * 52)),
+                  backgroundColor: r.count > 0 ? ACCENT : "rgba(255,255,255,0.08)",
+                  borderRadius: 3,
+                }} />
+              </View>
+              <Text numberOfLines={1} style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: TEXT_TER }}>{r.label}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </Card>
+  );
+}
+
 export default function AdminScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -171,6 +242,7 @@ export default function AdminScreen() {
   const [secretTaps, setSecretTaps] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [userSearch, setUserSearch] = useState("");
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
 
   const selectedDbUser = usersList.find(u => u.id === selectedUserId);
   const selectedUser = selectedDbUser ?? (user ? {
@@ -207,6 +279,15 @@ export default function AdminScreen() {
           const data = await res.json();
           const dbUsers: DbUser[] = data.users ?? [];
           setUsersList(dbUsers);
+        }
+      } catch {}
+
+      try {
+        const url = new URL("/api/admin/analytics", getApiUrl());
+        const res = await fetch(url.toString());
+        if (res.ok) {
+          const data = await res.json();
+          setAnalyticsData(data);
         }
       } catch {}
     } catch {}
@@ -249,17 +330,17 @@ export default function AdminScreen() {
       setTimeout(() => setPromptSaved(false), 2000);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert("Hata", "Kaydedilemedi.");
+      Alert.alert("Error", "Could not save.");
     } finally {
       setPromptLoading(false);
     }
   };
 
   const resetGlobalPrompt = () => {
-    Alert.alert("Sıfırla", "Global sistem promptunu sıfırlamak istiyor musun?", [
-      { text: "İptal", style: "cancel" },
+    Alert.alert("Reset", "Reset the global system prompt?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: "Sıfırla", style: "destructive", onPress: async () => {
+        text: "Reset", style: "destructive", onPress: async () => {
           try {
             const url = new URL("/api/admin/reset-system-prompt", getApiUrl());
             await fetch(url.toString(), { method: "POST" });
@@ -291,17 +372,17 @@ export default function AdminScreen() {
 
   const addCoinsAdmin = async () => {
     const amount = parseInt(coinInput, 10);
-    if (isNaN(amount) || amount <= 0) { Alert.alert("Geçersiz miktar"); return; }
+    if (isNaN(amount) || amount <= 0) { Alert.alert("Invalid amount"); return; }
     await addCoinsCtx(amount);
     setCoinInput("");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const resetQuota = () => {
-    Alert.alert("Kotayı Sıfırla", "Bugünkü mesaj kotasını sıfırlamak istediğine emin misin?", [
-      { text: "İptal", style: "cancel" },
+    Alert.alert("Reset Quota", "Reset today's message quota?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: "Sıfırla", onPress: async () => {
+        text: "Reset", onPress: async () => {
           const today = new Date().toISOString().split("T")[0];
           await AsyncStorage.setItem(QUOTA_KEY, JSON.stringify({ date: today, count: 0, bonusMessages: 0 }));
           setQuota({ count: 0, bonusMessages: 0 });
@@ -313,10 +394,10 @@ export default function AdminScreen() {
 
   const clearMemory = (charId: string) => {
     const charName = CHARACTERS.find(c => c.id === charId)?.name ?? charId;
-    Alert.alert("Hafızayı Sil", `${charName} için AI hafızasını silmek istediğine emin misin?`, [
-      { text: "İptal", style: "cancel" },
+    Alert.alert("Clear Memory", `Delete AI memories for ${charName}?`, [
+      { text: "Cancel", style: "cancel" },
       {
-        text: "Sil", style: "destructive", onPress: async () => {
+        text: "Delete", style: "destructive", onPress: async () => {
           const updatedSettings = { ...charSettings };
           if (updatedSettings[charId]) updatedSettings[charId] = { ...updatedSettings[charId], memories: [] };
           await AsyncStorage.setItem(CHAR_SETTINGS_KEY, JSON.stringify(updatedSettings));
@@ -328,24 +409,24 @@ export default function AdminScreen() {
   };
 
   const sendNotif = async () => {
-    if (!notifTitle.trim() || !notifBody.trim()) { Alert.alert("Başlık ve mesaj gerekli"); return; }
+    if (!notifTitle.trim() || !notifBody.trim()) { Alert.alert("Title and message required"); return; }
     try {
       const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== "granted") { Alert.alert("İzin Gerekli", "Bildirim göndermek için izin verilmedi."); return; }
+      if (status !== "granted") { Alert.alert("Permission Required", "Notification permission denied."); return; }
       await Notifications.scheduleNotificationAsync({
         content: { title: notifTitle, body: notifBody, sound: true },
         trigger: null,
       });
       setNotifTitle(""); setNotifBody("");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Gönderildi", "Bildirim başarıyla gönderildi.");
-    } catch { Alert.alert("Hata", "Bildirim gönderilemedi."); }
+      Alert.alert("Sent", "Notification delivered successfully.");
+    } catch { Alert.alert("Error", "Could not send notification."); }
   };
 
   const clearFeedback = () => {
-    Alert.alert("Sil", "Tüm geri bildirimleri silmek istiyor musun?", [
-      { text: "İptal", style: "cancel" },
-      { text: "Sil", style: "destructive", onPress: async () => { await AsyncStorage.removeItem(FEEDBACK_KEY); setFeedbackList([]); } }
+    Alert.alert("Delete", "Delete all feedback entries?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: async () => { await AsyncStorage.removeItem(FEEDBACK_KEY); setFeedbackList([]); } }
     ]);
   };
 
@@ -353,9 +434,9 @@ export default function AdminScreen() {
     return (
       <View style={[styles.root, { justifyContent: "center", alignItems: "center" }]}>
         <Feather name="lock" size={40} color={TEXT_TER} />
-        <Text style={[styles.sectionTitleText, { marginTop: 12, color: TEXT_SEC, textTransform: "none", fontSize: 16 }]}>Erişim Reddedildi</Text>
+        <Text style={[styles.sectionTitleText, { marginTop: 12, color: TEXT_SEC, textTransform: "none", fontSize: 16 }]}>Access Denied</Text>
         <Pressable onPress={() => router.back()} style={styles.backCenterBtn}>
-          <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: ACCENT }}>Geri Dön</Text>
+          <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: ACCENT }}>Go Back</Text>
         </Pressable>
       </View>
     );
@@ -369,16 +450,16 @@ export default function AdminScreen() {
   const xp = userMsgCount * 10 + conversations.length * 5;
 
   const APP_TABS: { id: AppTab; label: string; icon: string }[] = [
-    { id: "genel", label: "Genel", icon: "bar-chart-2" },
-    { id: "ai", label: "AI & Sistem", icon: "cpu" },
-    { id: "engagement", label: "Bildirim & Görev", icon: "bell" },
+    { id: "genel", label: "General", icon: "bar-chart-2" },
+    { id: "ai", label: "AI & System", icon: "cpu" },
+    { id: "engagement", label: "Notifications", icon: "bell" },
   ];
 
   const USER_TABS: { id: UserTab; label: string; icon: string }[] = [
-    { id: "profil", label: "Profil", icon: "user" },
-    { id: "analitik", label: "Analitik", icon: "activity" },
-    { id: "ekonomi", label: "Ekonomi", icon: "dollar-sign" },
-    { id: "hafiza", label: "Hafıza", icon: "database" },
+    { id: "profil", label: "Profile", icon: "user" },
+    { id: "analitik", label: "Analytics", icon: "activity" },
+    { id: "ekonomi", label: "Economy", icon: "dollar-sign" },
+    { id: "hafiza", label: "Memory", icon: "database" },
   ];
 
   const currentTabs = section === "app" ? APP_TABS : USER_TABS;
@@ -391,7 +472,7 @@ export default function AdminScreen() {
           <Feather name="chevron-left" size={24} color={TEXT_PRI} />
         </Pressable>
         <Pressable onPress={() => { setSecretTaps(t => { const n = t + 1; if (n >= 5) { Alert.alert("Debug", `ID: ${user?.id}\nAdmin: ${user?.isAdmin}\nVIP: ${user?.isVip}`); return 0; } return n; }); }}>
-          <Text style={styles.headerTitle}>Admin Paneli</Text>
+          <Text style={styles.headerTitle}>Admin Panel</Text>
         </Pressable>
         <View style={styles.adminBadge}>
           <Feather name="shield" size={11} color="#FF9500" />
@@ -406,14 +487,14 @@ export default function AdminScreen() {
           style={[styles.sectionToggleBtn, section === "app" && styles.sectionToggleBtnActive]}
         >
           <Feather name="globe" size={14} color={section === "app" ? "#fff" : TEXT_SEC} />
-          <Text style={[styles.sectionToggleBtnText, section === "app" && { color: "#fff" }]}>Uygulama</Text>
+          <Text style={[styles.sectionToggleBtnText, section === "app" && { color: "#fff" }]}>App</Text>
         </Pressable>
         <Pressable
           onPress={() => { setSection("user"); setSelectedUserId(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
           style={[styles.sectionToggleBtn, section === "user" && styles.sectionToggleBtnActive]}
         >
           <Feather name="user" size={14} color={section === "user" ? "#fff" : TEXT_SEC} />
-          <Text style={[styles.sectionToggleBtnText, section === "user" && { color: "#fff" }]}>Kullanıcı</Text>
+          <Text style={[styles.sectionToggleBtnText, section === "user" && { color: "#fff" }]}>Users</Text>
         </Pressable>
       </View>
 
@@ -445,7 +526,7 @@ export default function AdminScreen() {
           style={styles.userBackBtn}
         >
           <Feather name="chevron-left" size={14} color={ACCENT} />
-          <Text style={styles.userBackBtnText}>Kullanıcı Listesi</Text>
+          <Text style={styles.userBackBtnText}>User List</Text>
         </Pressable>
       )}
 
@@ -464,15 +545,15 @@ export default function AdminScreen() {
 
           {section === "app" && appTab === "genel" && (
             <>
-              <SectionTitle title="Uygulama İstatistikleri" icon="activity" />
+              <SectionTitle title="App Statistics" icon="activity" />
               <StatGrid items={[
-                { label: "Toplam Mesaj", value: String(totalMessages), color: "#007AFF", icon: "message-circle" },
-                { label: "Aktif Sohbet", value: String(conversations.length), color: "#34C759", icon: "users" },
-                { label: "Geri Bildirim", value: String(feedbackList.length), color: "#FF9500", icon: "message-square" },
-                { label: "Karakter Sayısı", value: String(CHARACTERS.length), color: "#AF52DE", icon: "user-check" },
+                { label: "Total Messages", value: String(totalMessages), color: "#007AFF", icon: "message-circle" },
+                { label: "Active Chats", value: String(conversations.length), color: "#34C759", icon: "users" },
+                { label: "Feedback", value: String(feedbackList.length), color: "#FF9500", icon: "message-square" },
+                { label: "Characters", value: String(CHARACTERS.length), color: "#AF52DE", icon: "user-check" },
               ]} />
 
-              <SectionTitle title="Karakter Kullanım Analizi" icon="users" color="#34C759" />
+              <SectionTitle title="Character Usage" icon="users" color="#34C759" />
               <Card>
                 {CHARACTERS.map(char => {
                   const count = charUsage[char.id] ?? 0;
@@ -491,26 +572,45 @@ export default function AdminScreen() {
                   );
                 })}
                 <View style={[styles.infoRow, { borderBottomWidth: 0, marginTop: 4 }]}>
-                  <Text style={[styles.infoLabel, { fontSize: 11 }]}>m = mesaj · s = sohbet</Text>
-                  <Text style={styles.infoValue}>{topChar ? `En popüler: ${CHARACTERS.find(c => c.id === topChar[0])?.name}` : "—"}</Text>
+                  <Text style={[styles.infoLabel, { fontSize: 11 }]}>m = messages · c = chats</Text>
+                  <Text style={styles.infoValue}>{topChar ? `Most popular: ${CHARACTERS.find(c => c.id === topChar[0])?.name}` : "—"}</Text>
                 </View>
               </Card>
 
-              <SectionTitle title="Özet" icon="info" color="#FF9500" />
+              <SectionTitle title="Summary" icon="info" color="#FF9500" />
               <Card>
-                <InfoRow label="Toplam AI Yanıtı" value={String(totalMessages - userMsgCount)} />
-                <InfoRow label="Ort. Mesaj/Sohbet" value={conversations.length > 0 ? String(Math.round(totalMessages / conversations.length)) : "0"} />
-                <InfoRow label="Aktif Karakter" value={String(Object.keys(charUsage).length)} />
-                <InfoRow label="Feedback Sayısı" value={String(feedbackList.length)} />
-                <InfoRow label="Hata Raporu" value={String(feedbackList.filter(f => f.category === "bug").length)} />
-                <InfoRow label="Öneri Sayısı" value={String(feedbackList.filter(f => f.category === "suggestion").length)} last />
+                <InfoRow label="Total AI Replies" value={String(totalMessages - userMsgCount)} />
+                <InfoRow label="Avg. Messages/Chat" value={conversations.length > 0 ? String(Math.round(totalMessages / conversations.length)) : "0"} />
+                <InfoRow label="Active Characters" value={String(Object.keys(charUsage).length)} />
+                <InfoRow label="Feedback Count" value={String(feedbackList.length)} />
+                <InfoRow label="Bug Reports" value={String(feedbackList.filter(f => f.category === "bug").length)} />
+                <InfoRow label="Suggestions" value={String(feedbackList.filter(f => f.category === "suggestion").length)} last />
               </Card>
+
+              <SectionTitle title="User Registrations" icon="users" color="#007AFF" />
+              {analyticsData ? (
+                <>
+                  <StatGrid items={[
+                    { label: "Total Users", value: String(analyticsData.totals.total), color: "#007AFF", icon: "users" },
+                    { label: "VIP Users", value: String(analyticsData.totals.vip), color: "#FFD700", icon: "star" },
+                    { label: "Today", value: String(analyticsData.totals.today), color: "#34C759", icon: "calendar" },
+                    { label: "This Month", value: String(analyticsData.totals.thisMonth), color: "#AF52DE", icon: "trending-up" },
+                  ]} />
+                  <RegistrationChart data={analyticsData} />
+                </>
+              ) : (
+                <Card>
+                  <View style={{ alignItems: "center", padding: 20 }}>
+                    <ActivityIndicator color={ACCENT} />
+                  </View>
+                </Card>
+              )}
             </>
           )}
 
           {section === "app" && appTab === "ai" && (
             <>
-              <SectionTitle title="Karakter Detay İstatistikleri" icon="users" color="#007AFF" />
+              <SectionTitle title="Character Detail Stats" icon="users" color="#007AFF" />
               <Card>
                 {CHARACTERS.map((char, idx) => {
                   const count = charUsage[char.id] ?? 0;
@@ -522,7 +622,7 @@ export default function AdminScreen() {
                       <View style={[styles.charDot, { backgroundColor: char.gradientColors[0], width: 10, height: 10, borderRadius: 5 }]} />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.charStatName}>{char.name}</Text>
-                        <Text style={styles.charStatSub}>{conv.length} sohbet · {count} mesaj · {streak} gün seri · {memories.length} hafıza</Text>
+                        <Text style={styles.charStatSub}>{conv.length} chats · {count} msgs · {streak} day streak · {memories.length} memories</Text>
                       </View>
                       <Pressable onPress={() => clearMemory(char.id)} style={styles.trashBtn} hitSlop={8}>
                         <Feather name="trash-2" size={14} color="#FF3B30" />
@@ -532,16 +632,16 @@ export default function AdminScreen() {
                 })}
               </Card>
 
-              <SectionTitle title="Global Sistem Promptu" icon="settings" color="#FF9500" />
+              <SectionTitle title="Global System Prompt" icon="settings" color="#FF9500" />
               <Card>
                 <Text style={[styles.subNote, { marginBottom: 10 }]}>
-                  Tüm AI karakterlerinin davranışına eklenen global kural. Uygulamayı kapatmadan anlık güncellenir.
+                  Global rule added to all AI characters. Updates in real-time without restarting the app.
                 </Text>
                 <TextInput
                   style={styles.promptInput}
                   value={globalPrompt}
                   onChangeText={setGlobalPrompt}
-                  placeholder="Global kural yaz... (boş bırakırsan devre dışı)"
+                  placeholder="Write global rule... (leave empty to disable)"
                   placeholderTextColor={TEXT_TER}
                   multiline
                   numberOfLines={5}
@@ -550,14 +650,14 @@ export default function AdminScreen() {
                 <View style={styles.promptBtns}>
                   <Pressable onPress={resetGlobalPrompt} style={[styles.promptBtn, { backgroundColor: "#FF3B3015" }]}>
                     <Feather name="trash-2" size={14} color="#FF3B30" />
-                    <Text style={[styles.promptBtnText, { color: "#FF3B30" }]}>Sıfırla</Text>
+                    <Text style={[styles.promptBtnText, { color: "#FF3B30" }]}>Reset</Text>
                   </Pressable>
                   <Pressable onPress={saveGlobalPrompt} style={[styles.promptBtn, { flex: 1, backgroundColor: promptSaved ? "#34C75920" : ACCENT + "25" }]}>
                     {promptLoading
                       ? <ActivityIndicator size="small" color={ACCENT} />
                       : <Feather name={promptSaved ? "check" : "save"} size={14} color={promptSaved ? "#34C759" : ACCENT} />}
                     <Text style={[styles.promptBtnText, { color: promptSaved ? "#34C759" : ACCENT }]}>
-                      {promptSaved ? "Kaydedildi!" : "Kaydet & Uygula"}
+                      {promptSaved ? "Saved!" : "Save & Apply"}
                     </Text>
                   </Pressable>
                 </View>
@@ -567,14 +667,14 @@ export default function AdminScreen() {
 
           {section === "app" && appTab === "engagement" && (
             <>
-              <SectionTitle title="Push Bildirim Gönder" icon="bell" color="#FF9500" />
+              <SectionTitle title="Send Push Notification" icon="bell" color="#FF9500" />
               <Card>
-                <Text style={[styles.subNote, { marginBottom: 10 }]}>Kullanıcıya anlık yerel bildirim gönder:</Text>
+                <Text style={[styles.subNote, { marginBottom: 10 }]}>Send a local notification to this device:</Text>
                 <TextInput
                   style={styles.notifInput}
                   value={notifTitle}
                   onChangeText={setNotifTitle}
-                  placeholder="Başlık..."
+                  placeholder="Title..."
                   placeholderTextColor={TEXT_TER}
                   maxLength={50}
                 />
@@ -582,14 +682,14 @@ export default function AdminScreen() {
                   style={[styles.notifInput, { marginTop: 8, minHeight: 80, textAlignVertical: "top" }]}
                   value={notifBody}
                   onChangeText={setNotifBody}
-                  placeholder="Mesaj içeriği..."
+                  placeholder="Message body..."
                   placeholderTextColor={TEXT_TER}
                   multiline
                   numberOfLines={3}
                   maxLength={200}
                 />
                 <View style={styles.quickMsgs}>
-                  {["Seni özledim! 💭", "Bugün nasıl geçti? ✨", "Sürprizin var! 🎁", "Seninle konuşmak istiyorum 💬"].map(msg => (
+                  {["Miss you! 💭", "How was your day? ✨", "You have a surprise! 🎁", "I want to talk to you 💬"].map(msg => (
                     <Pressable key={msg} onPress={() => setNotifBody(msg)} style={styles.quickMsgBtn}>
                       <Text style={styles.quickMsgText}>{msg}</Text>
                     </Pressable>
@@ -597,24 +697,24 @@ export default function AdminScreen() {
                 </View>
                 <Pressable onPress={sendNotif} style={[styles.actionBtn, { backgroundColor: "#FF950020", marginTop: 8 }]}>
                   <Feather name="send" size={15} color="#FF9500" />
-                  <Text style={[styles.actionBtnText, { color: "#FF9500" }]}>Bildirimi Gönder</Text>
+                  <Text style={[styles.actionBtnText, { color: "#FF9500" }]}>Send Notification</Text>
                 </Pressable>
               </Card>
 
-              <SectionTitle title="Haftalık Görev Yönetimi" icon="target" color="#AF52DE" />
+              <SectionTitle title="Weekly Mission Management" icon="target" color="#AF52DE" />
               <Card>
                 <Text style={[styles.subNote, { marginBottom: 10 }]}>
-                  Görevler haftaya göre otomatik belirlenir. Mevcut haftanın ilerlemesini sıfırlamak için:
+                  Missions are set automatically by week. To reset the current week's progress:
                 </Text>
                 <Pressable
                   onPress={() => {
-                    Alert.alert("Görevleri Sıfırla", "Bu haftanın tüm görev ilerlemesini sıfırlamak istediğine emin misin?", [
-                      { text: "İptal", style: "cancel" },
+                    Alert.alert("Reset Missions", "Reset all mission progress for this week?", [
+                      { text: "Cancel", style: "cancel" },
                       {
-                        text: "Sıfırla", style: "destructive", onPress: async () => {
+                        text: "Reset", style: "destructive", onPress: async () => {
                           await AsyncStorage.removeItem(MISSIONS_KEY);
                           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                          Alert.alert("Sıfırlandı", "Görevler bir sonraki girişte yenilenecek.");
+                          Alert.alert("Done", "Missions will reset on next login.");
                         }
                       }
                     ]);
@@ -622,25 +722,25 @@ export default function AdminScreen() {
                   style={[styles.actionBtn, { backgroundColor: "#AF52DE15" }]}
                 >
                   <Feather name="refresh-cw" size={15} color="#AF52DE" />
-                  <Text style={[styles.actionBtnText, { color: "#AF52DE" }]}>Görev İlerlemesini Sıfırla</Text>
+                  <Text style={[styles.actionBtnText, { color: "#AF52DE" }]}>Reset Mission Progress</Text>
                 </Pressable>
               </Card>
 
-              <SectionTitle title="Geri Bildirimler" icon="message-square" color="#34C759" />
+              <SectionTitle title="Feedback" icon="message-square" color="#34C759" />
               <Card style={{ padding: 0, overflow: "hidden" }}>
                 <View style={styles.fbTopBar}>
-                  <Text style={styles.fbCount}>{feedbackList.length} geri bildirim</Text>
+                  <Text style={styles.fbCount}>{feedbackList.length} feedback items</Text>
                   {feedbackList.length > 0 && (
                     <Pressable onPress={clearFeedback} style={styles.clearBtn}>
                       <Feather name="trash-2" size={13} color="#FF3B30" />
-                      <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#FF3B30" }}>Temizle</Text>
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#FF3B30" }}>Clear</Text>
                     </Pressable>
                   )}
                 </View>
                 {feedbackList.length === 0 ? (
                   <View style={{ padding: 28, alignItems: "center", gap: 8 }}>
                     <Feather name="inbox" size={28} color={TEXT_TER} />
-                    <Text style={styles.subNote}>Henüz geri bildirim yok</Text>
+                    <Text style={styles.subNote}>No feedback yet</Text>
                   </View>
                 ) : (
                   feedbackList.map((item, idx) => (

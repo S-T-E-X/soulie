@@ -8,7 +8,7 @@ import {
   upsertUser, getAllUsers, getUserEvents, logEvent, findUserByEmail, getEventStats,
   saveAppleNotification, softDeleteUser, softDeleteUserByAppleId, revokeAppleConsent,
   updateEmailRelayStatus, findUserByAppleId, getAppleNotifications,
-  upsertChat, getChatsForUser, deleteChat, upsertUserXp, query as dbQuery,
+  upsertChat, getChatsForUser, deleteChat, upsertUserXp, getUserXp, getAnalyticsData, query as dbQuery,
 } from "./db";
 
 let globalSystemPromptOverride: string = "";
@@ -1018,6 +1018,27 @@ ${sec.advice}: (concrete advice for the user)`;
     } catch (error) {
       console.error("[Apple] Notification processing error:", error);
       return res.status(500).json({ error: "Failed to process Apple notification" });
+    }
+  });
+
+  app.get("/api/users/xp/:userId", async (req, res) => {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ error: "userId required" });
+    try {
+      const data = await getUserXp(userId);
+      res.json({ total_xp: data?.total_xp ?? 0, level: data?.level ?? 1 });
+    } catch (err) {
+      res.json({ total_xp: 0, level: 1 });
+    }
+  });
+
+  app.get("/api/admin/analytics", async (req, res) => {
+    try {
+      const data = await getAnalyticsData();
+      res.json(data);
+    } catch (err) {
+      console.error("Analytics error:", err);
+      res.status(500).json({ error: "analytics failed" });
     }
   });
 
