@@ -41,18 +41,62 @@ const ALL_FEAT_KEYS = [
 ];
 
 const PLAN_PACKAGE_KEYS = [
-  { key: "$rc_weekly", gradient: [Colors.userBubble.from, Colors.userBubble.to] as [string, string], textColor: "#FFFFFF", isPopular: false, periodKey: "market.perWeek", nameKey: "market.weekly", badge: null as string | null, fallbackPrice: "$4.99" },
-  { key: "$rc_monthly", gradient: ["#1D1D1F", "#3A3A3C"] as [string, string], textColor: "#FFFFFF", isPopular: true, periodKey: "market.perMonth", nameKey: "market.monthly", badge: "market.discount30" as string | null, fallbackPrice: "$14.99" },
-  { key: "$rc_annual", gradient: ["#2D0654", "#6B21A8"] as [string, string], textColor: "#FFFFFF", isPopular: false, periodKey: "market.perYear", nameKey: "market.yearly", badge: "market.discount55" as string | null, fallbackPrice: "$79.99" },
+  {
+    key: "$rc_weekly",
+    gradient: [Colors.userBubble.from, Colors.userBubble.to] as [
+      string,
+      string,
+    ],
+    textColor: "#FFFFFF",
+    isPopular: false,
+    periodKey: "market.perWeek",
+    nameKey: "market.weekly",
+    badge: null as string | null,
+    fallbackPrice: "$4.99",
+  },
+  {
+    key: "$rc_monthly",
+    gradient: ["#1D1D1F", "#3A3A3C"] as [string, string],
+    textColor: "#FFFFFF",
+    isPopular: true,
+    periodKey: "market.perMonth",
+    nameKey: "market.monthly",
+    badge: "market.discount30" as string | null,
+    fallbackPrice: "$14.99",
+  },
+  {
+    key: "$rc_annual",
+    gradient: ["#2D0654", "#6B21A8"] as [string, string],
+    textColor: "#FFFFFF",
+    isPopular: false,
+    periodKey: "market.perYear",
+    nameKey: "market.yearly",
+    badge: "market.discount55" as string | null,
+    fallbackPrice: "$79.99",
+  },
 ];
 
-const COIN_PACKAGE_KEYS = ["coins_100", "coins_550", "coins_1400", "coins_3750", "coins_12000"];
-const COIN_PACKAGE_META: Record<string, { coins: number; bonus?: number; isPopular?: boolean; fallbackPrice: string }> = {
+const COIN_PACKAGE_KEYS = [
+  "coins_100",
+  "coins_550",
+  "coins_1400",
+  "coins_3750",
+  "coins_12000",
+];
+const COIN_PACKAGE_META: Record<
+  string,
+  { coins: number; bonus?: number; isPopular?: boolean; fallbackPrice: string }
+> = {
   coins_100: { coins: 100, fallbackPrice: "$0.99" },
   coins_550: { coins: 550, fallbackPrice: "$3.99" },
   coins_1400: { coins: 1400, fallbackPrice: "$6.99" },
   coins_3750: { coins: 3750, fallbackPrice: "$12.99" },
-  coins_12000: { coins: 12000, bonus: 0, isPopular: true, fallbackPrice: "$24.99" },
+  coins_12000: {
+    coins: 12000,
+    bonus: 0,
+    isPopular: true,
+    fallbackPrice: "$24.99",
+  },
 };
 
 export default function MarketScreen() {
@@ -67,7 +111,7 @@ export default function MarketScreen() {
 
   const validTabs = ["premium", "gifts", "coins"] as const;
   const [activeTab, setActiveTab] = useState<"premium" | "gifts" | "coins">(
-    validTabs.includes(initialTab as any) ? (initialTab as any) : "premium"
+    validTabs.includes(initialTab as any) ? (initialTab as any) : "premium",
   );
 
   const [purchasing, setPurchasing] = useState(false);
@@ -79,16 +123,24 @@ export default function MarketScreen() {
     }
   }, [initialTab]);
 
-  const handleVipPress = async (meta: typeof PLAN_PACKAGE_KEYS[number]) => {
+  const handleVipPress = async (meta: (typeof PLAN_PACKAGE_KEYS)[number]) => {
     if (isVip || isVipActive) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setPurchasing(true);
     try {
-      await purchaseById({ packageId: meta.key, offeringId: REVENUECAT_VIP_OFFERING });
+      await purchaseById({
+        packageId: meta.key,
+        offeringId: REVENUECAT_VIP_OFFERING,
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessMsg(t("market.purchaseSuccess"));
     } catch (e: any) {
-      if (e?.userCancelled === true || e?.code === 1 || e?.code === "1" || e?.message === "USER_CANCELLED") {
+      if (
+        e?.userCancelled === true ||
+        e?.code === 1 ||
+        e?.code === "1" ||
+        e?.message === "USER_CANCELLED"
+      ) {
         setPurchasing(false);
         return;
       }
@@ -100,7 +152,10 @@ export default function MarketScreen() {
     }
   };
 
-  const handleCoinPress = async (packageId: string, meta: typeof COIN_PACKAGE_META[string]) => {
+  const handleCoinPress = async (
+    packageId: string,
+    meta: (typeof COIN_PACKAGE_META)[string],
+  ) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setPurchasing(true);
     const total = meta.coins + (meta.bonus ?? 0);
@@ -110,7 +165,12 @@ export default function MarketScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessMsg(t("market.coinSuccess").replace("{count}", String(total)));
     } catch (e: any) {
-      if (e?.userCancelled === true || e?.code === 1 || e?.code === "1" || e?.message === "USER_CANCELLED") {
+      if (
+        e?.userCancelled === true ||
+        e?.code === 1 ||
+        e?.code === "1" ||
+        e?.message === "USER_CANCELLED"
+      ) {
         setPurchasing(false);
         return;
       }
@@ -154,24 +214,40 @@ export default function MarketScreen() {
         </View>
       )}
 
-
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
-        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>{t("market.title")}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
+          {t("market.title")}
+        </Text>
         <Pressable
           onPress={() => setActiveTab("coins")}
           style={({ pressed }) => [
             styles.coinChip,
-            { backgroundColor: isDark ? "rgba(255,215,0,0.15)" : "rgba(255,215,0,0.1)" },
+            {
+              backgroundColor: isDark
+                ? "rgba(255,215,0,0.15)"
+                : "rgba(255,215,0,0.1)",
+            },
             pressed && { opacity: 0.8 },
           ]}
         >
           <Feather name="circle" size={14} color="#FFD700" />
-          <Text style={[styles.coinChipText, { color: colors.text.primary }]}>{coins}</Text>
+          <Text style={[styles.coinChipText, { color: colors.text.primary }]}>
+            {coins}
+          </Text>
           <Feather name="plus" size={13} color={Colors.accent} />
         </Pressable>
       </View>
 
-      <View style={[styles.tabBar, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.6)" }]}>
+      <View
+        style={[
+          styles.tabBar,
+          {
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.06)"
+              : "rgba(255,255,255,0.6)",
+          },
+        ]}
+      >
         {(["premium", "gifts", "coins"] as const).map((tab) => (
           <Pressable
             key={tab}
@@ -182,71 +258,140 @@ export default function MarketScreen() {
             style={[
               styles.tabBtn,
               {
-                backgroundColor: activeTab === tab ? Colors.accent : (isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.6)"),
-                borderColor: activeTab === tab ? Colors.accent : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)"),
+                backgroundColor:
+                  activeTab === tab
+                    ? Colors.accent
+                    : isDark
+                      ? "rgba(255,255,255,0.08)"
+                      : "rgba(255,255,255,0.6)",
+                borderColor:
+                  activeTab === tab
+                    ? Colors.accent
+                    : isDark
+                      ? "rgba(255,255,255,0.1)"
+                      : "rgba(0,0,0,0.06)",
               },
             ]}
           >
-            <Text style={[
-              styles.tabBtnText,
-              { color: activeTab === tab ? "#fff" : (isDark ? "rgba(255,255,255,0.7)" : "#1D1D1F") },
-              activeTab === tab && styles.tabBtnTextActive,
-            ]}>
-              {tab === "premium" ? t("market.premium") : tab === "gifts" ? t("market.gifts") : t("market.coins")}
+            <Text
+              style={[
+                styles.tabBtnText,
+                {
+                  color:
+                    activeTab === tab
+                      ? "#fff"
+                      : isDark
+                        ? "rgba(255,255,255,0.7)"
+                        : "#1D1D1F",
+                },
+                activeTab === tab && styles.tabBtnTextActive,
+              ]}
+            >
+              {tab === "premium"
+                ? t("market.premium")
+                : tab === "gifts"
+                  ? t("market.gifts")
+                  : t("market.coins")}
             </Text>
           </Pressable>
         ))}
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingTop: 16, paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: 16, paddingBottom: insets.bottom + 100 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {activeTab === "premium" && (
           <>
-            <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.heroSection}>
-              <LinearGradient colors={["#4FC3F7", "#007AFF"]} style={styles.crownIcon}>
+            <Animated.View
+              entering={FadeInDown.springify().damping(18)}
+              style={styles.heroSection}
+            >
+              <LinearGradient
+                colors={["#4FC3F7", "#007AFF"]}
+                style={styles.crownIcon}
+              >
                 <Feather name="star" size={22} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>Soulie Premium</Text>
-              <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
+              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>
+                Soulie Premium
+              </Text>
+              <Text
+                style={[styles.heroSubtitle, { color: colors.text.secondary }]}
+              >
                 {t("market.premiumHeroSubtitle")}
               </Text>
               {(isVip || isVipActive) && (
                 <View style={styles.activeVipBadge}>
                   <Feather name="check-circle" size={14} color="#22c55e" />
-                  <Text style={styles.activeVipText}>{t("market.vipActive")}</Text>
+                  <Text style={styles.activeVipText}>
+                    {t("market.vipActive")}
+                  </Text>
                 </View>
               )}
             </Animated.View>
 
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>{t("market.choosePlan")}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+              {t("market.choosePlan")}
+            </Text>
 
             {PLAN_PACKAGE_KEYS.map((meta, i) => (
-              <Animated.View key={meta.key} entering={FadeInDown.delay(80 + i * 60).springify().damping(18)}>
+              <Animated.View
+                key={meta.key}
+                entering={FadeInDown.delay(80 + i * 60)
+                  .springify()
+                  .damping(18)}
+              >
                 <Pressable
                   onPress={() => handleVipPress(meta)}
-                  style={({ pressed }) => [styles.planCard, pressed && { opacity: 0.85 }]}
+                  style={({ pressed }) => [
+                    styles.planCard,
+                    pressed && { opacity: 0.85 },
+                  ]}
                 >
-                  <LinearGradient colors={meta.gradient} style={styles.planGradient}>
+                  <LinearGradient
+                    colors={meta.gradient}
+                    style={styles.planGradient}
+                  >
                     {meta.badge ? (
                       <View style={styles.badgeChip}>
-                        <Text style={styles.badgeText}>{t(meta.badge as any)}</Text>
+                        <Text style={styles.badgeText}>
+                          {t(meta.badge as any)}
+                        </Text>
                       </View>
                     ) : null}
                     {meta.isPopular ? (
                       <View style={styles.popularChip}>
-                        <Text style={styles.popularText}>{t("market.mostPopular")}</Text>
+                        <Text style={styles.popularText}>
+                          {t("market.mostPopular")}
+                        </Text>
                       </View>
                     ) : null}
                     <View style={styles.planHeader}>
                       <View>
-                        <Text style={[styles.planName, { color: meta.textColor }]}>{t(meta.nameKey as any)}</Text>
+                        <Text
+                          style={[styles.planName, { color: meta.textColor }]}
+                        >
+                          {t(meta.nameKey as any)}
+                        </Text>
                         <View style={styles.priceRow}>
-                          <Text style={[styles.planPrice, { color: meta.textColor }]}>
+                          <Text
+                            style={[
+                              styles.planPrice,
+                              { color: meta.textColor },
+                            ]}
+                          >
                             {meta.fallbackPrice}
                           </Text>
-                          <Text style={[styles.planPeriod, { color: meta.textColor, opacity: 0.7 }]}>
+                          <Text
+                            style={[
+                              styles.planPeriod,
+                              { color: meta.textColor, opacity: 0.7 },
+                            ]}
+                          >
                             {t(meta.periodKey as any)}
                           </Text>
                         </View>
@@ -255,16 +400,39 @@ export default function MarketScreen() {
                     <View style={styles.featuresList}>
                       {ALL_FEAT_KEYS.map((featKey) => (
                         <View key={featKey} style={styles.featRow}>
-                          <Feather name="check" size={13} color="rgba(255,255,255,0.9)" />
-                          <Text style={[styles.featRowText, { color: meta.textColor, opacity: 0.9 }]}>
+                          <Feather
+                            name="check"
+                            size={13}
+                            color="rgba(255,255,255,0.9)"
+                          />
+                          <Text
+                            style={[
+                              styles.featRowText,
+                              { color: meta.textColor, opacity: 0.9 },
+                            ]}
+                          >
                             {t(featKey as any)}
                           </Text>
                         </View>
                       ))}
                     </View>
-                    <View style={[styles.selectButton, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-                      <Text style={[styles.selectButtonText, { color: meta.textColor }]}>
-                        {isVip || isVipActive ? t("market.activeBtn") : meta.isPopular ? t("market.start") : t("market.select")}
+                    <View
+                      style={[
+                        styles.selectButton,
+                        { backgroundColor: "rgba(255,255,255,0.2)" },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.selectButtonText,
+                          { color: meta.textColor },
+                        ]}
+                      >
+                        {isVip || isVipActive
+                          ? t("market.activeBtn")
+                          : meta.isPopular
+                            ? t("market.start")
+                            : t("market.select")}
                       </Text>
                     </View>
                   </LinearGradient>
@@ -273,18 +441,34 @@ export default function MarketScreen() {
             ))}
 
             <Pressable onPress={handleRestore} style={styles.restoreBtn}>
-              <Text style={styles.restoreBtnText}>{t("settings.restorePurchases")}</Text>
+              <Text style={styles.restoreBtnText}>
+                {t("settings.restorePurchases")}
+              </Text>
             </Pressable>
 
             <Text style={styles.legalText}>{t("market.cancelAnytime")}</Text>
             <Text style={styles.legalText}>{t("market.legalNote")}</Text>
             <View style={styles.legalLinks}>
-              <Pressable onPress={() => Linking.openURL("https://soulie.app/terms")}>
+              <Pressable
+                onPress={() =>
+                  Linking.openURL(
+                    "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+                  )
+                }
+              >
                 <Text style={styles.legalLink}>{t("market.termsOfUse")}</Text>
               </Pressable>
               <Text style={styles.legalSep}>·</Text>
-              <Pressable onPress={() => Linking.openURL("https://soulie.app/privacy")}>
-                <Text style={styles.legalLink}>{t("market.privacyPolicy")}</Text>
+              <Pressable
+                onPress={() =>
+                  Linking.openURL(
+                    "https://docs.google.com/document/d/1JgpG76-wx-KwNk4O-sEJRoepH7zTG3R8SvhhsGfbvjA/edit?usp=sharing",
+                  )
+                }
+              >
+                <Text style={styles.legalLink}>
+                  {t("market.privacyPolicy")}
+                </Text>
               </Pressable>
             </View>
           </>
@@ -292,67 +476,160 @@ export default function MarketScreen() {
 
         {activeTab === "coins" && (
           <>
-            <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.heroSection}>
-              <LinearGradient colors={["#FFD700", "#FF9500"]} style={styles.crownIcon}>
+            <Animated.View
+              entering={FadeInDown.springify().damping(18)}
+              style={styles.heroSection}
+            >
+              <LinearGradient
+                colors={["#FFD700", "#FF9500"]}
+                style={styles.crownIcon}
+              >
                 <Feather name="circle" size={22} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>{t("market.buyCoins")}</Text>
-              <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
+              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>
+                {t("market.buyCoins")}
+              </Text>
+              <Text
+                style={[styles.heroSubtitle, { color: colors.text.secondary }]}
+              >
                 {t("market.buyCoinsSubtitle")}
               </Text>
               <View style={styles.currentCoinBadge}>
                 <Feather name="circle" size={14} color="#FFD700" />
-                <Text style={[styles.currentCoinText, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>
+                <Text
+                  style={[
+                    styles.currentCoinText,
+                    { color: isDark ? "#FFFFFF" : Colors.text.primary },
+                  ]}
+                >
                   {t("market.currentCoins", { count: coins })}
                 </Text>
               </View>
             </Animated.View>
 
-            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>{t("market.packages")}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+              {t("market.packages")}
+            </Text>
 
             {COIN_PACKAGE_KEYS.map((key, i) => {
               const meta = COIN_PACKAGE_META[key];
               return (
-              <Animated.View key={key} entering={FadeInDown.delay(80 + i * 60).springify().damping(18)}>
-                <Pressable
-                  onPress={() => handleCoinPress(key, meta)}
-                  style={({ pressed }) => [styles.coinCard, pressed && { opacity: 0.85 }]}
+                <Animated.View
+                  key={key}
+                  entering={FadeInDown.delay(80 + i * 60)
+                    .springify()
+                    .damping(18)}
                 >
-                  <LinearGradient
-                    colors={meta.isPopular ? ["#FFD700", "#FF9500"] : (isDark ? ["#1C1C2E", "#2A2A42"] : ["#F5F5F7", "#ECECEE"])}
-                    style={styles.coinCardGrad}
+                  <Pressable
+                    onPress={() => handleCoinPress(key, meta)}
+                    style={({ pressed }) => [
+                      styles.coinCard,
+                      pressed && { opacity: 0.85 },
+                    ]}
                   >
-                    {meta.isPopular && (
-                      <View style={styles.popularCoinChip}>
-                        <Text style={styles.popularCoinText}>{t("market.popular")}</Text>
-                      </View>
-                    )}
-                    <View style={styles.coinCardContent}>
-                      <View style={styles.coinAmountRow}>
-                        <Feather name="circle" size={22} color={meta.isPopular ? "#fff" : "#FFD700"} />
-                        <Text style={[styles.coinAmount, { color: meta.isPopular ? "#fff" : colors.text.primary }]}>
-                          {(meta.coins + (meta.bonus ?? 0)).toLocaleString()}
+                    <LinearGradient
+                      colors={
+                        meta.isPopular
+                          ? ["#FFD700", "#FF9500"]
+                          : isDark
+                            ? ["#1C1C2E", "#2A2A42"]
+                            : ["#F5F5F7", "#ECECEE"]
+                      }
+                      style={styles.coinCardGrad}
+                    >
+                      {meta.isPopular && (
+                        <View style={styles.popularCoinChip}>
+                          <Text style={styles.popularCoinText}>
+                            {t("market.popular")}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.coinCardContent}>
+                        <View style={styles.coinAmountRow}>
+                          <Feather
+                            name="circle"
+                            size={22}
+                            color={meta.isPopular ? "#fff" : "#FFD700"}
+                          />
+                          <Text
+                            style={[
+                              styles.coinAmount,
+                              {
+                                color: meta.isPopular
+                                  ? "#fff"
+                                  : colors.text.primary,
+                              },
+                            ]}
+                          >
+                            {(meta.coins + (meta.bonus ?? 0)).toLocaleString()}
+                          </Text>
+                          {(meta.bonus ?? 0) > 0 && (
+                            <View
+                              style={[
+                                styles.bonusChip,
+                                {
+                                  backgroundColor: meta.isPopular
+                                    ? "rgba(255,255,255,0.25)"
+                                    : "rgba(0,122,255,0.1)",
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.bonusText,
+                                  {
+                                    color: meta.isPopular
+                                      ? "#fff"
+                                      : colors.accent,
+                                  },
+                                ]}
+                              >
+                                +{meta.bonus} bonus
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text
+                          style={[
+                            styles.coinCardPrice,
+                            {
+                              color: meta.isPopular
+                                ? "#fff"
+                                : colors.text.secondary,
+                            },
+                          ]}
+                        >
+                          {meta.fallbackPrice}
                         </Text>
-                        {(meta.bonus ?? 0) > 0 && (
-                          <View style={[styles.bonusChip, { backgroundColor: meta.isPopular ? "rgba(255,255,255,0.25)" : "rgba(0,122,255,0.1)" }]}>
-                            <Text style={[styles.bonusText, { color: meta.isPopular ? "#fff" : colors.accent }]}>
-                              +{meta.bonus} bonus
-                            </Text>
-                          </View>
-                        )}
                       </View>
-                      <Text style={[styles.coinCardPrice, { color: meta.isPopular ? "#fff" : colors.text.secondary }]}>
-                        {meta.fallbackPrice}
-                      </Text>
-                    </View>
-                    <View style={[styles.coinBuyBtn, { backgroundColor: meta.isPopular ? "rgba(255,255,255,0.25)" : isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)" }]}>
-                      <Text style={[styles.coinBuyBtnText, { color: meta.isPopular ? "#fff" : colors.text.primary }]}>
-                        {t("market.buyNow")}
-                      </Text>
-                    </View>
-                  </LinearGradient>
-                </Pressable>
-              </Animated.View>
+                      <View
+                        style={[
+                          styles.coinBuyBtn,
+                          {
+                            backgroundColor: meta.isPopular
+                              ? "rgba(255,255,255,0.25)"
+                              : isDark
+                                ? "rgba(255,255,255,0.1)"
+                                : "rgba(0,0,0,0.06)",
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.coinBuyBtnText,
+                            {
+                              color: meta.isPopular
+                                ? "#fff"
+                                : colors.text.primary,
+                            },
+                          ]}
+                        >
+                          {t("market.buyNow")}
+                        </Text>
+                      </View>
+                    </LinearGradient>
+                  </Pressable>
+                </Animated.View>
               );
             })}
           </>
@@ -360,17 +637,37 @@ export default function MarketScreen() {
 
         {activeTab === "gifts" && (
           <>
-            <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.heroSection}>
-              <LinearGradient colors={["#FF6B6B", "#FF1744"]} style={styles.crownIcon}>
+            <Animated.View
+              entering={FadeInDown.springify().damping(18)}
+              style={styles.heroSection}
+            >
+              <LinearGradient
+                colors={["#FF6B6B", "#FF1744"]}
+                style={styles.crownIcon}
+              >
                 <Feather name="gift" size={22} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>{t("market.giftStore")}</Text>
-              <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
+              <Text style={[styles.heroTitle, { color: colors.text.primary }]}>
+                {t("market.giftStore")}
+              </Text>
+              <Text
+                style={[styles.heroSubtitle, { color: colors.text.secondary }]}
+              >
                 {t("market.giftStoreSubtitle")}
               </Text>
-              <Pressable onPress={() => setActiveTab("coins")} style={styles.currentCoinBadge}>
+              <Pressable
+                onPress={() => setActiveTab("coins")}
+                style={styles.currentCoinBadge}
+              >
                 <Feather name="circle" size={14} color="#FFD700" />
-                <Text style={[styles.currentCoinText, { color: isDark ? "#FFFFFF" : Colors.text.primary }]}>{coins} coin</Text>
+                <Text
+                  style={[
+                    styles.currentCoinText,
+                    { color: isDark ? "#FFFFFF" : Colors.text.primary },
+                  ]}
+                >
+                  {coins} coin
+                </Text>
                 <Feather name="plus-circle" size={13} color={Colors.accent} />
               </Pressable>
             </Animated.View>
@@ -379,26 +676,52 @@ export default function MarketScreen() {
               {GIFTS.map((gift, i) => (
                 <Animated.View
                   key={gift.id}
-                  entering={FadeInDown.delay(60 + i * 40).springify().damping(18)}
+                  entering={FadeInDown.delay(60 + i * 40)
+                    .springify()
+                    .damping(18)}
                   style={styles.giftItemWrapper}
                 >
                   <Pressable
                     onPress={() => handleGiftPurchase(gift.id)}
                     style={({ pressed }) => [
                       styles.giftItem,
-                      { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.75)" },
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.08)"
+                          : "rgba(255,255,255,0.75)",
+                      },
                       pressed && { opacity: 0.85 },
                     ]}
                   >
-                    <Image source={GIFT_IMAGES[gift.imageKey]} style={styles.giftItemImg} resizeMode="contain" />
-                    <Text style={[styles.giftItemName, { color: colors.text.primary }]}>{gift.name}</Text>
+                    <Image
+                      source={GIFT_IMAGES[gift.imageKey]}
+                      style={styles.giftItemImg}
+                      resizeMode="contain"
+                    />
+                    <Text
+                      style={[
+                        styles.giftItemName,
+                        { color: colors.text.primary },
+                      ]}
+                    >
+                      {t(("gift." + gift.id) as any)}
+                    </Text>
                     <View style={styles.giftItemPrice}>
                       <Feather name="circle" size={10} color="#FFD700" />
-                      <Text style={[styles.giftItemPriceText, { color: isDark ? "#FFFFFF" : colors.text.secondary }]}>{gift.price}</Text>
+                      <Text
+                        style={[
+                          styles.giftItemPriceText,
+                          { color: isDark ? "#FFFFFF" : colors.text.secondary },
+                        ]}
+                      >
+                        {gift.price}
+                      </Text>
                     </View>
                     {getInventoryCount(gift.id) > 0 && (
                       <View style={styles.ownedBadge}>
-                        <Text style={styles.ownedBadgeText}>{getInventoryCount(gift.id)}</Text>
+                        <Text style={styles.ownedBadgeText}>
+                          {getInventoryCount(gift.id)}
+                        </Text>
                       </View>
                     )}
                   </Pressable>
@@ -408,7 +731,12 @@ export default function MarketScreen() {
 
             <View style={styles.inventoryNote}>
               <Feather name="info" size={14} color={Colors.text.tertiary} />
-              <Text style={[styles.inventoryNoteText, { color: isDark ? "#FFFFFF" : Colors.text.secondary }]}>
+              <Text
+                style={[
+                  styles.inventoryNoteText,
+                  { color: isDark ? "#FFFFFF" : Colors.text.secondary },
+                ]}
+              >
                 {t("market.inventoryNote")}
               </Text>
             </View>

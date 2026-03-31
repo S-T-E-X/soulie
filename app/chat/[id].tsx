@@ -129,7 +129,7 @@ function WelcomeMessage({ character, customName }: { character: Character; custo
         />
       </View>
       <Text style={[styles.welcomeName, { color: colors.text.primary }]}>{displayName}</Text>
-      <Text style={[styles.welcomeDesc, { color: colors.text.secondary }]}>{character.description}</Text>
+      <Text style={[styles.welcomeDesc, { color: colors.text.secondary }]}>{character.descriptions?.[lang as keyof typeof character.descriptions] ?? character.description}</Text>
       <View style={styles.tagsRow}>
         {character.tags.map((tag) => (
           <View key={tag} style={[styles.tag, { backgroundColor: colors.inputBg }]}>
@@ -900,7 +900,7 @@ export default function ChatScreen() {
             </View>
             <View>
               <View style={styles.headerNameRow}>
-                <Text style={[styles.headerName, { color: isSibel ? "#E9D5FF" : colors.text.primary }]}>{displayName}</Text>
+                <Text style={[styles.headerName, { color: isSibel ? "#E9D5FF" : colors.text.primary }]} numberOfLines={1}>{displayName}</Text>
                 {streak.streak >= 2 ? (
                   <View style={styles.headerStreakBadge}>
                     <Feather name="zap" size={9} color="#FF9500" />
@@ -1146,6 +1146,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
+    flexShrink: 1,
+    maxWidth: 160,
   },
   headerName: {
     fontSize: 15,

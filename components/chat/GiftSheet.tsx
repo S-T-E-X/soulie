@@ -61,7 +61,7 @@ function GiftCard({
       ]}
     >
       <Image source={GIFT_IMAGES[gift.imageKey]} style={styles.giftIconImg} resizeMode="contain" />
-      <Text style={styles.giftCardName}>{gift.name}</Text>
+      <Text style={styles.giftCardName}>{t(("gift." + gift.id) as any)}</Text>
       <View style={styles.giftPriceRow}>
         <Feather name="circle" size={10} color="#FFD700" />
         <Text style={styles.giftPrice}>{gift.price}</Text>

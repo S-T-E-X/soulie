@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { useI18n } from "@/hooks/useI18n";
 import {
   View,
   TextInput,
@@ -34,6 +35,7 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ onSend, disabled, replyTo, onCancelReply }: ChatInputProps) {
+  const { t } = useI18n();
   const { isDark, colors } = useTheme();
   const [text, setText] = useState("");
   const [pendingImage, setPendingImage] = useState<string | null>(null);
@@ -137,7 +139,7 @@ export function ChatInput({ onSend, disabled, replyTo, onCancelReply }: ChatInpu
             style={[styles.input, { color: colors.text.primary }]}
             value={text}
             onChangeText={setText}
-            placeholder="Bir şeyler söyle..."
+            placeholder={t("chat.typeMessage")}
             placeholderTextColor={colors.text.tertiary}
             multiline
             maxLength={2000}

@@ -318,6 +318,7 @@ export default function ExploreScreen() {
   const [activeCategory, setActiveCategory] = React.useState<CategoryKey>("all");
   const [streaks, setStreaks] = React.useState<Record<string, number>>({});
   const [showCreateSheet, setShowCreateSheet] = useState(false);
+  const [showVipPopup, setShowVipPopup] = useState(false);
 
   const [formName, setFormName] = useState("");
   const [formAge, setFormAge] = useState("");
@@ -369,10 +370,7 @@ export default function ExploreScreen() {
   const handleFabPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!isVipActive) {
-      Alert.alert(t("explore.vipRequiredTitle"), t("explore.vipRequiredMsg"), [
-        { text: t("common.cancel"), style: "cancel" },
-        { text: "VIP", onPress: () => router.push({ pathname: "/(tabs)/market", params: { tab: "premium" } } as any) },
-      ]);
+      setShowVipPopup(true);
       return;
     }
     setFormName("");
@@ -522,6 +520,36 @@ export default function ExploreScreen() {
           <Feather name="plus" size={26} color="#fff" />
         </LinearGradient>
       </Pressable>
+
+      <Modal
+        visible={showVipPopup}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowVipPopup(false)}
+      >
+        <Pressable style={styles.vipOverlay} onPress={() => setShowVipPopup(false)}>
+          <View style={[styles.vipSheet, { backgroundColor: isDark ? "#1C1C2E" : "#F2F2F7", paddingBottom: insets.bottom + 24 }]}>
+            <View style={styles.sheetHandle} />
+            <LinearGradient colors={["rgba(255,214,0,0.15)", "rgba(255,149,0,0.08)"]} style={styles.vipIconBg}>
+              <Feather name="star" size={36} color="#FFD700" />
+            </LinearGradient>
+            <Text style={[styles.vipPopupTitle, { color: isDark ? "#FFFFFF" : "#1C1C2E" }]}>{t("explore.vipRequiredTitle")}</Text>
+            <Text style={[styles.vipPopupDesc, { color: isDark ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.55)" }]}>{t("explore.vipRequiredMsg")}</Text>
+            <Pressable
+              onPress={() => { setShowVipPopup(false); router.push({ pathname: "/(tabs)/market", params: { tab: "premium" } } as any); }}
+              style={({ pressed }) => [styles.vipPopupBtn, pressed && { opacity: 0.88 }]}
+            >
+              <LinearGradient colors={["#FFD700", "#FF9500"]} style={styles.vipPopupBtnGradient}>
+                <Feather name="star" size={16} color="#fff" />
+                <Text style={styles.vipPopupBtnText}>VIP</Text>
+              </LinearGradient>
+            </Pressable>
+            <Pressable onPress={() => setShowVipPopup(false)} style={styles.vipPopupDismiss}>
+              <Text style={[styles.vipPopupDismissText, { color: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)" }]}>{t("common.cancel")}</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={showCreateSheet}
@@ -828,6 +856,65 @@ const styles = StyleSheet.create({
   sheetOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  vipOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "flex-end",
+  },
+  vipSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    alignItems: "center",
+    gap: 12,
+  },
+  vipIconBg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  vipPopupTitle: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+  },
+  vipPopupDesc: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 8,
+  },
+  vipPopupBtn: {
+    width: "100%",
+    borderRadius: 14,
+    overflow: "hidden",
+    marginTop: 4,
+  },
+  vipPopupBtnGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 15,
+    gap: 8,
+  },
+  vipPopupBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  vipPopupDismiss: {
+    paddingVertical: 12,
+  },
+  vipPopupDismissText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
   },
   createSheet: {
     borderTopLeftRadius: 24,

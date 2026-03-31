@@ -19,28 +19,29 @@ import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { type CharacterSettings, type VoiceTone } from "@/hooks/useCharacterSettings";
 import Colors from "@/constants/colors";
+import { useI18n } from "@/hooks/useI18n";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 
 export const AVAILABLE_TRAITS = [
-  { id: "romantik", label: "Romantik", icon: "heart" as const },
-  { id: "dinleyici", label: "Dinleyici", icon: "headphones" as const },
-  { id: "koruyucu", label: "Koruyucu", icon: "shield" as const },
-  { id: "disiplinli", label: "Sert/Disiplinli", icon: "zap" as const },
-  { id: "entellektuel", label: "Entelektüel", icon: "book-open" as const },
-  { id: "eglenceli", label: "Eğlenceli", icon: "smile" as const },
-  { id: "gizemli", label: "Gizemli", icon: "moon" as const },
-  { id: "sakaci", label: "Şakacı", icon: "message-circle" as const },
+  { id: "romantik", icon: "heart" as const },
+  { id: "dinleyici", icon: "headphones" as const },
+  { id: "koruyucu", icon: "shield" as const },
+  { id: "disiplinli", icon: "zap" as const },
+  { id: "entellektuel", icon: "book-open" as const },
+  { id: "eglenceli", icon: "smile" as const },
+  { id: "gizemli", icon: "moon" as const },
+  { id: "sakaci", icon: "message-circle" as const },
 ];
 
 type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
 
-const VOICE_TONES: { id: VoiceTone; label: string; icon: FeatherIconName; desc: string }[] = [
-  { id: "warm", label: "Sıcak", icon: "sun", desc: "Sevecen ve rahatlatıcı" },
-  { id: "playful", label: "Oyuncu", icon: "smile", desc: "Neşeli ve eğlenceli" },
-  { id: "serious", label: "Ciddi", icon: "briefcase", desc: "Olgun ve düşünceli" },
-  { id: "mysterious", label: "Gizemli", icon: "moon", desc: "Merak uyandıran" },
-  { id: "energetic", label: "Enerjik", icon: "zap", desc: "Heyecanlı ve motive edici" },
+const VOICE_TONE_IDS: { id: VoiceTone; icon: FeatherIconName }[] = [
+  { id: "warm", icon: "sun" },
+  { id: "playful", icon: "smile" },
+  { id: "serious", icon: "briefcase" },
+  { id: "mysterious", icon: "moon" },
+  { id: "energetic", icon: "zap" },
 ];
 
 interface Props {
@@ -62,6 +63,7 @@ export function CharacterCustomizeSheet({
   onSave,
   onRemoveMemory,
 }: Props) {
+  const { t } = useI18n();
   const slideAnim = useRef(new Animated.Value(SCREEN_H)).current;
   const [localName, setLocalName] = useState(settings.customName ?? "");
   const [localTraits, setLocalTraits] = useState<string[]>(settings.traits);
@@ -156,7 +158,7 @@ export function CharacterCustomizeSheet({
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>
                     <Feather name="edit-2" size={14} color={Colors.accent} />
-                    <Text style={styles.sectionTitle}>Özel İsim</Text>
+                    <Text style={styles.sectionTitle}>{t("char.customName")}</Text>
                     {!isVip && (
                       <Pressable onPress={handleVipPress} style={styles.vipChip}>
                         <Feather name="star" size={10} color="#FFD700" />
@@ -186,7 +188,7 @@ export function CharacterCustomizeSheet({
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>
                     <Feather name="sliders" size={14} color={Colors.accent} />
-                    <Text style={styles.sectionTitle}>Kişilik Özellikleri</Text>
+                    <Text style={styles.sectionTitle}>{t("char.personality")}</Text>
                     {!isVip && (
                       <Pressable onPress={handleVipPress} style={styles.vipChip}>
                         <Feather name="star" size={10} color="#FFD700" />
@@ -195,7 +197,7 @@ export function CharacterCustomizeSheet({
                     )}
                   </View>
                   <Text style={styles.sectionSub}>
-                    Seçtiğin özellikler {localName || characterName}'in sana yaklaşımını şekillendirir.
+                    {t("char.personalityDesc").replace("{name}", localName || characterName)}
                   </Text>
                   <View style={styles.traitsGrid}>
                     {AVAILABLE_TRAITS.map((trait) => {
@@ -212,7 +214,7 @@ export function CharacterCustomizeSheet({
                           ]}
                         >
                           <Feather name={trait.icon} size={13} color={isSelected ? "#fff" : Colors.text.secondary} />
-                          <Text style={[styles.traitLabel, isSelected && styles.traitLabelSelected]}>{trait.label}</Text>
+                          <Text style={[styles.traitLabel, isSelected && styles.traitLabelSelected]}>{t(("char.trait." + trait.id) as any)}</Text>
                         </Pressable>
                       );
                     })}
@@ -222,7 +224,7 @@ export function CharacterCustomizeSheet({
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>
                     <Feather name="mic" size={14} color={Colors.accent} />
-                    <Text style={styles.sectionTitle}>Ses Tonu</Text>
+                    <Text style={styles.sectionTitle}>{t("char.voiceTone")}</Text>
                     {!isVip && (
                       <Pressable onPress={() => setShowPremiumSheet(true)} style={styles.vipChip}>
                         <Feather name="star" size={10} color="#FFD700" />
@@ -230,9 +232,9 @@ export function CharacterCustomizeSheet({
                       </Pressable>
                     )}
                   </View>
-                  <Text style={styles.sectionSub}>Karakterin konuşma tarzını belirle.</Text>
+                  <Text style={styles.sectionSub}>{t("char.voiceToneDesc")}</Text>
                   <View style={styles.voiceToneGrid}>
-                    {VOICE_TONES.map((tone) => {
+                    {VOICE_TONE_IDS.map((tone) => {
                       const isSelected = settings.voiceTone === tone.id;
                       return (
                         <Pressable
@@ -249,8 +251,8 @@ export function CharacterCustomizeSheet({
                             <Feather name={tone.icon} size={16} color={isSelected ? "#fff" : Colors.text.secondary} />
                             {!isVip && <Feather name="lock" size={10} color={Colors.text.tertiary} />}
                           </View>
-                          <Text style={[styles.voiceToneLabel, isSelected && styles.voiceToneLabelSelected]}>{tone.label}</Text>
-                          <Text style={[styles.voiceToneDesc, isSelected && styles.voiceToneDescSelected]}>{tone.desc}</Text>
+                          <Text style={[styles.voiceToneLabel, isSelected && styles.voiceToneLabelSelected]}>{t(("char.voice." + tone.id) as any)}</Text>
+                          <Text style={[styles.voiceToneDesc, isSelected && styles.voiceToneDescSelected]}>{t(("char.voice." + tone.id + ".desc") as any)}</Text>
                         </Pressable>
                       );
                     })}
@@ -260,14 +262,14 @@ export function CharacterCustomizeSheet({
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>
                     <Feather name="cpu" size={14} color={Colors.accent} />
-                    <Text style={styles.sectionTitle}>Hafıza</Text>
+                    <Text style={styles.sectionTitle}>{t("char.memory")}</Text>
                     <Text style={styles.memoriesCount}>{settings.memories.length}/6</Text>
                   </View>
-                  <Text style={styles.sectionSub}>Yapay zeka sohbetlerde önemli anları otomatik kaydeder.</Text>
+                  <Text style={styles.sectionSub}>{t("char.memoryDesc")}</Text>
                   {settings.memories.length === 0 ? (
                     <View style={styles.emptyMemory}>
                       <Feather name="inbox" size={20} color={Colors.text.tertiary} />
-                      <Text style={styles.emptyMemoryText}>Henüz kaydedilen an yok</Text>
+                      <Text style={styles.emptyMemoryText}>{t("char.noMemory")}</Text>
                     </View>
                   ) : (
                     <View style={styles.memoriesList}>
@@ -289,7 +291,7 @@ export function CharacterCustomizeSheet({
                 <Pressable onPress={handleSave} style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.88 }]}>
                   <LinearGradient colors={[Colors.userBubble.from, Colors.userBubble.to]} style={styles.saveBtnGradient}>
                     <Feather name="check" size={16} color="#fff" />
-                    <Text style={styles.saveBtnText}>Kaydet</Text>
+                    <Text style={styles.saveBtnText}>{t("char.save")}</Text>
                   </LinearGradient>
                 </Pressable>
               )}
@@ -298,7 +300,7 @@ export function CharacterCustomizeSheet({
                 <Pressable onPress={handleVipPress} style={({ pressed }) => [styles.upgradeBtn, pressed && { opacity: 0.88 }]}>
                   <LinearGradient colors={["#FFD700", "#FF9500"]} style={styles.saveBtnGradient}>
                     <Feather name="star" size={16} color="#fff" />
-                    <Text style={styles.saveBtnText}>Premium'a Geç</Text>
+                    <Text style={styles.saveBtnText}>{t("char.upgradePremium")}</Text>
                   </LinearGradient>
                 </Pressable>
               )}
@@ -325,21 +327,19 @@ export function CharacterCustomizeSheet({
               <LinearGradient colors={["rgba(255,214,0,0.15)", "rgba(255,149,0,0.08)"]} style={styles.premiumIconBg}>
                 <Feather name="star" size={32} color="#FFD700" />
               </LinearGradient>
-              <Text style={styles.premiumTitle}>Premium Özellik</Text>
-              <Text style={styles.premiumDesc}>
-                Ses tonu seçimi Premium üyelere özel bir özelliktir. Premium'a geçerek karakterinin konuşma tarzını özelleştirebilirsin.
-              </Text>
+              <Text style={styles.premiumTitle}>{t("char.premiumFeature")}</Text>
+              <Text style={styles.premiumDesc}>{t("char.voiceTonePremiumDesc")}</Text>
               <Pressable
                 onPress={() => { setShowPremiumSheet(false); onClose(); router.push({ pathname: "/(tabs)/market", params: { tab: "premium" } }); }}
                 style={({ pressed }) => [styles.premiumBtn, pressed && { opacity: 0.88 }]}
               >
                 <LinearGradient colors={["#FFD700", "#FF9500"]} style={styles.premiumBtnGradient}>
                   <Feather name="star" size={16} color="#fff" />
-                  <Text style={styles.premiumBtnText}>Premium'a Geç</Text>
+                  <Text style={styles.premiumBtnText}>{t("char.upgradePremium")}</Text>
                 </LinearGradient>
               </Pressable>
               <Pressable onPress={() => setShowPremiumSheet(false)} style={styles.premiumDismiss}>
-                <Text style={styles.premiumDismissText}>Şimdilik değil</Text>
+                <Text style={styles.premiumDismissText}>{t("char.notNow")}</Text>
               </Pressable>
             </View>
           </View>
