@@ -640,11 +640,15 @@ ${sec.advice}: (concrete advice for the user)`;
     const parts = token.split(".");
     if (parts.length !== 3) throw new Error("Invalid JWT format");
 
-    const decodeB64 = (s: string) =>
-      Buffer.from(s.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+    // base64url decode (with proper padding)
+    const decodeB64Url = (s: string): Buffer => {
+      const pad = s.length % 4;
+      const padded = pad ? s + "=".repeat(4 - pad) : s;
+      return Buffer.from(padded.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+    };
 
-    const header = JSON.parse(decodeB64(parts[0]).toString("utf8")) as { kid: string; alg: string };
-    const payload = JSON.parse(decodeB64(parts[1]).toString("utf8")) as Record<string, unknown>;
+    const header = JSON.parse(decodeB64Url(parts[0]).toString("utf8")) as { kid: string; alg: string };
+    const payload = JSON.parse(decodeB64Url(parts[1]).toString("utf8")) as Record<string, unknown>;
 
     if (payload.iss !== "https://appleid.apple.com") throw new Error("Invalid issuer");
     if (Math.floor(Date.now() / 1000) > (payload.exp as number)) throw new Error("Token expired");
@@ -659,33 +663,26 @@ ${sec.advice}: (concrete advice for the user)`;
     const jwk = keys.find((k) => k.kid === header.kid);
     if (!jwk) throw new Error("No matching Apple public key for kid=" + header.kid);
 
-    const crypto = await import("node:crypto");
-    const publicKey = crypto.createPublicKey({ key: jwk as crypto.JsonWebKey, format: "jwk" });
+    // Use Web Crypto API (SubtleCrypto) — available in Node 15+
+    // ES256 = ECDSA P-256 SHA-256. Web Crypto expects raw R||S signature (not DER).
+    const { subtle } = globalThis.crypto;
+    const cryptoKey = await subtle.importKey(
+      "jwk",
+      jwk as JsonWebKey,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["verify"]
+    );
 
     const signingInput = `${parts[0]}.${parts[1]}`;
-    const rawSig = decodeB64(parts[2]);
+    const rawSig = decodeB64Url(parts[2]);
 
-    function rawSigToDer(raw: Buffer): Buffer {
-      const r = raw.subarray(0, 32);
-      const s = raw.subarray(32, 64);
-      const padInt = (buf: Buffer) => {
-        let i = 0;
-        while (i < buf.length - 1 && buf[i] === 0) i++;
-        let b = buf.subarray(i);
-        if (b[0] & 0x80) b = Buffer.concat([Buffer.from([0x00]), b]);
-        return b;
-      };
-      const rp = padInt(r), sp = padInt(s);
-      return Buffer.concat([
-        Buffer.from([0x30, 4 + rp.length + sp.length, 0x02, rp.length]),
-        rp,
-        Buffer.from([0x02, sp.length]),
-        sp,
-      ]);
-    }
-
-    const derSig = rawSigToDer(rawSig);
-    const isValid = crypto.verify("sha256", Buffer.from(signingInput), publicKey, derSig);
+    const isValid = await subtle.verify(
+      { name: "ECDSA", hash: "SHA-256" },
+      cryptoKey,
+      rawSig,
+      Buffer.from(signingInput, "utf8")
+    );
     if (!isValid) throw new Error("Apple identity token signature invalid");
 
     return payload;
