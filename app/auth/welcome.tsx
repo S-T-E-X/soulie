@@ -240,25 +240,12 @@ export default function WelcomeScreen() {
         });
       } else {
         await login(data.user);
-        if (!data.user.onboardingComplete) {
-          router.push({
-            pathname: "/auth/social-onboarding",
-            params: {
-              method: "apple",
-              email: data.user.email || "",
-              registeredId: data.user.id,
-              registeredUserId: data.user.userId,
-              prefillName: data.user.name || "",
-            },
-          });
-        } else {
-          router.replace("/(tabs)/explore");
-        }
+        router.replace("/(tabs)/explore");
       }
     } catch (e: any) {
       if (e.code === "ERR_REQUEST_CANCELED") return;
-      console.error("[Apple] Login error:", e?.message ?? e);
-      Alert.alert("Error", `Apple Sign-in failed: ${e?.message ?? "unknown error"}`);
+      console.error("[Apple] Login error:", e);
+      Alert.alert("Error", "Apple Sign-in failed. Please try again.");
     } finally {
       setAppleLoading(false);
     }

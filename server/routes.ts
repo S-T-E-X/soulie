@@ -664,12 +664,12 @@ ${sec.advice}: (concrete advice for the user)`;
     if (!jwk) throw new Error("No matching Apple public key for kid=" + header.kid);
 
     // Use Web Crypto API (SubtleCrypto) — available in Node 15+
-    // Apple identity tokens use RS256 (RSASSA-PKCS1-v1_5 with SHA-256, kty: "RSA")
+    // ES256 = ECDSA P-256 SHA-256. Web Crypto expects raw R||S signature (not DER).
     const { subtle } = globalThis.crypto;
     const cryptoKey = await subtle.importKey(
       "jwk",
       jwk as JsonWebKey,
-      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      { name: "ECDSA", namedCurve: "P-256" },
       false,
       ["verify"]
     );
@@ -678,7 +678,7 @@ ${sec.advice}: (concrete advice for the user)`;
     const rawSig = decodeB64Url(parts[2]);
 
     const isValid = await subtle.verify(
-      "RSASSA-PKCS1-v1_5",
+      { name: "ECDSA", hash: "SHA-256" },
       cryptoKey,
       rawSig,
       Buffer.from(signingInput, "utf8")
