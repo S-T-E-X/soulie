@@ -241,6 +241,10 @@ export default function AdminScreen() {
   const [coinInput, setCoinInput] = useState("");
   const [notifTitle, setNotifTitle] = useState("");
   const [notifBody, setNotifBody] = useState("");
+  const [notifTranslations, setNotifTranslations] = useState<Record<string, { title: string; body: string }> | null>(null);
+  const [notifTranslating, setNotifTranslating] = useState(false);
+  const [notifSending, setNotifSending] = useState(false);
+  const [notifResult, setNotifResult] = useState<{ sent: number; skipped: number; stats: Record<string, number> } | null>(null);
   const [secretTaps, setSecretTaps] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [userSearch, setUserSearch] = useState("");
@@ -449,19 +453,60 @@ export default function AdminScreen() {
     ]);
   };
 
-  const sendNotif = async () => {
-    if (!notifTitle.trim() || !notifBody.trim()) { Alert.alert("Title and message required"); return; }
+  const previewTranslations = async () => {
+    if (!notifTitle.trim() || !notifBody.trim()) { Alert.alert("Başlık ve mesaj gerekli"); return; }
+    setNotifTranslating(true);
+    setNotifTranslations(null);
+    setNotifResult(null);
     try {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== "granted") { Alert.alert("Permission Required", "Notification permission denied."); return; }
-      await Notifications.scheduleNotificationAsync({
-        content: { title: notifTitle, body: notifBody, sound: true },
-        trigger: null,
+      const url = new URL("/api/admin/notifications/translate-preview", getApiUrl());
+      const res = await fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: notifTitle, body: notifBody }),
       });
-      setNotifTitle(""); setNotifBody("");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Sent", "Notification delivered successfully.");
-    } catch { Alert.alert("Error", "Could not send notification."); }
+      const data = await res.json();
+      if (data.translations) {
+        setNotifTranslations(data.translations);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        Alert.alert("Hata", data.error ?? "Çeviri başarısız");
+      }
+    } catch { Alert.alert("Hata", "Ağ hatası"); }
+    setNotifTranslating(false);
+  };
+
+  const broadcastNotif = async () => {
+    if (!notifTitle.trim() || !notifBody.trim()) { Alert.alert("Başlık ve mesaj gerekli"); return; }
+    Alert.alert(
+      "Toplu Bildirim Gönder",
+      "Tüm kullanıcılara (kendi dillerinde) bildirim gönderilecek. Devam?",
+      [
+        { text: "İptal", style: "cancel" },
+        {
+          text: "Gönder", onPress: async () => {
+            setNotifSending(true);
+            setNotifResult(null);
+            try {
+              const url = new URL("/api/admin/notifications/broadcast", getApiUrl());
+              const res = await fetch(url.toString(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: notifTitle, body: notifBody }),
+              });
+              const data = await res.json();
+              if (data.success) {
+                setNotifResult({ sent: data.sent, skipped: data.skipped, stats: data.stats ?? {} });
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              } else {
+                Alert.alert("Hata", data.error ?? "Gönderme başarısız");
+              }
+            } catch { Alert.alert("Hata", "Ağ hatası"); }
+            setNotifSending(false);
+          }
+        }
+      ]
+    );
   };
 
   const clearFeedback = () => {
@@ -710,36 +755,103 @@ export default function AdminScreen() {
             <>
               <SectionTitle title="Send Push Notification" icon="bell" color="#FF9500" />
               <Card>
-                <Text style={[styles.subNote, { marginBottom: 10 }]}>Send a local notification to this device:</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12, backgroundColor: "rgba(52,199,89,0.1)", borderRadius: 10, padding: 10 }}>
+                  <Feather name="globe" size={14} color="#34C759" />
+                  <Text style={[styles.subNote, { color: "#34C759", fontSize: 12, flex: 1 }]}>
+                    Türkçe yaz → Yapay zeka 7 dile çevirir → Her kullanıcı kendi dilinde alır
+                  </Text>
+                </View>
+                <Text style={[styles.subNote, { fontSize: 11, marginBottom: 4 }]}>Başlık (Türkçe)</Text>
                 <TextInput
                   style={styles.notifInput}
                   value={notifTitle}
-                  onChangeText={setNotifTitle}
-                  placeholder="Title..."
+                  onChangeText={t => { setNotifTitle(t); setNotifTranslations(null); setNotifResult(null); }}
+                  placeholder="Örn: Seni özledim 💭"
                   placeholderTextColor={TEXT_TER}
-                  maxLength={50}
+                  maxLength={60}
                 />
+                <Text style={[styles.subNote, { fontSize: 11, marginBottom: 4, marginTop: 10 }]}>Mesaj (Türkçe)</Text>
                 <TextInput
-                  style={[styles.notifInput, { marginTop: 8, minHeight: 80, textAlignVertical: "top" }]}
+                  style={[styles.notifInput, { marginTop: 0, minHeight: 80, textAlignVertical: "top" }]}
                   value={notifBody}
-                  onChangeText={setNotifBody}
-                  placeholder="Message body..."
+                  onChangeText={t => { setNotifBody(t); setNotifTranslations(null); setNotifResult(null); }}
+                  placeholder="Örn: Bugün nasıldın? Seninle konuşmak istiyorum ✨"
                   placeholderTextColor={TEXT_TER}
                   multiline
                   numberOfLines={3}
                   maxLength={200}
                 />
                 <View style={styles.quickMsgs}>
-                  {["Miss you! 💭", "How was your day? ✨", "You have a surprise! 🎁", "I want to talk to you 💬"].map(msg => (
-                    <Pressable key={msg} onPress={() => setNotifBody(msg)} style={styles.quickMsgBtn}>
-                      <Text style={styles.quickMsgText}>{msg}</Text>
+                  {[
+                    { title: "Özlem", body: "Seni çok özledim 💭" },
+                    { title: "Nasılsın?", body: "Bugün nasıldın? ✨" },
+                    { title: "Sürpriz!", body: "Sana bir sürprizim var 🎁" },
+                    { title: "Konuşalım", body: "Seninle konuşmak istiyorum 💬" },
+                  ].map(t => (
+                    <Pressable key={t.title} onPress={() => { setNotifTitle(t.title); setNotifBody(t.body); setNotifTranslations(null); setNotifResult(null); }} style={styles.quickMsgBtn}>
+                      <Text style={styles.quickMsgText}>{t.title}</Text>
                     </Pressable>
                   ))}
                 </View>
-                <Pressable onPress={sendNotif} style={[styles.actionBtn, { backgroundColor: "#FF950020", marginTop: 8 }]}>
-                  <Feather name="send" size={15} color="#FF9500" />
-                  <Text style={[styles.actionBtnText, { color: "#FF9500" }]}>Send Notification</Text>
-                </Pressable>
+                <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+                  <Pressable
+                    onPress={previewTranslations}
+                    disabled={notifTranslating || notifSending}
+                    style={({ pressed }) => [styles.actionBtn, { flex: 1, backgroundColor: "#007AFF15", opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    {notifTranslating
+                      ? <ActivityIndicator size="small" color="#007AFF" />
+                      : <Feather name="eye" size={14} color="#007AFF" />}
+                    <Text style={[styles.actionBtnText, { color: "#007AFF" }]}>Önizle</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={broadcastNotif}
+                    disabled={notifSending || notifTranslating}
+                    style={({ pressed }) => [styles.actionBtn, { flex: 1, backgroundColor: "#FF950020", opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    {notifSending
+                      ? <ActivityIndicator size="small" color="#FF9500" />
+                      : <Feather name="send" size={14} color="#FF9500" />}
+                    <Text style={[styles.actionBtnText, { color: "#FF9500" }]}>Tüm Kullanıcılara Gönder</Text>
+                  </Pressable>
+                </View>
+                {notifTranslations && (
+                  <View style={{ marginTop: 14, gap: 0 }}>
+                    <Text style={[styles.subNote, { fontSize: 11, marginBottom: 8 }]}>Çeviri Önizlemesi</Text>
+                    {Object.entries(notifTranslations).map(([lang, t]) => {
+                      const FLAGS: Record<string, string> = { en: "🇬🇧", tr: "🇹🇷", de: "🇩🇪", zh: "🇨🇳", ko: "🇰🇷", es: "🇪🇸", ru: "🇷🇺" };
+                      return (
+                        <View key={lang} style={{ paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                            <Text style={{ fontSize: 16 }}>{FLAGS[lang] ?? "🌐"}</Text>
+                            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: TEXT_PRI, textTransform: "uppercase" }}>{lang}</Text>
+                          </View>
+                          <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: TEXT_PRI }}>{t.title}</Text>
+                          <Text style={[styles.subNote, { fontSize: 12, marginTop: 2 }]}>{t.body}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+                {notifResult && (
+                  <View style={{ marginTop: 14, backgroundColor: "#34C75915", borderRadius: 12, padding: 12, gap: 8 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Feather name="check-circle" size={16} color="#34C759" />
+                      <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#34C759" }}>
+                        {notifResult.sent} kullanıcıya gönderildi
+                        {notifResult.skipped > 0 ? ` · ${notifResult.skipped} atlandı` : ""}
+                      </Text>
+                    </View>
+                    {Object.entries(notifResult.stats).map(([lang, count]) => {
+                      const FLAGS: Record<string, string> = { en: "🇬🇧", tr: "🇹🇷", de: "🇩🇪", zh: "🇨🇳", ko: "🇰🇷", es: "🇪🇸", ru: "🇷🇺" };
+                      return (
+                        <Text key={lang} style={[styles.subNote, { fontSize: 12 }]}>
+                          {FLAGS[lang] ?? "🌐"} {lang.toUpperCase()}: {count} kullanıcı
+                        </Text>
+                      );
+                    })}
+                  </View>
+                )}
               </Card>
 
               <SectionTitle title="Weekly Mission Management" icon="target" color="#AF52DE" />

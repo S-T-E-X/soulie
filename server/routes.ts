@@ -9,7 +9,7 @@ import {
   saveAppleNotification, softDeleteUser, softDeleteUserByAppleId, revokeAppleConsent,
   updateEmailRelayStatus, findUserByAppleId, getAppleNotifications,
   upsertChat, getChatsForUser, deleteChat, upsertUserXp, getUserXp, getAnalyticsData,
-  setUserXpAdmin, query as dbQuery,
+  setUserXpAdmin, query as dbQuery, savePushToken, getUsersForBroadcast,
 } from "./db";
 
 let globalSystemPromptOverride: string = "";
@@ -1088,6 +1088,104 @@ ${sec.advice}: (concrete advice for the user)`;
     } catch (err) {
       console.error("Admin set level error:", err);
       res.status(500).json({ error: "Failed to update level" });
+    }
+  });
+
+  app.post("/api/users/push-token", async (req, res) => {
+    const { userId, token } = req.body;
+    if (!userId || !token) return res.status(400).json({ error: "userId and token required" });
+    try {
+      await savePushToken(userId, token);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Save push token error:", err);
+      res.status(500).json({ error: "Failed to save push token" });
+    }
+  });
+
+  const SUPPORTED_LANGS: Record<string, string> = {
+    en: "English", tr: "Turkish", de: "German", zh: "Chinese (Simplified)",
+    ko: "Korean", es: "Spanish", ru: "Russian",
+  };
+
+  async function translateNotification(titleTR: string, bodyTR: string): Promise<Record<string, { title: string; body: string }>> {
+    const langList = Object.entries(SUPPORTED_LANGS)
+      .map(([code, name]) => `  "${code}": { "title": "<${name} title>", "body": "<${name} body>" }`)
+      .join(",\n");
+    const prompt = `You are a professional translator. Translate the following push notification from Turkish into ALL languages listed below. Preserve the tone (warm, friendly, personal).
+
+Turkish title: ${titleTR}
+Turkish body: ${bodyTR}
+
+Return ONLY valid JSON in this exact shape (no markdown, no code block):
+{
+${langList}
+}`;
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      max_tokens: 800,
+    });
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "");
+    return JSON.parse(cleaned) as Record<string, { title: string; body: string }>;
+  }
+
+  app.post("/api/admin/notifications/translate-preview", async (req, res) => {
+    const { title, body } = req.body;
+    if (!title?.trim() || !body?.trim()) return res.status(400).json({ error: "title and body required" });
+    try {
+      const translations = await translateNotification(title, body);
+      res.json({ translations });
+    } catch (err) {
+      console.error("Translate preview error:", err);
+      res.status(500).json({ error: "Translation failed" });
+    }
+  });
+
+  app.post("/api/admin/notifications/broadcast", async (req, res) => {
+    const { title, body } = req.body;
+    if (!title?.trim() || !body?.trim()) return res.status(400).json({ error: "title and body required" });
+    try {
+      const translations = await translateNotification(title, body);
+      const users = await getUsersForBroadcast();
+      if (users.length === 0) {
+        return res.json({ success: true, sent: 0, stats: {}, skipped: 0, message: "No users with push tokens yet." });
+      }
+      const CHUNK = 100;
+      const stats: Record<string, number> = {};
+      let sent = 0;
+      let skipped = 0;
+      for (let i = 0; i < users.length; i += CHUNK) {
+        const chunk = users.slice(i, i + CHUNK);
+        const messages = chunk.map(u => {
+          const lang = u.language in translations ? u.language : "en";
+          const t = translations[lang] ?? translations["en"] ?? { title, body };
+          return { to: u.push_token, title: t.title, body: t.body, sound: "default" };
+        });
+        const expoPushRes = await fetch("https://exp.host/--/api/v2/push/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json", "Accept-Encoding": "gzip, deflate" },
+          body: JSON.stringify(messages),
+        });
+        const expoPushData = await expoPushRes.json() as { data?: Array<{ status: string; id?: string }> };
+        const results = expoPushData.data ?? [];
+        results.forEach((r, idx) => {
+          if (r.status === "ok") {
+            const lang = chunk[idx]?.language ?? "en";
+            stats[lang] = (stats[lang] ?? 0) + 1;
+            sent++;
+          } else {
+            skipped++;
+          }
+        });
+      }
+      console.log(`[Broadcast] Sent: ${sent}, Skipped: ${skipped}, Stats:`, stats);
+      res.json({ success: true, sent, skipped, stats });
+    } catch (err) {
+      console.error("Broadcast error:", err);
+      res.status(500).json({ error: "Broadcast failed" });
     }
   });
 

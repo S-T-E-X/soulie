@@ -10,6 +10,7 @@ import React, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { getApiUrl } from "@/lib/query-client";
+import * as Notifications from "expo-notifications";
 
 export type UserLanguage = "en" | "tr" | "de" | "zh" | "ko" | "es" | "ru";
 export type UserGender = "male" | "female" | "other" | "prefer_not_to_say";
@@ -63,6 +64,26 @@ async function syncUserToServer(user: User) {
   } catch {}
 }
 
+async function registerAndSyncPushToken(userId: string) {
+  try {
+    if (Platform.OS === "web") return;
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    const { status } = existing === "granted"
+      ? { status: existing }
+      : await Notifications.requestPermissionsAsync();
+    if (status !== "granted") return;
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const token = tokenData.data;
+    if (!token) return;
+    const url = new URL("/api/users/push-token", getApiUrl());
+    await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, token }),
+    });
+  } catch {}
+}
+
 const ALL_STORAGE_KEYS = [
   "lumina_auth_user",
   "soulie_users_db_v1",
@@ -96,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(parsed));
           }
           setUser(parsed);
+          registerAndSyncPushToken(parsed.id);
         }
       } catch (e) {
         console.error("Auth init failed", e);
@@ -133,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AsyncStorage.setItem(USERS_DB_KEY, JSON.stringify(users));
     } catch {}
     syncUserToServer(newUser);
+    registerAndSyncPushToken(newUser.id);
     setUser(newUser);
   }, []);
 

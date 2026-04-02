@@ -94,6 +94,22 @@ export async function setUserXpAdmin(userId: string, totalXp: number, level: num
   );
 }
 
+export async function savePushToken(userId: string, token: string) {
+  await query(
+    `UPDATE soulie_users SET push_token = $1 WHERE id = $2`,
+    [token, userId]
+  );
+}
+
+export async function getUsersForBroadcast() {
+  const res = await query(
+    `SELECT id, name, language, push_token
+     FROM soulie_users
+     WHERE push_token IS NOT NULL AND push_token <> ''`
+  );
+  return res.rows as { id: string; name: string; language: string; push_token: string }[];
+}
+
 export async function getUserEvents(userId: string, limit = 50) {
   const res = await query(
     `SELECT id, event_type, screen, action, metadata, ip_address, platform, user_agent, created_at
