@@ -61,63 +61,45 @@ function ProgressBar({ step, totalSteps }: { step: number; totalSteps: number })
   );
 }
 
-function NameLanguagePage({
+function MethodBadge({ method }: { method: string }) {
+  const isApple = method === "apple";
+  const isEmail = method === "email";
+  return (
+    <View style={styles.methodBadge}>
+      {isApple ? (
+        <Ionicons name="logo-apple" size={20} color="#000" />
+      ) : isEmail ? (
+        <Feather name="mail" size={18} color="#555" />
+      ) : (
+        <View style={styles.googleIcon}>
+          <Text style={styles.googleIconText}>G</Text>
+        </View>
+      )}
+      <Text style={styles.methodLabel}>
+        {isApple ? "Apple" : isEmail ? "Email" : "Google"}
+      </Text>
+    </View>
+  );
+}
+
+function LanguagePage({
   data,
-  onNameChange,
   onLangChange,
   method,
 }: {
   data: OnboardingData;
-  onNameChange: (v: string) => void;
   onLangChange: (v: UserLanguage) => void;
   method: string;
 }) {
   const [showLangPicker, setShowLangPicker] = useState(false);
-  const nameRef = useRef<TextInput>(null);
-  const isApple = method === "apple";
-  const isEmail = method === "email";
   const selectedLang = LANGUAGES.find((l) => l.code === data.language) ?? LANGUAGES[0];
-
-  useEffect(() => {
-    setTimeout(() => nameRef.current?.focus(), 400);
-  }, []);
 
   return (
     <View style={styles.pageContent}>
-      <View style={styles.methodBadge}>
-        {isApple ? (
-          <Ionicons name="logo-apple" size={20} color="#000" />
-        ) : isEmail ? (
-          <Feather name="mail" size={18} color="#555" />
-        ) : (
-          <View style={styles.googleIcon}>
-            <Text style={styles.googleIconText}>G</Text>
-          </View>
-        )}
-        <Text style={styles.methodLabel}>
-          {isApple ? "Apple" : isEmail ? "Email" : "Google"}
-        </Text>
-      </View>
+      <MethodBadge method={method} />
+      <Text style={styles.pageTitle}>{tb(data.language, "onboarding.selectLanguage")}</Text>
+      <Text style={styles.pageSubtitle}>{tb(data.language, "onboarding.languageSubtitle")}</Text>
 
-      <Text style={styles.pageTitle}>{tb(data.language, "onboarding.whatIsYourName")}</Text>
-      <Text style={styles.pageSubtitle}>{tb(data.language, "onboarding.nameSubtitle")}</Text>
-
-      <View style={styles.inputWrapper}>
-        <TextInput
-          ref={nameRef}
-          style={styles.nameInput}
-          value={data.name}
-          onChangeText={onNameChange}
-          placeholder={tb(data.language, "onboarding.namePlaceholder")}
-          placeholderTextColor="rgba(0,0,0,0.3)"
-          autoCapitalize="words"
-          autoCorrect={false}
-          returnKeyType="done"
-          maxLength={30}
-        />
-      </View>
-
-      <Text style={styles.langLabel}>{tb(data.language, "onboarding.selectLanguage")}</Text>
       <Pressable style={styles.langPicker} onPress={() => setShowLangPicker((v) => !v)}>
         <Text style={styles.langPickerText}>
           {selectedLang.flag}{"  "}{selectedLang.label}
@@ -142,6 +124,45 @@ function NameLanguagePage({
           ))}
         </View>
       )}
+    </View>
+  );
+}
+
+function NamePage({
+  data,
+  onNameChange,
+  method,
+}: {
+  data: OnboardingData;
+  onNameChange: (v: string) => void;
+  method: string;
+}) {
+  const nameRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    setTimeout(() => nameRef.current?.focus(), 400);
+  }, []);
+
+  return (
+    <View style={styles.pageContent}>
+      <MethodBadge method={method} />
+      <Text style={styles.pageTitle}>{tb(data.language, "onboarding.whatIsYourName")}</Text>
+      <Text style={styles.pageSubtitle}>{tb(data.language, "onboarding.nameSubtitle")}</Text>
+
+      <View style={styles.inputWrapper}>
+        <TextInput
+          ref={nameRef}
+          style={styles.nameInput}
+          value={data.name}
+          onChangeText={onNameChange}
+          placeholder={tb(data.language, "onboarding.namePlaceholder")}
+          placeholderTextColor="rgba(0,0,0,0.3)"
+          autoCapitalize="words"
+          autoCorrect={false}
+          returnKeyType="done"
+          maxLength={30}
+        />
+      </View>
     </View>
   );
 }
@@ -407,18 +428,22 @@ export default function SocialOnboardingScreen() {
   const method = params.method ?? "google";
   const isApple = method === "apple";
 
-  // Apple flow: step1=name+lang, step2=gender, step3=processing (no birthdate)
-  // Other flow: step1=name+lang, step2=birthdate, step3=gender, step4=processing
-  const TOTAL_STEPS = isApple ? 3 : 4;
-
   const hasAppleName = isApple && !!params.prefillName?.trim();
   const hasAppleGender = isApple && !!params.prefillGender?.trim();
 
-  let minStep = 1;
-  if (hasAppleName && hasAppleGender) minStep = TOTAL_STEPS; // skip to processing
-  else if (hasAppleName) minStep = 2; // skip name step
+  // Build the ordered list of steps based on method and available prefill data
+  // Apple: language → (name if not prefilled) → (gender if not prefilled) → processing
+  // Non-Apple: language → name → birthdate → gender → processing
+  type StepKey = "language" | "name" | "birthdate" | "gender" | "processing";
+  const stepsFlow: StepKey[] = ["language"];
+  if (!hasAppleName) stepsFlow.push("name");
+  if (!isApple) stepsFlow.push("birthdate");
+  if (!hasAppleGender) stepsFlow.push("gender");
+  stepsFlow.push("processing");
 
-  const [step, setStep] = useState(minStep);
+  const TOTAL_STEPS = stepsFlow.length;
+
+  const [step, setStep] = useState(1);
   const [data, setData] = useState<OnboardingData>({
     language: "en",
     name: params.prefillName?.trim() ?? "",
@@ -440,15 +465,15 @@ export default function SocialOnboardingScreen() {
     }).start();
   };
 
+  const currentStepKey = stepsFlow[step - 1] as StepKey;
+  const isProcessing = currentStepKey === "processing";
+
   const goNext = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    if (step === 1) {
-      if (data.name.trim().length < 2) return;
-    }
+    if (currentStepKey === "name" && data.name.trim().length < 2) return;
 
-    // Birthdate validation only for non-Apple flow at step 2
-    if (step === 2 && !isApple) {
+    if (currentStepKey === "birthdate") {
       const d = parseInt(data.birthDay, 10);
       const m = parseInt(data.birthMonth, 10);
       const y = parseInt(data.birthYear, 10);
@@ -490,16 +515,14 @@ export default function SocialOnboardingScreen() {
       }
     }
 
-    // Gender required: step 2 for Apple, step 3 for non-Apple
-    const genderStep = isApple ? 2 : 3;
-    if (step === genderStep && !data.gender) return;
+    if (currentStepKey === "gender" && !data.gender) return;
 
     setStep((s) => s + 1);
     animateIn();
   };
 
   const goBack = () => {
-    if (step <= minStep) {
+    if (step <= 1) {
       router.back();
       return;
     }
@@ -508,10 +531,10 @@ export default function SocialOnboardingScreen() {
   };
 
   const canProceed = () => {
-    if (step === 1) return data.name.trim().length >= 2;
-    if (step === 2 && !isApple) return !!(data.birthDay && data.birthMonth && data.birthYear && data.birthYear.length === 4);
-    if (step === 2 && isApple) return !!data.gender;
-    if (step === 3 && !isApple) return !!data.gender;
+    if (currentStepKey === "language") return true;
+    if (currentStepKey === "name") return data.name.trim().length >= 2;
+    if (currentStepKey === "birthdate") return !!(data.birthDay && data.birthMonth && data.birthYear && data.birthYear.length === 4);
+    if (currentStepKey === "gender") return !!data.gender;
     return false;
   };
 
@@ -527,11 +550,11 @@ export default function SocialOnboardingScreen() {
         <Pressable style={styles.backBtn} onPress={goBack}>
           <Feather name="arrow-left" size={22} color="#333" />
         </Pressable>
-        {step < TOTAL_STEPS && <ProgressBar step={step} totalSteps={TOTAL_STEPS} />}
+        {!isProcessing && <ProgressBar step={step} totalSteps={TOTAL_STEPS - 1} />}
         <View style={styles.backBtn} />
       </View>
 
-      {step < TOTAL_STEPS ? (
+      {!isProcessing ? (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -542,15 +565,21 @@ export default function SocialOnboardingScreen() {
             showsVerticalScrollIndicator={false}
           >
             <Animated.View style={{ transform: [{ translateX: slideAnim }] }}>
-              {step === 1 && (
-                <NameLanguagePage
+              {currentStepKey === "language" && (
+                <LanguagePage
                   data={data}
-                  onNameChange={(v) => setData((d) => ({ ...d, name: v }))}
                   onLangChange={(v) => setData((d) => ({ ...d, language: v }))}
                   method={method}
                 />
               )}
-              {step === 2 && !isApple && (
+              {currentStepKey === "name" && (
+                <NamePage
+                  data={data}
+                  onNameChange={(v) => setData((d) => ({ ...d, name: v }))}
+                  method={method}
+                />
+              )}
+              {currentStepKey === "birthdate" && (
                 <BirthdatePage
                   data={data}
                   onDay={(v) => setData((d) => ({ ...d, birthDay: v }))}
@@ -558,7 +587,7 @@ export default function SocialOnboardingScreen() {
                   onYear={(v) => setData((d) => ({ ...d, birthYear: v }))}
                 />
               )}
-              {((step === 2 && isApple) || (step === 3 && !isApple)) && (
+              {currentStepKey === "gender" && (
                 <GenderPage
                   data={data}
                   onSelect={(g) => setData((d) => ({ ...d, gender: g }))}
