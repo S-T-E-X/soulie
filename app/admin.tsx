@@ -769,14 +769,14 @@ export default function AdminScreen() {
           {/* USER LIST */}
           {section === "user" && selectedUserId === null && (
             <>
-              <SectionTitle title={`Kayıtlı Kullanıcılar (${usersList.length})`} icon="users" />
+              <SectionTitle title={`Registered Users (${usersList.length})`} icon="users" />
               <View style={styles.searchRow}>
                 <Feather name="search" size={15} color={TEXT_TER} />
                 <TextInput
                   style={styles.searchInput}
                   value={userSearch}
                   onChangeText={setUserSearch}
-                  placeholder="İsim veya ID ile ara..."
+                  placeholder="Search by name or ID..."
                   placeholderTextColor={TEXT_TER}
                   autoCapitalize="none"
                   clearButtonMode="while-editing"
@@ -802,7 +802,7 @@ export default function AdminScreen() {
                     <Card>
                       <View style={{ alignItems: "center", padding: 20, gap: 8 }}>
                         <Feather name="users" size={28} color={TEXT_TER} />
-                        <Text style={styles.subNote}>{usersList.length === 0 ? "Henüz kayıtlı kullanıcı yok" : "Arama sonucu bulunamadı"}</Text>
+                        <Text style={styles.subNote}>{usersList.length === 0 ? "No registered users yet" : "No results found"}</Text>
                       </View>
                     </Card>
                   );
@@ -827,11 +827,11 @@ export default function AdminScreen() {
                         <Text style={styles.userListName}>{u.name}</Text>
                         {u.is_vip && <View style={[styles.badge, { backgroundColor: "#FFD70025" }]}><Text style={[styles.badgeText, { color: "#FFD700" }]}>VIP</Text></View>}
                         {u.is_admin && <View style={[styles.badge, { backgroundColor: "#FF950025" }]}><Text style={[styles.badgeText, { color: "#FF9500" }]}>ADMIN</Text></View>}
-                        {u.id === user?.id && <View style={[styles.badge, { backgroundColor: ACCENT + "25" }]}><Text style={[styles.badgeText, { color: ACCENT }]}>Aktif</Text></View>}
+                        {u.id === user?.id && <View style={[styles.badge, { backgroundColor: ACCENT + "25" }]}><Text style={[styles.badgeText, { color: ACCENT }]}>You</Text></View>}
                       </View>
-                      <Text style={[styles.subNote, { fontSize: 11 }]}>@{u.username} · {u.platform ?? "?"} · {u.ip_address ?? "IP yok"}</Text>
+                      <Text style={[styles.subNote, { fontSize: 11 }]}>@{u.username} · {u.platform ?? "?"} · {u.ip_address ?? "No IP"}</Text>
                       {u.last_seen && (
-                        <Text style={[styles.subNote, { fontSize: 10 }]}>Son görülme: {new Date(u.last_seen).toLocaleString("tr-TR")}</Text>
+                        <Text style={[styles.subNote, { fontSize: 10 }]}>Last seen: {new Date(u.last_seen).toLocaleString("en-US")}</Text>
                       )}
                     </View>
                     <Feather name="chevron-right" size={16} color={TEXT_TER} />
@@ -844,40 +844,40 @@ export default function AdminScreen() {
           {/* USER MANAGEMENT (after selecting a user) */}
           {section === "user" && selectedUserId !== null && userTab === "profil" && (
             <>
-              <SectionTitle title="Kimlik & Profil" icon="user" />
+              <SectionTitle title="Identity & Profile" icon="user" />
               <Card>
-                <InfoRow label="İsim" value={selectedUser?.name ?? "—"} />
-                <InfoRow label="Kullanıcı Adı" value={`@${selectedUser?.username ?? "—"}`} />
-                <InfoRow label="E-posta" value={selectedUser?.email ?? "—"} />
-                <InfoRow label="Kullanıcı ID" value={selectedUser?.user_id ?? "—"} />
+                <InfoRow label="Name" value={selectedUser?.name ?? "—"} />
+                <InfoRow label="Username" value={`@${selectedUser?.username ?? "—"}`} />
+                <InfoRow label="Email" value={selectedUser?.email ?? "—"} />
+                <InfoRow label="User ID" value={selectedUser?.user_id ?? "—"} />
                 <InfoRow label="DB ID" value={selectedUser?.id ?? "—"} mono />
-                <InfoRow label="Dil" value={selectedUser?.language ?? "—"} />
-                <InfoRow label="Cinsiyet" value={selectedUser?.gender ?? "—"} />
-                <InfoRow label="Doğum Tarihi" value={selectedUser?.birthdate ?? "—"} />
-                <InfoRow label="Onboarding" value={selectedUser?.onboarding_complete ? "Tamamlandı" : "Eksik"} last />
+                <InfoRow label="Language" value={selectedUser?.language ?? "—"} />
+                <InfoRow label="Gender" value={selectedUser?.gender ?? "—"} />
+                <InfoRow label="Birthdate" value={selectedUser?.birthdate ?? "—"} />
+                <InfoRow label="Onboarding" value={selectedUser?.onboarding_complete ? "Completed" : "Incomplete"} last />
               </Card>
 
-              <SectionTitle title="Cihaz & Bağlantı" icon="monitor" color="#34C759" />
+              <SectionTitle title="Device & Connection" icon="monitor" color="#34C759" />
               <Card>
                 <InfoRow label="Platform" value={selectedUser?.platform ?? "—"} />
-                <InfoRow label="IP Adresi" value={selectedUser?.ip_address ?? "—"} mono />
-                <InfoRow label="Şehir" value={selectedUser?.city ?? "—"} />
-                <InfoRow label="Ülke" value={selectedUser?.country ?? "—"} />
-                <InfoRow label="Tarayıcı / Cihaz" value={selectedUser?.user_agent ? selectedUser.user_agent.substring(0, 60) + "..." : "—"} last />
+                <InfoRow label="IP Address" value={selectedUser?.ip_address ?? "—"} mono />
+                <InfoRow label="City" value={selectedUser?.city ?? "—"} />
+                <InfoRow label="Country" value={selectedUser?.country ?? "—"} />
+                <InfoRow label="Browser / Device" value={selectedUser?.user_agent ? selectedUser.user_agent.substring(0, 60) + "..." : "—"} last />
               </Card>
 
-              <SectionTitle title="Zaman Bilgisi" icon="clock" color="#FF9500" />
+              <SectionTitle title="Time Info" icon="clock" color="#FF9500" />
               <Card>
-                <InfoRow label="Kayıt Tarihi" value={selectedUser?.created_at ? new Date(selectedUser.created_at).toLocaleString("tr-TR") : "—"} />
-                <InfoRow label="Son Görülme" value={selectedUser?.last_seen ? new Date(selectedUser.last_seen).toLocaleString("tr-TR") : "—"} last />
+                <InfoRow label="Registration Date" value={selectedUser?.created_at ? new Date(selectedUser.created_at).toLocaleString("en-US") : "—"} />
+                <InfoRow label="Last Seen" value={selectedUser?.last_seen ? new Date(selectedUser.last_seen).toLocaleString("en-US") : "—"} last />
               </Card>
 
-              <SectionTitle title="VIP & Erişim" icon="star" color="#FFD700" />
+              <SectionTitle title="VIP & Access" icon="star" color="#FFD700" />
               <Card>
                 <View style={styles.toggleRow}>
                   <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={styles.toggleLabel}>VIP Durumu</Text>
-                    <Text style={styles.subNote}>{selectedUser?.is_vip ? "Sınırsız mesaj · Tüm özellikler aktif" : "Günlük 15 mesaj limiti"}</Text>
+                    <Text style={styles.toggleLabel}>VIP Status</Text>
+                    <Text style={styles.subNote}>{selectedUser?.is_vip ? "Unlimited messages · All features active" : "15 messages/day limit"}</Text>
                   </View>
                   <Switch
                     value={!!selectedUser?.is_vip}
@@ -889,12 +889,12 @@ export default function AdminScreen() {
                 <Divider />
                 <View style={styles.toggleRow}>
                   <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={styles.toggleLabel}>Admin Erişimi</Text>
-                    <Text style={styles.subNote}>{selectedUser?.is_admin ? "Yönetici hakları aktif" : "Normal kullanıcı"}</Text>
+                    <Text style={styles.toggleLabel}>Admin Access</Text>
+                    <Text style={styles.subNote}>{selectedUser?.is_admin ? "Admin rights active" : "Regular user"}</Text>
                   </View>
                   <View style={[styles.badge, { backgroundColor: selectedUser?.is_admin ? "#FF950020" : "rgba(255,255,255,0.05)" }]}>
                     <Text style={[styles.badgeText, { color: selectedUser?.is_admin ? "#FF9500" : TEXT_TER }]}>
-                      {selectedUser?.is_admin ? "AKTİF" : "KAPALI"}
+                      {selectedUser?.is_admin ? "ACTIVE" : "OFF"}
                     </Text>
                   </View>
                 </View>
@@ -904,7 +904,7 @@ export default function AdminScreen() {
 
           {section === "user" && selectedUserId !== null && userTab === "analitik" && (
             <>
-              <SectionTitle title="Oturum Geçmişi" icon="activity" color="#007AFF" />
+              <SectionTitle title="Session History" icon="activity" color="#007AFF" />
               {eventsLoading ? (
                 <View style={{ alignItems: "center", padding: 24 }}>
                   <ActivityIndicator color={ACCENT} />
@@ -913,16 +913,16 @@ export default function AdminScreen() {
                 <Card>
                   <View style={{ alignItems: "center", padding: 20, gap: 8 }}>
                     <Feather name="activity" size={28} color={TEXT_TER} />
-                    <Text style={styles.subNote}>Henüz kayıtlı etkinlik yok</Text>
+                    <Text style={styles.subNote}>No activity recorded yet</Text>
                   </View>
                 </Card>
               ) : (
                 <>
                   <StatGrid items={[
-                    { label: "Toplam Etkinlik", value: String(userEvents.length), color: "#007AFF", icon: "activity" },
-                    { label: "Farklı Ekran", value: String(new Set(userEvents.map(e => e.screen).filter(Boolean)).size), color: "#34C759", icon: "layers" },
-                    { label: "Son Platform", value: userEvents[0]?.platform ?? "—", color: "#FF9500", icon: "monitor" },
-                    { label: "Son IP", value: userEvents[0]?.ip_address ?? "—", color: "#AF52DE", icon: "globe" },
+                    { label: "Total Events", value: String(userEvents.length), color: "#007AFF", icon: "activity" },
+                    { label: "Unique Screens", value: String(new Set(userEvents.map(e => e.screen).filter(Boolean)).size), color: "#34C759", icon: "layers" },
+                    { label: "Last Platform", value: userEvents[0]?.platform ?? "—", color: "#FF9500", icon: "monitor" },
+                    { label: "Last IP", value: userEvents[0]?.ip_address ?? "—", color: "#AF52DE", icon: "globe" },
                   ]} />
                   <Card style={{ padding: 0, overflow: "hidden" }}>
                     {userEvents.map((ev, idx) => (
@@ -933,9 +933,9 @@ export default function AdminScreen() {
                             <Text style={styles.eventType}>{ev.event_type}</Text>
                             {ev.screen && <Text style={styles.eventScreen}>{ev.screen}</Text>}
                           </View>
-                          <Text style={styles.eventMeta}>{ev.platform ?? "?"} · {ev.ip_address ?? "IP yok"}</Text>
+                          <Text style={styles.eventMeta}>{ev.platform ?? "?"} · {ev.ip_address ?? "No IP"}</Text>
                         </View>
-                        <Text style={styles.eventTime}>{new Date(ev.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</Text>
+                        <Text style={styles.eventTime}>{new Date(ev.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</Text>
                       </View>
                     ))}
                   </Card>
@@ -944,7 +944,7 @@ export default function AdminScreen() {
                     style={[styles.actionBtn, { backgroundColor: ACCENT + "20", marginTop: 0 }]}
                   >
                     <Feather name="refresh-cw" size={15} color={ACCENT} />
-                    <Text style={[styles.actionBtnText, { color: ACCENT }]}>Yenile</Text>
+                    <Text style={[styles.actionBtnText, { color: ACCENT }]}>Refresh</Text>
                   </Pressable>
                 </>
               )}
@@ -953,28 +953,28 @@ export default function AdminScreen() {
 
           {section === "user" && selectedUserId !== null && userTab === "ekonomi" && (
             <>
-              <SectionTitle title="Coin Yönetimi" icon="dollar-sign" color="#FFD700" />
+              <SectionTitle title="Coin Management" icon="dollar-sign" color="#FFD700" />
               <Card>
                 <View style={styles.coinDisplay}>
                   <Feather name="dollar-sign" size={28} color="#FFD700" />
                   <Text style={styles.coinAmount}>{coins}</Text>
-                  <Text style={styles.coinLabel}>Coin</Text>
+                  <Text style={styles.coinLabel}>Coins</Text>
                 </View>
                 <Divider />
-                <Text style={[styles.subNote, { marginBottom: 8 }]}>Manuel coin ekle:</Text>
+                <Text style={[styles.subNote, { marginBottom: 8 }]}>Add coins manually:</Text>
                 <View style={styles.coinRow}>
                   <TextInput
                     style={styles.coinInput}
                     value={coinInput}
                     onChangeText={setCoinInput}
-                    placeholder="Miktar..."
+                    placeholder="Amount..."
                     placeholderTextColor={TEXT_TER}
                     keyboardType="numeric"
                     maxLength={6}
                   />
                   <Pressable onPress={addCoinsAdmin} style={styles.coinAddBtn}>
                     <Feather name="plus" size={15} color="#fff" />
-                    <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" }}>Ekle</Text>
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" }}>Add</Text>
                   </Pressable>
                 </View>
                 <View style={styles.quickCoins}>
@@ -986,28 +986,28 @@ export default function AdminScreen() {
                 </View>
               </Card>
 
-              <SectionTitle title="Günlük Mesaj Kotası" icon="activity" color="#FF9500" />
+              <SectionTitle title="Daily Message Quota" icon="activity" color="#FF9500" />
               <Card>
                 <View style={styles.quotaBar}>
                   <View style={[styles.quotaFill, { width: `${Math.min(100, ((quota?.count ?? 0) / 15) * 100)}%` }]} />
                 </View>
-                <InfoRow label="Bugün Kullanılan" value={`${quota?.count ?? 0} mesaj`} />
-                <InfoRow label="Bonus Mesajlar" value={`+${quota?.bonusMessages ?? 0}`} />
-                <InfoRow label="Kalan Hak" value={`${Math.max(0, 15 + (quota?.bonusMessages ?? 0) - (quota?.count ?? 0))} mesaj`} />
-                <InfoRow label="VIP Durumu" value={user?.isVip ? "Sınırsız" : "15/gün"} last />
+                <InfoRow label="Used Today" value={`${quota?.count ?? 0} messages`} />
+                <InfoRow label="Bonus Messages" value={`+${quota?.bonusMessages ?? 0}`} />
+                <InfoRow label="Remaining" value={`${Math.max(0, 15 + (quota?.bonusMessages ?? 0) - (quota?.count ?? 0))} messages`} />
+                <InfoRow label="VIP Status" value={user?.isVip ? "Unlimited" : "15/day"} last />
                 <Divider />
                 <Pressable onPress={resetQuota} style={[styles.actionBtn, { backgroundColor: "#FF950015" }]}>
                   <Feather name="refresh-cw" size={15} color="#FF9500" />
-                  <Text style={[styles.actionBtnText, { color: "#FF9500" }]}>Kotayı Sıfırla</Text>
+                  <Text style={[styles.actionBtnText, { color: "#FF9500" }]}>Reset Quota</Text>
                 </Pressable>
               </Card>
 
-              <SectionTitle title="Hediye Envanteri" icon="gift" color="#34C759" />
+              <SectionTitle title="Gift Inventory" icon="gift" color="#34C759" />
               <Card>
                 {inventory.length === 0 ? (
                   <View style={{ padding: 16, alignItems: "center", gap: 8 }}>
                     <Feather name="inbox" size={24} color={TEXT_TER} />
-                    <Text style={styles.subNote}>Envanter boş</Text>
+                    <Text style={styles.subNote}>Inventory empty</Text>
                   </View>
                 ) : (
                   inventory.map((item, idx) => {
@@ -1018,27 +1018,27 @@ export default function AdminScreen() {
                           <Feather name={(gift?.icon ?? "gift") as any} size={14} color={gift?.colorFrom ?? "#888"} />
                         </View>
                         <Text style={styles.invName}>{gift?.name ?? item.giftId}</Text>
-                        <Text style={styles.subNote}>{item.quantity} adet</Text>
+                        <Text style={styles.subNote}>{item.quantity} items</Text>
                       </View>
                     );
                   })
                 )}
               </Card>
 
-              <SectionTitle title="Abonelik Bilgisi" icon="credit-card" color="#007AFF" />
+              <SectionTitle title="Subscription Info" icon="credit-card" color="#007AFF" />
               <Card>
-                <InfoRow label="Mevcut Plan" value={selectedUser?.is_vip ? "VIP Premium" : "Ücretsiz"} />
-                <InfoRow label="Mağaza" value="Apple App Store" />
-                <InfoRow label="Bitiş Tarihi" value={selectedUser?.is_vip ? "Süresiz (Manuel)" : "—"} last />
+                <InfoRow label="Current Plan" value={selectedUser?.is_vip ? "VIP Premium" : "Free"} />
+                <InfoRow label="Store" value="Apple App Store" />
+                <InfoRow label="Expiry Date" value={selectedUser?.is_vip ? "Unlimited (Manual)" : "—"} last />
               </Card>
             </>
           )}
 
           {section === "user" && selectedUserId !== null && userTab === "hafiza" && (
             <>
-              <SectionTitle title="Karakter AI Hafızaları" icon="database" color="#AF52DE" />
+              <SectionTitle title="Character AI Memories" icon="database" color="#AF52DE" />
               <Text style={[styles.subNote, { marginHorizontal: 0, marginBottom: 8 }]}>
-                Her karakterin bu kullanıcı hakkında hatırladıkları. Yanlış bilgileri silebilirsin.
+                What each character remembers about this user. You can delete incorrect information.
               </Text>
               {CHARACTERS.map(char => {
                 const memories: string[] = charSettings[char.id]?.memories ?? [];
@@ -1047,13 +1047,13 @@ export default function AdminScreen() {
                     <View style={styles.memHeader}>
                       <View style={[styles.charDot, { backgroundColor: char.gradientColors[0], width: 10, height: 10, borderRadius: 5 }]} />
                       <Text style={styles.memCharName}>{char.name}</Text>
-                      <Text style={styles.subNote}>{memories.length} hafıza</Text>
+                      <Text style={styles.subNote}>{memories.length} memories</Text>
                       <Pressable onPress={() => clearMemory(char.id)} hitSlop={8} style={{ marginLeft: 8 }}>
                         <Feather name="trash-2" size={14} color={memories.length > 0 ? "#FF3B30" : TEXT_TER} />
                       </Pressable>
                     </View>
                     {memories.length === 0 ? (
-                      <Text style={[styles.subNote, { fontStyle: "italic" }]}>Henüz hafıza yok</Text>
+                      <Text style={[styles.subNote, { fontStyle: "italic" }]}>No memories yet</Text>
                     ) : (
                       memories.map((mem, idx) => (
                         <View key={idx} style={[styles.memRow, idx === memories.length - 1 && { borderBottomWidth: 0 }]}>
