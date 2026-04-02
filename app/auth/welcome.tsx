@@ -225,7 +225,8 @@ export default function WelcomeScreen() {
       if (data.isNewUser) {
         const givenName = credential.fullName?.givenName ?? "";
         const familyName = credential.fullName?.familyName ?? "";
-        const appleName = [givenName, familyName].filter(Boolean).join(" ").trim();
+        const nickname = credential.fullName?.nickname ?? "";
+        const appleName = nickname || [givenName, familyName].filter(Boolean).join(" ").trim();
         const prefillName = appleName || data.name || "";
 
         router.push({
