@@ -78,11 +78,20 @@ export async function getAllUsers() {
       id, user_id, name, username, email, language, gender, birthdate,
       is_admin, is_vip, vip_plan, vip_expiry, platform, ip_address,
       user_agent, country, city, onboarding_complete,
+      COALESCE(total_xp, 0) AS total_xp,
+      COALESCE(level, 1) AS level,
       created_at, last_seen, synced_at
      FROM soulie_users
      ORDER BY last_seen DESC NULLS LAST`
   );
   return res.rows;
+}
+
+export async function setUserXpAdmin(userId: string, totalXp: number, level: number) {
+  await query(
+    `UPDATE soulie_users SET total_xp = $1, level = $2 WHERE id = $3`,
+    [totalXp, level, userId]
+  );
 }
 
 export async function getUserEvents(userId: string, limit = 50) {

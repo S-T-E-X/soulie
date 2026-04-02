@@ -8,6 +8,7 @@ import React, {
   ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 import { getApiUrl } from "@/lib/query-client";
 
 export type UserLanguage = "en" | "tr" | "de" | "zh" | "ko" | "es" | "ru";
@@ -57,7 +58,7 @@ async function syncUserToServer(user: User) {
     await fetch(url.toString(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(user),
+      body: JSON.stringify({ ...user, platform: Platform.OS }),
     });
   } catch {}
 }

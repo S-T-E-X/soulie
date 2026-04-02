@@ -8,7 +8,8 @@ import {
   upsertUser, getAllUsers, getUserEvents, logEvent, findUserByEmail, getEventStats,
   saveAppleNotification, softDeleteUser, softDeleteUserByAppleId, revokeAppleConsent,
   updateEmailRelayStatus, findUserByAppleId, getAppleNotifications,
-  upsertChat, getChatsForUser, deleteChat, upsertUserXp, getUserXp, getAnalyticsData, query as dbQuery,
+  upsertChat, getChatsForUser, deleteChat, upsertUserXp, getUserXp, getAnalyticsData,
+  setUserXpAdmin, query as dbQuery,
 } from "./db";
 
 let globalSystemPromptOverride: string = "";
@@ -1067,6 +1068,26 @@ ${sec.advice}: (concrete advice for the user)`;
       res.json({ stats });
     } catch (err) {
       res.status(500).json({ stats: [] });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/level", async (req, res) => {
+    const { id } = req.params;
+    const { level, totalXp } = req.body;
+    if (!id || level === undefined || totalXp === undefined) {
+      return res.status(400).json({ error: "id, level, totalXp required" });
+    }
+    const lvl = parseInt(level, 10);
+    const xp = parseInt(totalXp, 10);
+    if (isNaN(lvl) || isNaN(xp) || lvl < 1 || lvl > 100 || xp < 0) {
+      return res.status(400).json({ error: "Invalid level or xp value" });
+    }
+    try {
+      await setUserXpAdmin(id, xp, lvl);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Admin set level error:", err);
+      res.status(500).json({ error: "Failed to update level" });
     }
   });
 

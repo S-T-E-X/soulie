@@ -70,6 +70,8 @@ type DbUser = {
   country?: string;
   city?: string;
   onboarding_complete: boolean;
+  total_xp?: number;
+  level?: number;
   created_at?: string;
   last_seen?: string;
   synced_at?: number;
@@ -243,6 +245,9 @@ export default function AdminScreen() {
   const [loaded, setLoaded] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [levelInput, setLevelInput] = useState("");
+  const [xpInput, setXpInput] = useState("");
+  const [levelSaving, setLevelSaving] = useState(false);
 
   const selectedDbUser = usersList.find(u => u.id === selectedUserId);
   const selectedUser = selectedDbUser ?? (user ? {
@@ -368,6 +373,42 @@ export default function AdminScreen() {
     if (selectedUserId === user?.id) {
       await updateProfile({ isVip: newVip });
     }
+  };
+
+  useEffect(() => {
+    if (selectedUser) {
+      setLevelInput(String(selectedUser.level ?? 1));
+      setXpInput(String(selectedUser.total_xp ?? 0));
+    }
+  }, [selectedUserId]);
+
+  const saveUserLevel = async () => {
+    if (!selectedUser) return;
+    const lvl = parseInt(levelInput, 10);
+    const xp = parseInt(xpInput, 10);
+    if (isNaN(lvl) || isNaN(xp) || lvl < 1 || lvl > 100 || xp < 0) {
+      Alert.alert("Invalid", "Level must be 1-100, XP must be ≥ 0");
+      return;
+    }
+    setLevelSaving(true);
+    try {
+      const url = new URL(`/api/admin/users/${selectedUser.id}/level`, getApiUrl());
+      const res = await fetch(url.toString(), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level: lvl, totalXp: xp }),
+      });
+      if (res.ok) {
+        setUsersList(prev => prev.map(u => u.id === selectedUser.id ? { ...u, level: lvl, total_xp: xp } : u));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Saved", `Level set to ${lvl}, XP set to ${xp}`);
+      } else {
+        Alert.alert("Error", "Failed to save level");
+      }
+    } catch {
+      Alert.alert("Error", "Network error");
+    }
+    setLevelSaving(false);
   };
 
   const addCoinsAdmin = async () => {
@@ -828,6 +869,7 @@ export default function AdminScreen() {
                         {u.is_vip && <View style={[styles.badge, { backgroundColor: "#FFD70025" }]}><Text style={[styles.badgeText, { color: "#FFD700" }]}>VIP</Text></View>}
                         {u.is_admin && <View style={[styles.badge, { backgroundColor: "#FF950025" }]}><Text style={[styles.badgeText, { color: "#FF9500" }]}>ADMIN</Text></View>}
                         {u.id === user?.id && <View style={[styles.badge, { backgroundColor: ACCENT + "25" }]}><Text style={[styles.badgeText, { color: ACCENT }]}>You</Text></View>}
+                        <View style={[styles.badge, { backgroundColor: "#34C75925" }]}><Text style={[styles.badgeText, { color: "#34C759" }]}>Lv{u.level ?? 1}</Text></View>
                       </View>
                       <Text style={[styles.subNote, { fontSize: 11 }]}>@{u.username} · {u.platform ?? "?"} · {u.ip_address ?? "No IP"}</Text>
                       {u.last_seen && (
@@ -896,6 +938,53 @@ export default function AdminScreen() {
                     <Text style={[styles.badgeText, { color: selectedUser?.is_admin ? "#FF9500" : TEXT_TER }]}>
                       {selectedUser?.is_admin ? "ACTIVE" : "OFF"}
                     </Text>
+                  </View>
+                </View>
+              </Card>
+
+              <SectionTitle title="Level & XP" icon="trending-up" color="#34C759" />
+              <Card>
+                <View style={{ gap: 14 }}>
+                  <StatGrid items={[
+                    { label: "Current Level", value: String(selectedUser?.level ?? 1), color: "#34C759", icon: "award" },
+                    { label: "Total XP", value: String(selectedUser?.total_xp ?? 0), color: "#007AFF", icon: "zap" },
+                  ]} />
+                  <Divider />
+                  <View style={{ gap: 10 }}>
+                    <View style={styles.adminInputRow}>
+                      <Text style={styles.adminInputLabel}>Level (1–100)</Text>
+                      <TextInput
+                        style={styles.adminInput}
+                        value={levelInput}
+                        onChangeText={setLevelInput}
+                        keyboardType="number-pad"
+                        maxLength={3}
+                        placeholderTextColor="rgba(255,255,255,0.25)"
+                        placeholder="1"
+                      />
+                    </View>
+                    <View style={styles.adminInputRow}>
+                      <Text style={styles.adminInputLabel}>XP Points</Text>
+                      <TextInput
+                        style={styles.adminInput}
+                        value={xpInput}
+                        onChangeText={setXpInput}
+                        keyboardType="number-pad"
+                        maxLength={8}
+                        placeholderTextColor="rgba(255,255,255,0.25)"
+                        placeholder="0"
+                      />
+                    </View>
+                    <Pressable
+                      onPress={saveUserLevel}
+                      disabled={levelSaving}
+                      style={({ pressed }) => [styles.actionBtn, { backgroundColor: "#34C75922", opacity: levelSaving ? 0.5 : pressed ? 0.8 : 1 }]}
+                    >
+                      <Feather name="save" size={15} color="#34C759" />
+                      <Text style={[styles.actionBtnText, { color: "#34C759" }]}>
+                        {levelSaving ? "Saving..." : "Save Level & XP"}
+                      </Text>
+                    </Pressable>
                   </View>
                 </View>
               </Card>
@@ -1126,6 +1215,9 @@ const styles = StyleSheet.create({
   coinLabel: { fontSize: 14, fontFamily: "Inter_400Regular", color: TEXT_SEC, alignSelf: "flex-end", marginBottom: 6 },
   coinRow: { flexDirection: "row", gap: 10, alignItems: "center" },
   coinInput: { flex: 1, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, fontFamily: "Inter_500Medium", color: TEXT_PRI, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER },
+  adminInputRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  adminInputLabel: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: TEXT_SEC },
+  adminInput: { width: 100, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 15, fontFamily: "Inter_600SemiBold", color: TEXT_PRI, borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER, textAlign: "center" },
   coinAddBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: ACCENT, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
   quickCoins: { flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" },
   quickCoinBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: StyleSheet.hairlineWidth, borderColor: BORDER },
