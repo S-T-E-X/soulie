@@ -401,17 +401,19 @@ function ProcessingPage({
 
 export default function SocialOnboardingScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ method?: string; email?: string; registeredId?: string; registeredUserId?: string }>();
+  const params = useLocalSearchParams<{ method?: string; email?: string; registeredId?: string; registeredUserId?: string; prefillName?: string }>();
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0) + 16;
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0) + 16;
 
   const method = params.method ?? "google";
+  const hasAppleName = method === "apple" && !!params.prefillName?.trim();
+  const minStep = hasAppleName ? 2 : 1;
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(minStep);
   const [data, setData] = useState<OnboardingData>({
     language: "en",
-    name: "",
+    name: params.prefillName?.trim() ?? "",
     birthDay: "",
     birthMonth: "",
     birthYear: "",
@@ -486,7 +488,7 @@ export default function SocialOnboardingScreen() {
   };
 
   const goBack = () => {
-    if (step === 1) {
+    if (step <= minStep) {
       router.back();
       return;
     }

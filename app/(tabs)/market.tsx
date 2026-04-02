@@ -437,6 +437,31 @@ export default function MarketScreen() {
                     </View>
                   </LinearGradient>
                 </Pressable>
+                <View style={styles.cardLegalRow}>
+                  <Pressable
+                    onPress={() =>
+                      Linking.openURL(
+                        "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+                      )
+                    }
+                  >
+                    <Text style={styles.cardLegalLink}>
+                      {t("market.termsOfUse")}
+                    </Text>
+                  </Pressable>
+                  <Text style={styles.cardLegalSep}>·</Text>
+                  <Pressable
+                    onPress={() =>
+                      Linking.openURL(
+                        "https://docs.google.com/document/d/1JgpG76-wx-KwNk4O-sEJRoepH7zTG3R8SvhhsGfbvjA/edit?usp=sharing",
+                      )
+                    }
+                  >
+                    <Text style={styles.cardLegalLink}>
+                      {t("market.privacyPolicy")}
+                    </Text>
+                  </Pressable>
+                </View>
               </Animated.View>
             ))}
 
@@ -978,6 +1003,24 @@ const styles = StyleSheet.create({
   },
   legalSep: {
     fontSize: 11,
+    color: Colors.text.tertiary,
+  },
+  cardLegalRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+    marginBottom: 4,
+  },
+  cardLegalLink: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text.tertiary,
+    textDecorationLine: "underline",
+  },
+  cardLegalSep: {
+    fontSize: 10,
     color: Colors.text.tertiary,
   },
   coinCard: {

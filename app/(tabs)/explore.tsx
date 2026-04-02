@@ -170,7 +170,7 @@ function TarotBanner() {
   };
 
   return (
-    <Pressable onPress={handlePress} style={{ marginHorizontal: 14, marginTop: 14, marginBottom: 6 }}>
+    <Pressable onPress={handlePress} style={{ marginHorizontal: 14, marginTop: 10, marginBottom: 3 }}>
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
         <Animated.View style={[styles.tarotBanner, { borderColor, shadowOpacity, shadowRadius: 16, elevation: 8 }]}>
           <LinearGradient
@@ -205,7 +205,7 @@ function TarotBanner() {
             {/* Eye icon with glow ring */}
             <Animated.View style={[styles.tarotEyeWrap, { transform: [{ translateY: eyeY }] }]}>
               <LinearGradient colors={["#9333EA", "#C084FC"]} style={styles.tarotEyeGrad}>
-                <Feather name="eye" size={22} color="#fff" />
+                <Feather name="eye" size={14} color="#fff" />
               </LinearGradient>
             </Animated.View>
 
@@ -454,6 +454,10 @@ export default function ExploreScreen() {
               {t("explore.greeting", { name: user?.name ?? "" })}
             </Text>
             <Text style={[styles.headerTitle, { color: colors.text.primary }]}>{t("explore.title")}</Text>
+            <View style={styles.aiCompanionBadge}>
+              <Feather name="cpu" size={10} color="#7C3AED" />
+              <Text style={styles.aiCompanionLabel}>AI Companion</Text>
+            </View>
           </View>
           <UserAvatarBadge xp={xp} name={user?.name} profilePhoto={user?.profilePhoto} />
         </View>
@@ -682,6 +686,18 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     marginBottom: 2,
   },
+  aiCompanionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  aiCompanionLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#7C3AED",
+    letterSpacing: 0.2,
+  },
   headerTitle: {
     fontSize: 26,
     fontFamily: "Inter_700Bold",
@@ -719,20 +735,20 @@ const styles = StyleSheet.create({
   fortuneBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: "rgba(74,222,128,0.12)",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "rgba(74,222,128,0.07)",
     borderWidth: 1,
-    borderColor: "rgba(74,222,128,0.3)",
+    borderColor: "rgba(74,222,128,0.2)",
   },
   fortuneBtnActive: {
-    backgroundColor: "rgba(34,197,94,0.95)",
-    borderColor: "rgba(74,222,128,0.9)",
+    backgroundColor: "rgba(34,197,94,0.75)",
+    borderColor: "rgba(74,222,128,0.6)",
   },
-  fortuneBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#16A34A" },
-  fortuneBtnTextActive: { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" },
+  fortuneBtnText: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#22A360" },
+  fortuneBtnTextActive: { color: "#FFFFFF", fontFamily: "Inter_500Medium" },
   falciBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -745,84 +761,84 @@ const styles = StyleSheet.create({
   falciText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#16A34A" },
   falciTextActive: { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" },
 
-  // Tarot banner
+  // Tarot banner (secondary / compact)
   tarotBanner: {
-    borderRadius: 18,
-    borderWidth: 1.5,
+    borderRadius: 14,
+    borderWidth: 1,
     overflow: "hidden",
-    height: 80,
+    height: 54,
     shadowColor: "#A855F7",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
   },
   tarotOrbBig: {
     position: "absolute",
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "rgba(139,92,246,0.18)",
-    top: -40,
-    right: 60,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(139,92,246,0.1)",
+    top: -20,
+    right: 40,
   },
   shimmer: {
     position: "absolute",
     top: -20,
     left: 0,
-    width: 60,
-    height: 200,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    width: 40,
+    height: 120,
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 8,
   },
   tarotContent: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    gap: 14,
+    paddingHorizontal: 12,
+    gap: 10,
   },
   tarotEyeWrap: {
     shadowColor: "#C084FC",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 3,
   },
   tarotEyeGrad: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
   },
   tarotTextCol: {
     flex: 1,
-    gap: 3,
+    gap: 1,
   },
   tarotBannerTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: "#F3E8FF",
-    letterSpacing: -0.3,
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(243,232,255,0.85)",
+    letterSpacing: -0.1,
   },
   tarotBannerSub: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
-    color: "rgba(216,180,254,0.7)",
+    color: "rgba(216,180,254,0.55)",
   },
   tarotArrowWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(192,132,252,0.15)",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(192,132,252,0.1)",
     justifyContent: "center",
     alignItems: "center",
   },
   tarotBottomLine: {
     position: "absolute",
     bottom: 0,
-    left: 20,
-    right: 20,
+    left: 16,
+    right: 16,
     height: 1,
-    backgroundColor: "rgba(192,132,252,0.2)",
+    backgroundColor: "rgba(192,132,252,0.12)",
   },
 
   grid: { paddingHorizontal: 14, paddingTop: 4 },
@@ -1045,22 +1061,23 @@ const styles = StyleSheet.create({
   },
   coffeeBanner: {
     marginHorizontal: 14,
-    marginTop: 8,
+    marginTop: 4,
     marginBottom: 4,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: "hidden",
+    opacity: 0.85,
   },
   coffeeBannerGrad: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 10,
   },
   coffeeIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1068,15 +1085,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   coffeeBannerTitle: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: "#fff",
-    letterSpacing: -0.2,
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.85)",
+    letterSpacing: -0.1,
   },
   coffeeBannerSub: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.7)",
+    color: "rgba(255,255,255,0.5)",
     marginTop: 1,
   },
 });

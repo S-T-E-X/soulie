@@ -223,6 +223,11 @@ export default function WelcomeScreen() {
       const data = await response.json();
 
       if (data.isNewUser) {
+        const givenName = credential.fullName?.givenName ?? "";
+        const familyName = credential.fullName?.familyName ?? "";
+        const appleName = [givenName, familyName].filter(Boolean).join(" ").trim();
+        const prefillName = appleName || data.name || "";
+
         router.push({
           pathname: "/auth/social-onboarding",
           params: {
@@ -230,6 +235,7 @@ export default function WelcomeScreen() {
             email: data.email || "",
             registeredId: data.id,
             registeredUserId: data.userId,
+            prefillName,
           },
         });
       } else {
