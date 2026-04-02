@@ -457,7 +457,7 @@ const t: LangMap = {
     // Explore (new keys)
     "explore.greeting": "Hello, {name}",
     "explore.cat_all": "All",
-    "explore.cat_fortune": "Fortune",
+    "explore.cat_activities": "Activities",
     "explore.cat_lover": "Lover",
     "explore.cat_friend": "Friend",
     "explore.cat_mentor": "Mentor",
@@ -968,7 +968,7 @@ const t: LangMap = {
 
     "explore.greeting": "Merhaba, {name}",
     "explore.cat_all": "Tümü",
-    "explore.cat_fortune": "Falcı",
+    "explore.cat_activities": "Aktiviteler",
     "explore.cat_lover": "Sevgili",
     "explore.cat_friend": "Arkadaş",
     "explore.cat_mentor": "Mentor",
@@ -1476,7 +1476,7 @@ const t: LangMap = {
 
     "explore.greeting": "Hallo, {name}",
     "explore.cat_all": "Alle",
-    "explore.cat_fortune": "Wahrsager",
+    "explore.cat_activities": "Aktivitäten",
     "explore.cat_lover": "Liebhaber",
     "explore.cat_friend": "Freund",
     "explore.cat_mentor": "Mentor",
@@ -1984,7 +1984,7 @@ const t: LangMap = {
 
     "explore.greeting": "你好，{name}",
     "explore.cat_all": "全部",
-    "explore.cat_fortune": "占卜师",
+    "explore.cat_activities": "活动",
     "explore.cat_lover": "恋人",
     "explore.cat_friend": "朋友",
     "explore.cat_mentor": "导师",
@@ -2492,7 +2492,7 @@ const t: LangMap = {
 
     "explore.greeting": "안녕하세요, {name}",
     "explore.cat_all": "전체",
-    "explore.cat_fortune": "점술사",
+    "explore.cat_activities": "활동",
     "explore.cat_lover": "연인",
     "explore.cat_friend": "친구",
     "explore.cat_mentor": "멘토",
@@ -3000,7 +3000,7 @@ const t: LangMap = {
 
     "explore.greeting": "Hola, {name}",
     "explore.cat_all": "Todos",
-    "explore.cat_fortune": "Adivino",
+    "explore.cat_activities": "Actividades",
     "explore.cat_lover": "Amante",
     "explore.cat_friend": "Amigo",
     "explore.cat_mentor": "Mentor",
@@ -3508,7 +3508,7 @@ const t: LangMap = {
 
     "explore.greeting": "Привет, {name}",
     "explore.cat_all": "Все",
-    "explore.cat_fortune": "Гадалка",
+    "explore.cat_activities": "Активности",
     "explore.cat_lover": "Возлюбленный",
     "explore.cat_friend": "Друг",
     "explore.cat_mentor": "Ментор",

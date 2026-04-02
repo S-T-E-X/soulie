@@ -34,7 +34,7 @@ import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useI18n } from "@/hooks/useI18n";
 
-type CategoryKey = "all" | "female" | "male" | "fortune";
+type CategoryKey = "all" | "female" | "male" | "activities";
 
 const LEVEL_XP_TABLE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250, 2750];
 
@@ -358,7 +358,7 @@ export default function ExploreScreen() {
     : CHARACTERS.filter((c) => {
         if (activeCategory === "female") return c.gender === "female";
         if (activeCategory === "male") return c.gender === "male";
-        if (activeCategory === "fortune") return c.role === "Falcı";
+        if (activeCategory === "activities") return c.role === "Falcı";
         return true;
       });
 
@@ -464,10 +464,10 @@ export default function ExploreScreen() {
 
         <View style={styles.filtersRow}>
           <View style={styles.filterBtnRow}>
-            {(["all", "female", "male", "fortune"] as CategoryKey[]).map((key) => {
-              const label = key === "all" ? t("explore.cat_all" as any) : key === "female" ? t("explore.cat_female" as any) : key === "male" ? t("explore.cat_male" as any) : t("explore.cat_fortune" as any);
+            {(["all", "female", "male", "activities"] as CategoryKey[]).map((key) => {
+              const label = key === "all" ? t("explore.cat_all" as any) : key === "female" ? t("explore.cat_female" as any) : key === "male" ? t("explore.cat_male" as any) : t("explore.cat_activities" as any);
               const isActive = activeCategory === key;
-              const isFortune = key === "fortune";
+              const isFortune = key === "activities";
               
               if (isFortune) {
                 return (
@@ -510,7 +510,7 @@ export default function ExploreScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         numColumns={2}
-        ListHeaderComponent={activeCategory === "fortune" ? <><TarotBanner /><CoffeeFortuneBanner /></> : undefined}
+        ListHeaderComponent={activeCategory === "activities" ? <><TarotBanner /><CoffeeFortuneBanner /></> : undefined}
         contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 120 }]}
         columnWrapperStyle={styles.row}
         showsVerticalScrollIndicator={false}
