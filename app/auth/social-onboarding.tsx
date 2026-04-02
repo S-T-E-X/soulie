@@ -22,8 +22,6 @@ import { getApiUrl } from "@/lib/query-client";
 
 const { width } = Dimensions.get("window");
 const ACCENT = "#6C5CE7";
-const TOTAL_STEPS = 4;
-
 type OnboardingData = {
   language: UserLanguage;
   name: string;
@@ -47,10 +45,10 @@ const LANGUAGES: { code: UserLanguage; label: string; flag: string }[] = [
   { code: "ru", label: "Русский", flag: "🇷🇺" },
 ];
 
-function ProgressBar({ step }: { step: number }) {
+function ProgressBar({ step, totalSteps }: { step: number; totalSteps: number }) {
   return (
     <View style={styles.progressContainer}>
-      {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+      {Array.from({ length: totalSteps }).map((_, i) => (
         <View
           key={i}
           style={[
@@ -401,14 +399,24 @@ function ProcessingPage({
 
 export default function SocialOnboardingScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ method?: string; email?: string; registeredId?: string; registeredUserId?: string; prefillName?: string }>();
+  const params = useLocalSearchParams<{ method?: string; email?: string; registeredId?: string; registeredUserId?: string; prefillName?: string; prefillGender?: string }>();
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0) + 16;
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0) + 16;
 
   const method = params.method ?? "google";
-  const hasAppleName = method === "apple" && !!params.prefillName?.trim();
-  const minStep = hasAppleName ? 2 : 1;
+  const isApple = method === "apple";
+
+  // Apple flow: step1=name+lang, step2=gender, step3=processing (no birthdate)
+  // Other flow: step1=name+lang, step2=birthdate, step3=gender, step4=processing
+  const TOTAL_STEPS = isApple ? 3 : 4;
+
+  const hasAppleName = isApple && !!params.prefillName?.trim();
+  const hasAppleGender = isApple && !!params.prefillGender?.trim();
+
+  let minStep = 1;
+  if (hasAppleName && hasAppleGender) minStep = TOTAL_STEPS; // skip to processing
+  else if (hasAppleName) minStep = 2; // skip name step
 
   const [step, setStep] = useState(minStep);
   const [data, setData] = useState<OnboardingData>({
@@ -417,7 +425,7 @@ export default function SocialOnboardingScreen() {
     birthDay: "",
     birthMonth: "",
     birthYear: "",
-    gender: null,
+    gender: (params.prefillGender as UserGender | null) ?? null,
   });
 
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -439,7 +447,8 @@ export default function SocialOnboardingScreen() {
       if (data.name.trim().length < 2) return;
     }
 
-    if (step === 2) {
+    // Birthdate validation only for non-Apple flow at step 2
+    if (step === 2 && !isApple) {
       const d = parseInt(data.birthDay, 10);
       const m = parseInt(data.birthMonth, 10);
       const y = parseInt(data.birthYear, 10);
@@ -481,7 +490,9 @@ export default function SocialOnboardingScreen() {
       }
     }
 
-    if (step === 3 && !data.gender) return;
+    // Gender required: step 2 for Apple, step 3 for non-Apple
+    const genderStep = isApple ? 2 : 3;
+    if (step === genderStep && !data.gender) return;
 
     setStep((s) => s + 1);
     animateIn();
@@ -498,8 +509,9 @@ export default function SocialOnboardingScreen() {
 
   const canProceed = () => {
     if (step === 1) return data.name.trim().length >= 2;
-    if (step === 2) return !!(data.birthDay && data.birthMonth && data.birthYear && data.birthYear.length === 4);
-    if (step === 3) return !!data.gender;
+    if (step === 2 && !isApple) return !!(data.birthDay && data.birthMonth && data.birthYear && data.birthYear.length === 4);
+    if (step === 2 && isApple) return !!data.gender;
+    if (step === 3 && !isApple) return !!data.gender;
     return false;
   };
 
@@ -515,7 +527,7 @@ export default function SocialOnboardingScreen() {
         <Pressable style={styles.backBtn} onPress={goBack}>
           <Feather name="arrow-left" size={22} color="#333" />
         </Pressable>
-        {step < TOTAL_STEPS && <ProgressBar step={step} />}
+        {step < TOTAL_STEPS && <ProgressBar step={step} totalSteps={TOTAL_STEPS} />}
         <View style={styles.backBtn} />
       </View>
 
@@ -538,7 +550,7 @@ export default function SocialOnboardingScreen() {
                   method={method}
                 />
               )}
-              {step === 2 && (
+              {step === 2 && !isApple && (
                 <BirthdatePage
                   data={data}
                   onDay={(v) => setData((d) => ({ ...d, birthDay: v }))}
@@ -546,7 +558,7 @@ export default function SocialOnboardingScreen() {
                   onYear={(v) => setData((d) => ({ ...d, birthYear: v }))}
                 />
               )}
-              {step === 3 && (
+              {((step === 2 && isApple) || (step === 3 && !isApple)) && (
                 <GenderPage
                   data={data}
                   onSelect={(g) => setData((d) => ({ ...d, gender: g }))}
