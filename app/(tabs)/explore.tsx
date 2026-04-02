@@ -324,7 +324,7 @@ export default function ExploreScreen() {
   const [formAge, setFormAge] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formPhoto, setFormPhoto] = useState<string | null>(null);
-  const [formGender, setFormGender] = useState<"female" | "male">("female");
+  const [formGender, setFormGender] = useState<"female" | "male" | "non-binary">("female");
   const [formCreating, setFormCreating] = useState(false);
 
   useEffect(() => {
@@ -510,7 +510,7 @@ export default function ExploreScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         numColumns={2}
-        ListHeaderComponent={<><TarotBanner /><CoffeeFortuneBanner /></>}
+        ListHeaderComponent={activeCategory === "fortune" ? <><TarotBanner /><CoffeeFortuneBanner /></> : undefined}
         contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 120 }]}
         columnWrapperStyle={styles.row}
         showsVerticalScrollIndicator={false}
@@ -646,6 +646,14 @@ export default function ExploreScreen() {
                 >
                   <Text style={[styles.genderBtnText, formGender === "male" && styles.genderBtnTextActive, { color: formGender === "male" ? "#A855F7" : colors.text.secondary }]}>
                     {t("explore.genderMale")}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setFormGender("non-binary")}
+                  style={[styles.genderBtn, formGender === "non-binary" && styles.genderBtnActive, { borderColor: formGender === "non-binary" ? "#A855F7" : (isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)") }]}
+                >
+                  <Text style={[styles.genderBtnText, formGender === "non-binary" && styles.genderBtnTextActive, { color: formGender === "non-binary" ? "#A855F7" : colors.text.secondary }]}>
+                    {t("explore.genderNonBinary")}
                   </Text>
                 </Pressable>
               </View>
@@ -1029,11 +1037,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   genderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: "column",
     marginTop: 10,
     paddingHorizontal: 2,
+    gap: 8,
   },
   genderLabel: {
     fontSize: 13,
@@ -1041,10 +1048,11 @@ const styles = StyleSheet.create({
   },
   genderBtns: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   genderBtn: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1.5,

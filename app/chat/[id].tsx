@@ -898,9 +898,9 @@ export default function ChatScreen() {
               <CharacterAvatar character={character} size={38} />
               <View style={styles.headerOnlineDot} />
             </View>
-            <View>
+            <View style={styles.headerTextBlock}>
               <View style={styles.headerNameRow}>
-                <Text style={[styles.headerName, { color: isSibel ? "#E9D5FF" : colors.text.primary }]} numberOfLines={1}>{displayName}</Text>
+                <Text style={[styles.headerName, { color: isSibel ? "#E9D5FF" : colors.text.primary }]} numberOfLines={1} ellipsizeMode="tail">{displayName}</Text>
                 {streak.streak >= 2 ? (
                   <View style={styles.headerStreakBadge}>
                     <Feather name="zap" size={9} color="#FF9500" />
@@ -1142,17 +1142,22 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "transparent",
   },
+  headerTextBlock: {
+    flex: 1,
+    flexShrink: 1,
+    overflow: "hidden",
+  },
   headerNameRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    flexShrink: 1,
-    maxWidth: 160,
+    overflow: "hidden",
   },
   headerName: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: -0.2,
+    flexShrink: 1,
   },
   headerStreakBadge: {
     flexDirection: "row",

@@ -173,6 +173,7 @@ const t: LangMap = {
     "explore.customGender": "Gender",
     "explore.genderMale": "Male",
     "explore.genderFemale": "Female",
+    "explore.genderNonBinary": "Non-binary",
 
     // Settings
     "settings.title": "Settings",
@@ -454,7 +455,7 @@ const t: LangMap = {
     "common.goBack": "Go Back",
 
     // Explore (new keys)
-    "explore.greeting": "Hello{name}",
+    "explore.greeting": "Hello, {name}",
     "explore.cat_all": "All",
     "explore.cat_fortune": "Fortune",
     "explore.cat_lover": "Lover",
@@ -692,6 +693,7 @@ const t: LangMap = {
     "explore.customGender": "Cinsiyet",
     "explore.genderMale": "Erkek",
     "explore.genderFemale": "Kadın",
+    "explore.genderNonBinary": "İkili Değil",
 
     "settings.title": "Ayarlar",
     "settings.account": "Hesap",
@@ -964,7 +966,7 @@ const t: LangMap = {
     "common.add": "Ekle",
     "common.goBack": "Geri Dön",
 
-    "explore.greeting": "Merhaba{name}",
+    "explore.greeting": "Merhaba, {name}",
     "explore.cat_all": "Tümü",
     "explore.cat_fortune": "Falcı",
     "explore.cat_lover": "Sevgili",
@@ -1199,6 +1201,7 @@ const t: LangMap = {
     "explore.customGender": "Geschlecht",
     "explore.genderMale": "Männlich",
     "explore.genderFemale": "Weiblich",
+    "explore.genderNonBinary": "Nicht-binär",
 
     "settings.title": "Einstellungen",
     "settings.account": "Konto",
@@ -1471,7 +1474,7 @@ const t: LangMap = {
     "common.add": "Hinzufügen",
     "common.goBack": "Zurück",
 
-    "explore.greeting": "Hallo{name}",
+    "explore.greeting": "Hallo, {name}",
     "explore.cat_all": "Alle",
     "explore.cat_fortune": "Wahrsager",
     "explore.cat_lover": "Liebhaber",
@@ -1706,6 +1709,7 @@ const t: LangMap = {
     "explore.customGender": "性别",
     "explore.genderMale": "男",
     "explore.genderFemale": "女",
+    "explore.genderNonBinary": "非二元",
 
     "settings.title": "设置",
     "settings.account": "账户",
@@ -1978,7 +1982,7 @@ const t: LangMap = {
     "common.add": "添加",
     "common.goBack": "返回",
 
-    "explore.greeting": "你好{name}",
+    "explore.greeting": "你好，{name}",
     "explore.cat_all": "全部",
     "explore.cat_fortune": "占卜师",
     "explore.cat_lover": "恋人",
@@ -2213,6 +2217,7 @@ const t: LangMap = {
     "explore.customGender": "성별",
     "explore.genderMale": "남성",
     "explore.genderFemale": "여성",
+    "explore.genderNonBinary": "논바이너리",
 
     "settings.title": "설정",
     "settings.account": "계정",
@@ -2485,7 +2490,7 @@ const t: LangMap = {
     "common.add": "추가",
     "common.goBack": "뒤로",
 
-    "explore.greeting": "안녕하세요{name}",
+    "explore.greeting": "안녕하세요, {name}",
     "explore.cat_all": "전체",
     "explore.cat_fortune": "점술사",
     "explore.cat_lover": "연인",
@@ -2720,6 +2725,7 @@ const t: LangMap = {
     "explore.customGender": "Género",
     "explore.genderMale": "Masculino",
     "explore.genderFemale": "Femenino",
+    "explore.genderNonBinary": "No binario",
 
     "settings.title": "Ajustes",
     "settings.account": "Cuenta",
@@ -2992,7 +2998,7 @@ const t: LangMap = {
     "common.add": "Añadir",
     "common.goBack": "Volver",
 
-    "explore.greeting": "Hola{name}",
+    "explore.greeting": "Hola, {name}",
     "explore.cat_all": "Todos",
     "explore.cat_fortune": "Adivino",
     "explore.cat_lover": "Amante",
@@ -3227,6 +3233,7 @@ const t: LangMap = {
     "explore.customGender": "Пол",
     "explore.genderMale": "Мужской",
     "explore.genderFemale": "Женский",
+    "explore.genderNonBinary": "Небинарный",
 
     "settings.title": "Настройки",
     "settings.account": "Аккаунт",
@@ -3499,7 +3506,7 @@ const t: LangMap = {
     "common.add": "Добавить",
     "common.goBack": "Назад",
 
-    "explore.greeting": "Привет{name}",
+    "explore.greeting": "Привет, {name}",
     "explore.cat_all": "Все",
     "explore.cat_fortune": "Гадалка",
     "explore.cat_lover": "Возлюбленный",

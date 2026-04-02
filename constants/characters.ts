@@ -12,7 +12,7 @@ export type Character = {
   systemPrompt: string;
   image: any;
   tags: string[];
-  gender: "female" | "male";
+  gender: "female" | "male" | "non-binary";
   isPremium?: boolean;
   gradientColors: [string, string];
   chatBg?: [string, string];

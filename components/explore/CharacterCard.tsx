@@ -15,8 +15,9 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { type Character } from "@/constants/characters";
+import { type Character, getCharacterDisplayName } from "@/constants/characters";
 import Colors from "@/constants/colors";
+import { useI18n } from "@/hooks/useI18n";
 
 interface Props {
   character: Character;
@@ -87,6 +88,7 @@ function CharacterImage({ source, gradientColors, noImage }: { source: any; grad
 }
 
 export function CharacterCard({ character, onPress, hasChat, streak = 0 }: Props) {
+  const { lang } = useI18n();
   const scale = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -141,7 +143,7 @@ export function CharacterCard({ character, onPress, hasChat, streak = 0 }: Props
 
           <View style={styles.info}>
             <View style={styles.nameRow}>
-              <Text style={styles.name}>{character.name}</Text>
+              <Text style={styles.name}>{getCharacterDisplayName(character, lang)}</Text>
               <Text style={styles.age}>{character.age}</Text>
             </View>
           </View>
