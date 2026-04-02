@@ -191,6 +191,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const deleteAccount = useCallback(async () => {
     try {
+      const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+      const currentUser: User | null = stored ? JSON.parse(stored) : null;
+      if (currentUser?.id || currentUser?.userId) {
+        const url = new URL("/api/users/me", getApiUrl());
+        await fetch(url.toString(), {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUser.id || currentUser.userId }),
+        }).catch(() => {});
+      }
+    } catch {}
+    try {
       await AsyncStorage.multiRemove(ALL_STORAGE_KEYS);
     } catch {}
     setUser(null);

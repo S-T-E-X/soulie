@@ -1101,6 +1101,38 @@ ${sec.advice}: (concrete advice for the user)`;
     }
   });
 
+  // Delete a user and all their data (admin only)
+  app.delete("/api/admin/users/:id", async (req, res) => {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: "id required" });
+    try {
+      await dbQuery(`DELETE FROM soulie_chats WHERE user_id = (SELECT id FROM soulie_users WHERE id = $1)`, [id]);
+      await dbQuery(`DELETE FROM soulie_events WHERE user_id = (SELECT user_id FROM soulie_users WHERE id = $1)`, [id]);
+      await dbQuery(`DELETE FROM soulie_apple_notifications WHERE user_id = $1`, [id]).catch(() => {});
+      await dbQuery(`DELETE FROM soulie_users WHERE id = $1`, [id]);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Admin delete user error:", err);
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // Delete own account (authenticated user)
+  app.delete("/api/users/me", async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: "userId required" });
+    try {
+      await dbQuery(`DELETE FROM soulie_chats WHERE user_id = $1`, [userId]);
+      await dbQuery(`DELETE FROM soulie_events WHERE user_id = $1`, [userId]);
+      await dbQuery(`DELETE FROM soulie_apple_notifications WHERE user_id = $1`, [userId]).catch(() => {});
+      await dbQuery(`DELETE FROM soulie_users WHERE id = $1 OR user_id = $1`, [userId]);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Delete account error:", err);
+      res.status(500).json({ error: "Failed to delete account" });
+    }
+  });
+
   app.post("/api/users/push-token", async (req, res) => {
     const { userId, token } = req.body;
     if (!userId || !token) return res.status(400).json({ error: "userId and token required" });

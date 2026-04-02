@@ -255,6 +255,7 @@ export default function AdminScreen() {
   const [levelSaving, setLevelSaving] = useState(false);
   const [vipDuration, setVipDuration] = useState<number>(30);
   const [vipSaving, setVipSaving] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(false);
 
   const selectedDbUser = usersList.find(u => u.id === selectedUserId);
   const selectedUser = selectedDbUser ?? (user ? {
@@ -459,6 +460,39 @@ export default function AdminScreen() {
       Alert.alert("Error", "Network error");
     }
     setLevelSaving(false);
+  };
+
+  const deleteSelectedUser = () => {
+    if (!selectedUser) return;
+    Alert.alert(
+      "Delete User",
+      `"${selectedUser.name || selectedUser.email || selectedUser.id}" kullanıcısını ve tüm verilerini kalıcı olarak silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz.`,
+      [
+        { text: "İptal", style: "cancel" },
+        {
+          text: "Sil",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingUser(true);
+            try {
+              const url = new URL(`/api/admin/users/${selectedUser.id}`, getApiUrl());
+              const res = await fetch(url.toString(), { method: "DELETE" });
+              if (res.ok) {
+                setUsersList(prev => prev.filter(u => u.id !== selectedUser.id));
+                setSelectedUserId(null);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert("Silindi", "Kullanıcı ve tüm verileri başarıyla silindi.");
+              } else {
+                Alert.alert("Hata", "Kullanıcı silinirken bir hata oluştu.");
+              }
+            } catch {
+              Alert.alert("Hata", "Bağlantı hatası.");
+            }
+            setDeletingUser(false);
+          },
+        },
+      ]
+    );
   };
 
   const addCoinsAdmin = async () => {
@@ -1187,6 +1221,31 @@ export default function AdminScreen() {
                       </Text>
                     </Pressable>
                   </View>
+                </View>
+              </Card>
+
+              <SectionTitle title="Danger Zone" icon="trash-2" color="#FF3B30" />
+              <Card>
+                <View style={{ gap: 12 }}>
+                  <Text style={[styles.subNote, { fontSize: 13, lineHeight: 18 }]}>
+                    Kullanıcıyı ve tüm verilerini (sohbetler, etkinlikler, hesap) kalıcı olarak sil. Bu işlem geri alınamaz.
+                  </Text>
+                  <Pressable
+                    onPress={deleteSelectedUser}
+                    disabled={deletingUser}
+                    style={({ pressed }) => [
+                      styles.actionBtn,
+                      { backgroundColor: "#FF3B3020", opacity: deletingUser ? 0.5 : pressed ? 0.8 : 1 }
+                    ]}
+                  >
+                    {deletingUser
+                      ? <ActivityIndicator size="small" color="#FF3B30" />
+                      : <Feather name="trash-2" size={15} color="#FF3B30" />
+                    }
+                    <Text style={[styles.actionBtnText, { color: "#FF3B30" }]}>
+                      {deletingUser ? "Siliniyor..." : "Kullanıcıyı Sil"}
+                    </Text>
+                  </Pressable>
                 </View>
               </Card>
             </>
