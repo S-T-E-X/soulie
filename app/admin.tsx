@@ -63,7 +63,8 @@ type DbUser = {
   birthdate?: string;
   is_admin: boolean;
   is_vip: boolean;
-  vip_plan?: string;
+  vip_plan?: string | null;
+  vip_expiry?: string | null;
   platform?: string;
   ip_address?: string;
   user_agent?: string;
@@ -218,7 +219,7 @@ export default function AdminScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, activateVip } = useAuth();
   const { conversations } = useChatContext();
   const { coins, addCoins: addCoinsCtx } = useGifts();
 
@@ -252,6 +253,8 @@ export default function AdminScreen() {
   const [levelInput, setLevelInput] = useState("");
   const [xpInput, setXpInput] = useState("");
   const [levelSaving, setLevelSaving] = useState(false);
+  const [vipDuration, setVipDuration] = useState<number>(30);
+  const [vipSaving, setVipSaving] = useState(false);
 
   const selectedDbUser = usersList.find(u => u.id === selectedUserId);
   const selectedUser = selectedDbUser ?? (user ? {
@@ -366,17 +369,60 @@ export default function AdminScreen() {
     await updateProfile({ isVip: newVip });
   };
 
-  const toggleSelectedUserVip = async () => {
-    if (!selectedUserId) return;
-    const target = usersList.find(u => u.id === selectedUserId);
-    if (!target) return;
-    const newVip = !target.is_vip;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const updated = { ...target, is_vip: newVip };
-    setUsersList(usersList.map(u => u.id === selectedUserId ? updated : u));
-    if (selectedUserId === user?.id) {
-      await updateProfile({ isVip: newVip });
+  const grantTimedVip = async () => {
+    if (!selectedUser) return;
+    setVipSaving(true);
+    const expiry = Date.now() + vipDuration * 24 * 60 * 60 * 1000;
+    const plan: "weekly" | "monthly" | "yearly" = vipDuration <= 7 ? "weekly" : vipDuration <= 30 ? "monthly" : "yearly";
+    try {
+      const url = new URL(`/api/admin/users/${selectedUser.id}/vip`, getApiUrl());
+      const res = await fetch(url.toString(), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isVip: true, vipPlan: plan, vipExpiry: expiry }),
+      });
+      if (res.ok) {
+        setUsersList(prev => prev.map(u => u.id === selectedUser.id ? { ...u, is_vip: true, vip_plan: plan, vip_expiry: new Date(expiry).toISOString() } : u));
+        if (selectedUser.id === user?.id) await activateVip(plan);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("VIP Verildi", `${selectedUser.name} kullanıcısına ${vipDuration} günlük VIP verildi.`);
+      } else {
+        Alert.alert("Hata", "VIP güncellenemedi");
+      }
+    } catch {
+      Alert.alert("Hata", "Ağ hatası");
     }
+    setVipSaving(false);
+  };
+
+  const revokeSelectedUserVip = async () => {
+    if (!selectedUser) return;
+    Alert.alert("VIP'i İptal Et", `${selectedUser.name} kullanıcısının VIP'ini iptal etmek istediğinden emin misin?`, [
+      { text: "Hayır", style: "cancel" },
+      {
+        text: "İptal Et", style: "destructive", onPress: async () => {
+          setVipSaving(true);
+          try {
+            const url = new URL(`/api/admin/users/${selectedUser.id}/vip`, getApiUrl());
+            const res = await fetch(url.toString(), {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ isVip: false, vipPlan: null, vipExpiry: null }),
+            });
+            if (res.ok) {
+              setUsersList(prev => prev.map(u => u.id === selectedUser.id ? { ...u, is_vip: false, vip_plan: null, vip_expiry: null } : u));
+              if (selectedUser.id === user?.id) await updateProfile({ isVip: false, vipPlan: undefined, vipExpiry: undefined });
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } else {
+              Alert.alert("Hata", "VIP iptal edilemedi");
+            }
+          } catch {
+            Alert.alert("Hata", "Ağ hatası");
+          }
+          setVipSaving(false);
+        }
+      }
+    ]);
   };
 
   useEffect(() => {
@@ -1028,28 +1074,71 @@ export default function AdminScreen() {
 
               <SectionTitle title="VIP & Access" icon="star" color="#FFD700" />
               <Card>
-                <View style={styles.toggleRow}>
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={styles.toggleLabel}>VIP Status</Text>
-                    <Text style={styles.subNote}>{selectedUser?.is_vip ? "Unlimited messages · All features active" : "15 messages/day limit"}</Text>
+                <View style={{ gap: 14 }}>
+                  <View style={styles.toggleRow}>
+                    <View style={{ flex: 1, gap: 3 }}>
+                      <Text style={styles.toggleLabel}>VIP Durumu</Text>
+                      {selectedUser?.is_vip
+                        ? <Text style={[styles.subNote, { color: "#FFD700" }]}>
+                            Aktif · {selectedUser.vip_plan ?? "—"}{selectedUser.vip_expiry
+                              ? ` · ${new Date(selectedUser.vip_expiry).toLocaleDateString("tr-TR")} tarihine kadar`
+                              : ""}
+                          </Text>
+                        : <Text style={styles.subNote}>Pasif · Günlük 15 mesaj</Text>
+                      }
+                    </View>
+                    <View style={[styles.badge, { backgroundColor: selectedUser?.is_vip ? "#FFD70025" : "rgba(255,255,255,0.05)" }]}>
+                      <Text style={[styles.badgeText, { color: selectedUser?.is_vip ? "#FFD700" : TEXT_TER }]}>
+                        {selectedUser?.is_vip ? "VIP" : "FREE"}
+                      </Text>
+                    </View>
                   </View>
-                  <Switch
-                    value={!!selectedUser?.is_vip}
-                    onValueChange={toggleSelectedUserVip}
-                    trackColor={{ false: "rgba(255,255,255,0.15)", true: "#FFD700" }}
-                    thumbColor="#fff"
-                  />
-                </View>
-                <Divider />
-                <View style={styles.toggleRow}>
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={styles.toggleLabel}>Admin Access</Text>
-                    <Text style={styles.subNote}>{selectedUser?.is_admin ? "Admin rights active" : "Regular user"}</Text>
+                  <Divider />
+                  <View style={{ gap: 8 }}>
+                    <Text style={[styles.subNote, { fontSize: 11 }]}>VIP Süresi Seç</Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      {[{ days: 1, label: "1 Gün" }, { days: 7, label: "7 Gün" }, { days: 30, label: "30 Gün" }, { days: 90, label: "90 Gün" }, { days: 180, label: "6 Ay" }, { days: 365, label: "1 Yıl" }].map(opt => (
+                        <Pressable
+                          key={opt.days}
+                          onPress={() => setVipDuration(opt.days)}
+                          style={[styles.quickCoinBtn, vipDuration === opt.days && { backgroundColor: "#FFD70020", borderColor: "#FFD700" }]}
+                        >
+                          <Text style={[styles.quickCoinText, vipDuration === opt.days && { color: "#FFD700" }]}>{opt.label}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <Pressable
+                        onPress={grantTimedVip}
+                        disabled={vipSaving}
+                        style={({ pressed }) => [styles.actionBtn, { flex: 1, backgroundColor: "#FFD70020", opacity: vipSaving ? 0.5 : pressed ? 0.8 : 1 }]}
+                      >
+                        {vipSaving ? <ActivityIndicator size="small" color="#FFD700" /> : <Feather name="star" size={14} color="#FFD700" />}
+                        <Text style={[styles.actionBtnText, { color: "#FFD700" }]}>VIP Ver</Text>
+                      </Pressable>
+                      {selectedUser?.is_vip && (
+                        <Pressable
+                          onPress={revokeSelectedUserVip}
+                          disabled={vipSaving}
+                          style={({ pressed }) => [styles.actionBtn, { flex: 1, backgroundColor: "#FF3B3015", opacity: vipSaving ? 0.5 : pressed ? 0.8 : 1 }]}
+                        >
+                          <Feather name="x-circle" size={14} color="#FF3B30" />
+                          <Text style={[styles.actionBtnText, { color: "#FF3B30" }]}>İptal Et</Text>
+                        </Pressable>
+                      )}
+                    </View>
                   </View>
-                  <View style={[styles.badge, { backgroundColor: selectedUser?.is_admin ? "#FF950020" : "rgba(255,255,255,0.05)" }]}>
-                    <Text style={[styles.badgeText, { color: selectedUser?.is_admin ? "#FF9500" : TEXT_TER }]}>
-                      {selectedUser?.is_admin ? "ACTIVE" : "OFF"}
-                    </Text>
+                  <Divider />
+                  <View style={styles.toggleRow}>
+                    <View style={{ flex: 1, gap: 3 }}>
+                      <Text style={styles.toggleLabel}>Admin Erişimi</Text>
+                      <Text style={styles.subNote}>{selectedUser?.is_admin ? "Admin yetkileri aktif" : "Normal kullanıcı"}</Text>
+                    </View>
+                    <View style={[styles.badge, { backgroundColor: selectedUser?.is_admin ? "#FF950020" : "rgba(255,255,255,0.05)" }]}>
+                      <Text style={[styles.badgeText, { color: selectedUser?.is_admin ? "#FF9500" : TEXT_TER }]}>
+                        {selectedUser?.is_admin ? "ACTIVE" : "OFF"}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </Card>

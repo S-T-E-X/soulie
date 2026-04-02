@@ -9,7 +9,7 @@ import {
   saveAppleNotification, softDeleteUser, softDeleteUserByAppleId, revokeAppleConsent,
   updateEmailRelayStatus, findUserByAppleId, getAppleNotifications,
   upsertChat, getChatsForUser, deleteChat, upsertUserXp, getUserXp, getAnalyticsData,
-  setUserXpAdmin, query as dbQuery, savePushToken, getUsersForBroadcast,
+  setUserXpAdmin, query as dbQuery, savePushToken, getUsersForBroadcast, setUserVipAdmin,
 } from "./db";
 
 let globalSystemPromptOverride: string = "";
@@ -1088,6 +1088,19 @@ ${sec.advice}: (concrete advice for the user)`;
     } catch (err) {
       console.error("Admin set level error:", err);
       res.status(500).json({ error: "Failed to update level" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/vip", async (req, res) => {
+    const { id } = req.params;
+    const { isVip, vipPlan, vipExpiry } = req.body;
+    if (typeof isVip !== "boolean") return res.status(400).json({ error: "isVip must be boolean" });
+    try {
+      await setUserVipAdmin(id, isVip, vipPlan ?? null, vipExpiry ?? null);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Admin set vip error:", err);
+      res.status(500).json({ error: "Failed to update vip" });
     }
   });
 

@@ -116,6 +116,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             parsed.userId = String(Math.floor(100000 + Math.random() * 900000));
             await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(parsed));
           }
+          if (parsed.isVip && parsed.vipExpiry && parsed.vipExpiry < Date.now()) {
+            parsed.isVip = false;
+            parsed.vipPlan = undefined;
+            parsed.vipExpiry = undefined;
+            await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(parsed));
+            syncUserToServer(parsed);
+          }
           setUser(parsed);
           registerAndSyncPushToken(parsed.id);
         }

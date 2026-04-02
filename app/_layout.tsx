@@ -8,22 +8,53 @@ import {
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { ChatProvider } from "@/contexts/ChatContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { GiftProvider } from "@/contexts/GiftContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CustomCharProvider } from "@/contexts/CustomCharContext";
 import { useGlobalNotificationScheduler } from "@/hooks/useAutoMessages";
-import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
+import { initializeRevenueCat, SubscriptionProvider, useSubscription } from "@/lib/revenuecat";
 
 initializeRevenueCat();
 
 SplashScreen.preventAutoHideAsync();
+
+function RevenueCatVipSync() {
+  const { isVip: rcVip, customerInfo } = useSubscription();
+  const { user, activateVip, updateProfile } = useAuth();
+  const prevRcVip = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (!customerInfo || !user) return;
+
+    if (rcVip && prevRcVip.current !== true) {
+      const entitlement = customerInfo.entitlements.active["vip"];
+      const expiryMs = entitlement?.expirationDate
+        ? new Date(entitlement.expirationDate).getTime()
+        : Date.now() + 31 * 24 * 60 * 60 * 1000;
+      const plan = user.vipPlan ?? "monthly";
+      if (!user.isVip || (user.vipExpiry && user.vipExpiry < Date.now())) {
+        updateProfile({ isVip: true, vipPlan: plan, vipExpiry: expiryMs });
+      }
+    }
+
+    if (!rcVip && prevRcVip.current === true) {
+      if (user.isVip && user.vipExpiry && user.vipExpiry < Date.now()) {
+        updateProfile({ isVip: false, vipPlan: undefined, vipExpiry: undefined });
+      }
+    }
+
+    prevRcVip.current = rcVip;
+  }, [rcVip, customerInfo]);
+
+  return null;
+}
 
 function RootLayoutNav() {
   useGlobalNotificationScheduler();
@@ -66,6 +97,7 @@ export default function RootLayout() {
         <SubscriptionProvider>
           <ThemeProvider>
             <AuthProvider>
+              <RevenueCatVipSync />
               <ChatProvider>
                 <GiftProvider>
                   <CustomCharProvider>

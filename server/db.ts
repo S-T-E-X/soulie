@@ -76,7 +76,9 @@ export async function getAllUsers() {
   const res = await query(
     `SELECT
       id, user_id, name, username, email, language, gender, birthdate,
-      is_admin, is_vip, vip_plan, vip_expiry, platform, ip_address,
+      is_admin, is_vip, vip_plan,
+      to_char(to_timestamp(vip_expiry / 1000.0), 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS vip_expiry,
+      platform, ip_address,
       user_agent, country, city, onboarding_complete,
       COALESCE(total_xp, 0) AS total_xp,
       COALESCE(level, 1) AS level,
@@ -91,6 +93,13 @@ export async function setUserXpAdmin(userId: string, totalXp: number, level: num
   await query(
     `UPDATE soulie_users SET total_xp = $1, level = $2 WHERE id = $3`,
     [totalXp, level, userId]
+  );
+}
+
+export async function setUserVipAdmin(userId: string, isVip: boolean, vipPlan: string | null, vipExpiry: number | null) {
+  await query(
+    `UPDATE soulie_users SET is_vip = $1, vip_plan = $2, vip_expiry = $3 WHERE id = $4`,
+    [isVip, vipPlan, vipExpiry, userId]
   );
 }
 
