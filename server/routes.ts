@@ -585,7 +585,7 @@ ${sec.advice}: (concrete advice for the user)`;
       const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
       await upsertUser({
         id, userId, name: name || username, username, email,
-        language: "en", isAdmin, isVip: isAdmin, onboardingComplete: false,
+        language: "en", isAdmin, isVip: false, onboardingComplete: false,
       }, undefined, req.headers["user-agent"] ?? undefined);
       await dbQuery(`UPDATE soulie_users SET password_hash=$1 WHERE id=$2`, [hash, id]);
       res.json({ success: true, id, userId, username });
@@ -626,7 +626,7 @@ ${sec.advice}: (concrete advice for the user)`;
           gender: user.gender,
           birthdate: user.birthdate,
           isAdmin,
-          isVip: user.is_vip || isAdmin,
+          isVip: !!user.is_vip,
           onboardingComplete: user.onboarding_complete,
         },
       });
@@ -735,7 +735,7 @@ ${sec.advice}: (concrete advice for the user)`;
             gender: u.gender,
             birthdate: u.birthdate,
             isAdmin,
-            isVip: u.is_vip || isAdmin,
+            isVip: !!u.is_vip,
             onboardingComplete: u.onboarding_complete,
           },
         });
@@ -764,7 +764,7 @@ ${sec.advice}: (concrete advice for the user)`;
             gender: u.gender,
             birthdate: u.birthdate,
             isAdmin,
-            isVip: u.is_vip || isAdmin,
+            isVip: !!u.is_vip,
             onboardingComplete: u.onboarding_complete,
           },
         });
@@ -826,7 +826,7 @@ ${sec.advice}: (concrete advice for the user)`;
             gender: existingUser.gender,
             birthdate: existingUser.birthdate,
             isAdmin,
-            isVip: existingUser.is_vip || isAdmin,
+            isVip: !!existingUser.is_vip,
             onboardingComplete: existingUser.onboarding_complete,
           },
         });

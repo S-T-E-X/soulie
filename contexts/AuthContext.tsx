@@ -235,9 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const isVipActive = !!user && !!user.isAdmin
-    ? true
-    : !!user && !!user.isVip && (!user.vipExpiry || user.vipExpiry > Date.now());
+  const isVipActive = !!user && !!user.isVip && (!user.vipExpiry || user.vipExpiry > Date.now());
 
   const value = useMemo(
     () => ({ user, isAuthenticated: !!user, isLoading, isVipActive, login, updateProfile, logout, deleteAccount, grantAdminAccess, activateVip }),
