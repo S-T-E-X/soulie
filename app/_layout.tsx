@@ -9,6 +9,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
+import { Platform } from "react-native";
+import Purchases from "react-native-purchases";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -26,10 +28,41 @@ initializeRevenueCat();
 SplashScreen.preventAutoHideAsync();
 
 function RevenueCatVipSync() {
-  const { isVip: rcVip, customerInfo } = useSubscription();
-  const { user, activateVip, updateProfile } = useAuth();
+  const { isVip: rcVip, customerInfo, refetchOfferings, refetchCustomerInfo } = useSubscription();
+  const { user, updateProfile } = useAuth();
   const prevRcVip = useRef<boolean | null>(null);
+  const prevUserId = useRef<string | null>(null);
 
+  // Log in / log out of RevenueCat when auth state changes
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+
+    const userId = user?.id || user?.userId || null;
+
+    if (!userId) {
+      // User logged out — log out of RevenueCat
+      if (prevUserId.current) {
+        prevUserId.current = null;
+        Purchases.logOut().catch(() => {});
+      }
+      return;
+    }
+
+    // New user logged in (or changed)
+    if (userId !== prevUserId.current) {
+      prevUserId.current = userId;
+      Purchases.logIn(userId)
+        .then(() => {
+          // After login, refresh offerings and customer info so purchases work immediately
+          refetchOfferings();
+          refetchCustomerInfo();
+          console.log("[RevenueCat] logIn successful for userId:", userId);
+        })
+        .catch((e) => console.warn("[RevenueCat] logIn failed:", e));
+    }
+  }, [user?.id, user?.userId]);
+
+  // Sync RevenueCat VIP status to local user state
   useEffect(() => {
     if (!customerInfo || !user) return;
 

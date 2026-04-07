@@ -9,6 +9,7 @@ import {
   StatusBar,
   Alert,
   Linking,
+  ActivityIndicator,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -124,28 +125,35 @@ export default function MarketScreen() {
   }, [initialTab]);
 
   const handleVipPress = async (meta: (typeof PLAN_PACKAGE_KEYS)[number]) => {
-    if (isVip || isVipActive) return;
+    if (purchasing || isPurchasing) return; // prevent double-tap
+    if (isVip || isVipActive) {
+      console.log("[Market] User already VIP, skipping purchase");
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setPurchasing(true);
+    console.log("[Market] Starting VIP purchase:", meta.key);
     try {
-      await purchaseById({
+      const result = await purchaseById({
         packageId: meta.key,
         offeringId: REVENUECAT_VIP_OFFERING,
       });
+      console.log("[Market] VIP purchase success:", result);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessMsg(t("market.purchaseSuccess"));
     } catch (e: any) {
-      if (
+      const isCancelled =
         e?.userCancelled === true ||
         e?.code === 1 ||
         e?.code === "1" ||
-        e?.message === "USER_CANCELLED"
-      ) {
+        e?.message === "USER_CANCELLED";
+      if (isCancelled) {
+        console.log("[Market] VIP purchase cancelled by user");
         setPurchasing(false);
         return;
       }
-      const errorMsg = `Code: ${e?.code}\nMessage: ${e?.message}\nUnderlyingError: ${e?.underlyingErrorMessage || "N/A"}`;
-      console.warn("[Market] VIP purchase error:", errorMsg);
+      const errorMsg = `Code: ${e?.code ?? "N/A"}\nMessage: ${e?.message ?? "Unknown error"}\nUnderlying: ${e?.underlyingErrorMessage ?? "N/A"}`;
+      console.error("[Market] VIP purchase error:", errorMsg);
       Alert.alert(t("market.purchaseError"), errorMsg);
     } finally {
       setPurchasing(false);
@@ -156,26 +164,29 @@ export default function MarketScreen() {
     packageId: string,
     meta: (typeof COIN_PACKAGE_META)[string],
   ) => {
+    if (purchasing || isPurchasing) return; // prevent double-tap
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setPurchasing(true);
     const total = meta.coins + (meta.bonus ?? 0);
+    console.log("[Market] Starting coin purchase:", packageId);
     try {
       await purchaseById({ packageId, offeringId: REVENUECAT_COINS_OFFERING });
       await addCoins(total);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessMsg(t("market.coinSuccess").replace("{count}", String(total)));
     } catch (e: any) {
-      if (
+      const isCancelled =
         e?.userCancelled === true ||
         e?.code === 1 ||
         e?.code === "1" ||
-        e?.message === "USER_CANCELLED"
-      ) {
+        e?.message === "USER_CANCELLED";
+      if (isCancelled) {
+        console.log("[Market] Coin purchase cancelled by user");
         setPurchasing(false);
         return;
       }
-      const errorMsg = `Code: ${e?.code}\nMessage: ${e?.message}\nUnderlyingError: ${e?.underlyingErrorMessage || "N/A"}`;
-      console.warn("[Market] Coin purchase error:", errorMsg);
+      const errorMsg = `Code: ${e?.code ?? "N/A"}\nMessage: ${e?.message ?? "Unknown error"}\nUnderlying: ${e?.underlyingErrorMessage ?? "N/A"}`;
+      console.error("[Market] Coin purchase error:", errorMsg);
       Alert.alert(t("market.purchaseError"), errorMsg);
     } finally {
       setPurchasing(false);
@@ -347,8 +358,10 @@ export default function MarketScreen() {
               >
                 <Pressable
                   onPress={() => handleVipPress(meta)}
+                  disabled={purchasing || isPurchasing}
                   style={({ pressed }) => [
                     styles.planCard,
+                    (purchasing || isPurchasing) && { opacity: 0.7 },
                     pressed && { opacity: 0.85 },
                   ]}
                 >
@@ -422,18 +435,22 @@ export default function MarketScreen() {
                         { backgroundColor: "rgba(255,255,255,0.2)" },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.selectButtonText,
-                          { color: meta.textColor },
-                        ]}
-                      >
-                        {isVip || isVipActive
-                          ? t("market.activeBtn")
-                          : meta.isPopular
-                            ? t("market.start")
-                            : t("market.select")}
-                      </Text>
+                      {purchasing || isPurchasing ? (
+                        <ActivityIndicator size="small" color={meta.textColor} />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.selectButtonText,
+                            { color: meta.textColor },
+                          ]}
+                        >
+                          {isVip || isVipActive
+                            ? t("market.activeBtn")
+                            : meta.isPopular
+                              ? t("market.start")
+                              : t("market.select")}
+                        </Text>
+                      )}
                     </View>
                   </LinearGradient>
                 </Pressable>
@@ -547,8 +564,10 @@ export default function MarketScreen() {
                 >
                   <Pressable
                     onPress={() => handleCoinPress(key, meta)}
+                    disabled={purchasing || isPurchasing}
                     style={({ pressed }) => [
                       styles.coinCard,
+                      (purchasing || isPurchasing) && { opacity: 0.7 },
                       pressed && { opacity: 0.85 },
                     ]}
                   >
