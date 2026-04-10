@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STORAGE_KEY = "soulie_quota_v3";
-export const QUOTA_LIMIT = 15;
+export const QUOTA_LIMIT = 10;
 const QUOTA_WINDOW_MS = 6 * 60 * 60 * 1000;
 
 type QuotaData = {
