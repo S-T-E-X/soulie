@@ -15,9 +15,6 @@ import * as Notifications from "expo-notifications";
 export type UserLanguage = "en" | "tr" | "de" | "zh" | "ko" | "es" | "ru";
 export type UserGender = "male" | "female" | "other" | "prefer_not_to_say";
 
-const ADMIN_EMAILS = ["admin@soulie.app", "soulie_admin@admin.com", "yusufstex@gmail.com"];
-const ADMIN_USERNAMES = ["yusuf"];
-
 export type User = {
   id: string;
   userId: string;
@@ -31,7 +28,6 @@ export type User = {
   bio?: string;
   profilePhoto?: string;
   onboardingComplete: boolean;
-  isAdmin?: boolean;
   isVip?: boolean;
   vipExpiry?: number;
   vipPlan?: "weekly" | "monthly" | "yearly";
@@ -46,7 +42,6 @@ interface AuthContextValue {
   updateProfile: (partial: Partial<User>) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
-  grantAdminAccess: () => Promise<void>;
   activateVip: (plan: "weekly" | "monthly" | "yearly") => Promise<void>;
 }
 
@@ -135,8 +130,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (partial: Partial<User> & { name: string }) => {
-    const username = partial.name.toLowerCase().replace(/\s+/g, "_");
-    const isAdmin = ADMIN_EMAILS.includes(partial.email?.toLowerCase() ?? "") || ADMIN_USERNAMES.includes(username) || !!partial.isAdmin;
     const newUser: User = {
       id: partial.id ?? (Date.now().toString() + Math.random().toString(36).substr(2, 6)),
       userId: partial.userId ?? String(Math.floor(100000 + Math.random() * 900000)),
@@ -150,7 +143,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       bio: partial.bio ?? "",
       profilePhoto: partial.profilePhoto,
       onboardingComplete: partial.onboardingComplete ?? false,
-      isAdmin,
       isVip: partial.isVip ?? false,
     };
     await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUser));
@@ -208,15 +200,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const grantAdminAccess = useCallback(async () => {
-    setUser((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev, isAdmin: true };
-      AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated)).catch(console.error);
-      return updated;
-    });
-  }, []);
-
   const activateVip = useCallback(async (plan: "weekly" | "monthly" | "yearly") => {
     const durations: Record<string, number> = { weekly: 7, monthly: 30, yearly: 365 };
     const days = durations[plan] ?? 30;
@@ -238,8 +221,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isVipActive = !!user && !!user.isVip && (!user.vipExpiry || user.vipExpiry > Date.now());
 
   const value = useMemo(
-    () => ({ user, isAuthenticated: !!user, isLoading, isVipActive, login, updateProfile, logout, deleteAccount, grantAdminAccess, activateVip }),
-    [user, isLoading, isVipActive, login, updateProfile, logout, deleteAccount, grantAdminAccess, activateVip]
+    () => ({ user, isAuthenticated: !!user, isLoading, isVipActive, login, updateProfile, logout, deleteAccount, activateVip }),
+    [user, isLoading, isVipActive, login, updateProfile, logout, deleteAccount, activateVip]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

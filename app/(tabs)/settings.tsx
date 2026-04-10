@@ -285,16 +285,10 @@ export default function SettingsScreen() {
               <View style={styles.profileInfo}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <Text style={[styles.profileName, { color: colors.text.primary }]}>{user?.name ?? t("settings.user")}</Text>
-                  {user?.isAdmin && (
-                    <View style={styles.adminBadge}>
-                      <Feather name="shield" size={10} color="#FF9500" />
-                      <Text style={styles.adminBadgeText}>ADMIN</Text>
-                    </View>
-                  )}
                   {user?.isVip && (
-                    <View style={[styles.adminBadge, { backgroundColor: "rgba(255,215,0,0.15)" }]}>
+                    <View style={[styles.vipBadge]}>
                       <Feather name="star" size={10} color="#FFD700" />
-                      <Text style={[styles.adminBadgeText, { color: "#FFD700" }]}>VIP</Text>
+                      <Text style={styles.vipBadgeText}>VIP</Text>
                     </View>
                   )}
                 </View>
@@ -369,26 +363,6 @@ export default function SettingsScreen() {
           </View>
         </AnimatedRN.View>
 
-        {user?.isAdmin && (
-          <AnimatedRN.View entering={FadeInDown.delay(220).springify().damping(18)} style={styles.section}>
-            <SectionHeader title={t("settings.management")} isDark={isDark} />
-            <Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push("/admin" as any); }} style={({ pressed }) => [styles.adminPanelBtn, pressed && { opacity: 0.8 }]}>
-              <LinearGradient colors={["rgba(255,149,0,0.15)", "rgba(255,149,0,0.08)"]} style={styles.adminPanelBtnGrad}>
-                <View style={styles.adminPanelLeft}>
-                  <View style={styles.adminIconWrap}>
-                    <Feather name="shield" size={18} color="#FF9500" />
-                  </View>
-                  <View>
-                    <Text style={styles.adminPanelLabel}>{t("settings.adminPanel")}</Text>
-                    <Text style={styles.adminPanelSub}>{t("settings.adminPanelSub")}</Text>
-                  </View>
-                </View>
-                <Feather name="chevron-right" size={16} color="#FF9500" />
-              </LinearGradient>
-            </Pressable>
-          </AnimatedRN.View>
-        )}
-
         <Text style={[styles.version, { color: colors.text.tertiary }]}>Soulie v1.0.0</Text>
       </ScrollView>
     </BackgroundGradient>
@@ -409,8 +383,8 @@ const styles = StyleSheet.create({
   statItem: { alignItems: "center" },
   statNumber: { fontSize: 20, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
   statLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  adminBadge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "rgba(255,149,0,0.12)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
-  adminBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#FF9500", letterSpacing: 0.4 },
+  vipBadge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "rgba(255,215,0,0.15)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  vipBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#FFD700", letterSpacing: 0.4 },
   levelCard: { borderRadius: 22, overflow: "hidden", borderWidth: 1, marginBottom: 8 },
   levelGradient: { padding: 18, gap: 14 },
   levelTopRow: { flexDirection: "row", alignItems: "center", gap: 14 },
@@ -437,11 +411,5 @@ const styles = StyleSheet.create({
   settingLabel: { fontSize: 15, fontFamily: "Inter_400Regular", letterSpacing: -0.1 },
   settingValue: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   rowDivider: { height: 1, marginLeft: 62 },
-  adminPanelBtn: { borderRadius: 18, overflow: "hidden", borderWidth: 1.5, borderColor: "rgba(255,149,0,0.25)" },
-  adminPanelBtnGrad: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 16 },
-  adminPanelLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  adminIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(255,149,0,0.15)", justifyContent: "center", alignItems: "center" },
-  adminPanelLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#FF9500" },
-  adminPanelSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,149,0,0.7)", marginTop: 2 },
   version: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 12, marginBottom: 8 },
 });
